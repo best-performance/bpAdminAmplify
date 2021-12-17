@@ -1,5 +1,5 @@
 import React from 'react'
 function UpdateSchool() {
-  return <div>This is UpdateSchool Component</div>
+  return <div>This is updateSchool component </div>
 }
 export default UpdateSchool

@@ -1,5 +1,5 @@
 import React from 'react'
 function PatTest() {
-  return <div>This is NaplanTest Component</div>
+  return <div>This is PatTest Component</div>
 }
 export default PatTest

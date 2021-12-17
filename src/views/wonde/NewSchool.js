@@ -1,5 +1,5 @@
 import React from 'react'
 function NewSchool() {
-  return <div>This is newSchool Component</div>
+  return <div>This is NewSchool component </div>
 }
 export default NewSchool

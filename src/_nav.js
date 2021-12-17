@@ -27,18 +27,18 @@ const _nav = [
   {
     component: CNavGroup,
     name: 'Uploaders',
-    to: '/base',
+    to: '/tests',
     icon: <CIcon icon={cilPuzzle} customClassName="nav-icon" />,
     items: [
       {
         component: CNavItem,
         name: 'PAT',
-        to: '/base/accordion',
+        to: '/tests/patTest',
       },
       {
         component: CNavItem,
         name: 'NAPLAN',
-        to: '/base/breadcrumbs',
+        to: '/tests/naplanTest',
       },
     ],
   },
@@ -49,23 +49,23 @@ const _nav = [
   {
     component: CNavGroup,
     name: 'Queries',
-    to: '/buttons',
+    to: '/queries',
     icon: <CIcon icon={cilCursor} customClassName="nav-icon" />,
     items: [
       {
         component: CNavItem,
         name: 'Query 1',
-        to: '/buttons/buttons',
+        to: '/queries/query1',
       },
       {
         component: CNavItem,
         name: 'Query 2',
-        to: '/buttons/button-groups',
+        to: '/queries/query2',
       },
       {
         component: CNavItem,
         name: 'Query 3',
-        to: '/buttons/dropdowns',
+        to: '/queries/query3',
       },
     ],
   },
