@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import { HashRouter, Route, Switch } from 'react-router-dom'
 import './scss/style.scss'
+import 'devextreme/dist/css/dx.material.blue.light.css'
 
 const loading = (
   <div className="pt-3 text-center">

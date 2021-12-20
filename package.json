@@ -39,6 +39,8 @@
     "chart.js": "^3.6.0",
     "classnames": "^2.3.1",
     "core-js": "^3.19.1",
+    "devextreme": "21.2",
+    "devextreme-react": "21.2",
     "enzyme": "^3.11.0",
     "prop-types": "^15.7.2",
     "react": "^17.0.2",
@@ -47,7 +49,9 @@
     "react-redux": "^7.2.6",
     "react-router-dom": "^5.3.0",
     "redux": "4.1.2",
-    "simplebar-react": "^2.3.6"
+    "simplebar-react": "^2.3.6",
+    "axios": "latest",
+    "lodash": "latest"
   },
   "devDependencies": {
     "auto-changelog": "~2.3.0",
