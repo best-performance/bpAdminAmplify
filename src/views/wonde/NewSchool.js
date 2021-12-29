@@ -16,7 +16,8 @@ function NewSchool() {
   const [schools, setSchools] = useState([])
   const [rawStudents, setRawStudents] = useState([])
   const [rawTeachers, setRawTeachers] = useState([])
-  const [rawClassrooms, setRawClassrooms] = useState([])
+  const [rawStudentClassrooms, setRawStudentClassrooms] = useState([])
+  const [rawTeacherClassrooms, setRawTeacherClassrooms] = useState([])
   const [region, setRegion] = useState({ url: AUSURL, token: AUSTOKEN })
   const [selectedSchool, setSelectedSchool] = useState({})
   const [isLoading, setIsLoading] = useState(false)
@@ -29,7 +30,8 @@ function NewSchool() {
     setSchools([])
     setRawStudents([])
     setRawTeachers([])
-    setRawClassrooms([])
+    setRawStudentClassrooms([])
+    setRawTeacherClassrooms([])
     setSelectedSchool([])
     let schools = []
     try {
@@ -40,8 +42,16 @@ function NewSchool() {
           Authorization: region.token,
         },
       })
-      response.data.data.forEach((item) => {
-        schools.push({ schoolName: item.name, schoolID: item.id })
+      response.data.data.forEach((school) => {
+        schools.push({
+          schoolName: school.name,
+          schoolID: school.id,
+          urn: school.urn,
+          address1: school.address.address_line_1,
+          address2: school.address.address_line_2,
+          town: school.address.address_town,
+          country: school.address.address_country.name,
+        })
       })
     } catch (error) {
       console.log(error)
@@ -96,6 +106,10 @@ function NewSchool() {
                 mis_id: classroom.mis_id,
                 classId: classroom.id,
                 className: classroom.name,
+                teacherId:
+                  classroom.employees.data.length > 0
+                    ? classroom.employees.data[0].id
+                    : 'no teacher',
                 teacherFirstName:
                   classroom.employees.data.length > 0
                     ? classroom.employees.data[0].forename
@@ -120,18 +134,20 @@ function NewSchool() {
     }
     students = _.sortBy(students, (y) => parseInt(y.year))
     setRawStudents(students)
-    setRawClassrooms(classrooms)
+    setRawStudentClassrooms(classrooms)
     setIsLoadingStudents(false)
   }
 
   // get the teachers (employees) list in a school
+  // the has_class=true parameter selects employees who are teachers
   async function getTeachers() {
+    const teacherClassrooms = []
     if (selectedSchool === {}) return
     setIsLoadingTeachers(true)
     setRawTeachers([])
     let teachersList = []
     try {
-      let URL = `${region.url}/${selectedSchool.schoolID}/employees/?include=contact_details,classes&per_page=50`
+      let URL = `${region.url}/${selectedSchool.schoolID}/employees/?has_class=true&include=contact_details,classes&per_page=50`
       let morePages = true
       while (morePages) {
         console.log(URL)
@@ -143,6 +159,7 @@ function NewSchool() {
           },
         })
 
+        console.log('no of employees', response.data.data.length)
         // eslint-disable-next-line no-loop-func
         response.data.data.forEach((employee) => {
           if (employee.classes.data.length > 0) {
@@ -152,9 +169,15 @@ function NewSchool() {
               firstName: employee.forename,
               lastName: employee.surname,
               email: employee.contact_details.data.emails.email,
-              classes: employee.classes.data,
             }
             teachersList.push(teacherObj)
+            employee.classes.data.forEach((classroom) => {
+              teacherClassrooms.push({
+                teacherId: employee.id,
+                classId: classroom.id,
+                classDescription: classroom.description,
+              })
+            })
           }
         })
 
@@ -171,6 +194,7 @@ function NewSchool() {
     }
 
     setRawTeachers(teachersList)
+    setRawTeacherClassrooms(teacherClassrooms)
     setIsLoadingTeachers(false)
   }
 
@@ -182,7 +206,7 @@ function NewSchool() {
   // This is a Detail component to show student-classrooms assignments
   function StudentClassrooms(params) {
     let studentID = params.data.data.id
-    let studentClassroomList = rawClassrooms.filter((student) => {
+    let studentClassroomList = rawStudentClassrooms.filter((student) => {
       return student.studentID === studentID
     })
 
@@ -197,40 +221,81 @@ function NewSchool() {
     )
   }
 
+  // This is a Detail component to show teacher-classrooms assignments
+  function TeacherClassrooms(params) {
+    let teacherId = params.data.data.id
+    let teacherClassroomList = rawTeacherClassrooms.filter((teacher) => {
+      return teacher.teacherId === teacherId
+    })
+
+    return (
+      <DataGrid
+        showBorders={true}
+        hoverStateEnabled={true}
+        allowColumnReordering={true}
+        columnAutoWidth={true}
+        dataSource={teacherClassroomList}
+      ></DataGrid>
+    )
+  }
+
   return (
     <CContainer>
       <CRow>
-        <h4 className="text-center">Wonde Integration - New School Uptake</h4>
+        <h4 className="text-center">Wonde Integration - New School Uptake (Australia)</h4>
+      </CRow>
+      <div className="d-flex justify-content-center">
+        <Button
+          className="btn btn-primary"
+          style={{ marginBottom: '10px' }}
+          onClick={getAllSchools}
+        >
+          List All Available Wonde Schools
+        </Button>
+      </div>
+      <CRow>
+        <CCol></CCol>
+        <CCol>
+          {isLoading ? (
+            <CSpinner />
+          ) : (
+            <DataGrid
+              id="dataGrid"
+              keyExpr="schoolID"
+              showBorders={true}
+              hoverStateEnabled={true}
+              onSelectionChanged={selectSchool}
+              allowColumnReordering={true}
+              columnAutoWidth={true}
+              dataSource={schools}
+            >
+              <Selection mode="single" />
+            </DataGrid>
+          )}
+        </CCol>
+        <CCol></CCol>
       </CRow>
       <CRow>
-        <Button onClick={getAllSchools}>Get All Schools</Button>
+        <CCol></CCol>
+        <CCol>
+          <h6 className="text-center">Selected School:</h6>
+        </CCol>
+        <CCol>
+          <h6 className="text-center">{`${
+            selectedSchool.schoolName ? selectedSchool.schoolName : 'none'
+          }`}</h6>
+        </CCol>
+        <CCol></CCol>
       </CRow>
-      <CRow>
-        {isLoading ? (
-          <CSpinner />
-        ) : (
-          <DataGrid
-            id="dataGrid"
-            keyExpr="schoolID"
-            showBorders={true}
-            hoverStateEnabled={true}
-            onSelectionChanged={selectSchool}
-            allowColumnReordering={true}
-            columnAutoWidth={true}
-            dataSource={schools}
-          >
-            <Selection mode="single" />
-          </DataGrid>
-        )}
-      </CRow>
-      <CRow>
-        <h6 className="text-center">{`Selected School: ${
-          selectedSchool.schoolName ? selectedSchool.schoolName : 'none'
-        }`}</h6>
-      </CRow>
-      <CRow>
-        <Button onClick={getSchoolData}>Get Data For Selected Schools</Button>
-      </CRow>
+      <div className="d-flex justify-content-center">
+        <Button
+          className="btn btn-primary"
+          style={{ marginBottom: '10px' }}
+          onClick={getSchoolData}
+        >
+          Get Data For Selected Schools
+        </Button>
+      </div>
       <CRow>
         <TabPanel>
           <Item title="Student-Classes">
@@ -271,6 +336,7 @@ function NewSchool() {
                     dataSource={rawTeachers}
                   >
                     <SearchPanel visible={true} />
+                    <MasterDetail enabled={true} component={TeacherClassrooms} />
                   </DataGrid>
                 )}
               </CRow>
