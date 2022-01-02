@@ -3,7 +3,9 @@ frontend:
   phases:
     preBuild:
       commands:
-        - yarn
+        - echo "REACT_APP_REGION=$REGION" >> .env
+        - echo "REACT_APP_ENDPOINT=$ENDPOINT" >> .env
+        - yarn install --immutable --immutable-cache --check-cache
     build:
       commands:
         - npm run build

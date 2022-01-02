@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   CContainer,
   CCol,
@@ -19,12 +19,26 @@ import {
 import Button from 'devextreme-react/button'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 
-function LandingPage() {
+async function LandingPage() {
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [lambdaMessage, setLambdaMessage] = useState('')
+
+  async function lambdaHandler() {
+    console.log(process.env.REACT_APP_ENDPOINT)
+    const response = await fetch(`${process.env.REACT_APP_ENDPOINT}hello`, { mode: 'cors' })
+    console.log('lambdaResonse', response)
+  }
   return (
     <>
       <CContainer>
         <CRow>
           <h3 className="text-center">Landing Page for experimentation - Use Sidebar Menu</h3>
+        </CRow>
+        <CRow>
+          <CCol>
+            <Button onClick={lambdaHandler}>Press to invoke lambda</Button>
+          </CCol>
+          <CCol>{isLoaded ? lambdaMessage : 'Lambda not invoked yet'}</CCol>
         </CRow>
         <CRow>
           <CCol md={4} className="text-primary border bg-danger">
