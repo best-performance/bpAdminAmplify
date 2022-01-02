@@ -16,6 +16,8 @@ import {
   CTableRow,
   CTableHeaderCell,
 } from '@coreui/react'
+
+import axios from 'axios'
 import Button from 'devextreme-react/button'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 
@@ -23,11 +25,17 @@ function LandingPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [lambdaMessage, setLambdaMessage] = useState('')
 
+  // invoked when Button pressed
   async function lambdaHandler() {
     console.log(process.env.REACT_APP_ENDPOINT)
-    const response = await fetch(`${process.env.REACT_APP_ENDPOINT}hello`, { mode: 'cors' })
+    let response = await axios({
+      method: 'get',
+      url: `${process.env.REACT_APP_ENDPOINT}hello`,
+    })
+    //const response = await fetch(`${process.env.REACT_APP_ENDPOINT}hello`, { mode: 'cors' })
     console.log('lambdaResonse', response)
   }
+
   return (
     <>
       <CContainer>
