@@ -32,8 +32,8 @@ function LandingPage() {
       method: 'get',
       url: `${process.env.REACT_APP_ENDPOINT}hello`,
     })
-    //const response = await fetch(`${process.env.REACT_APP_ENDPOINT}hello`, { mode: 'cors' })
-    console.log('lambdaResonse', response)
+    setIsLoaded(true)
+    setLambdaMessage(`Lambda response: ${response.data}`)
   }
 
   return (
