@@ -19,7 +19,7 @@ import {
 import Button from 'devextreme-react/button'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 
-async function LandingPage() {
+function LandingPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [lambdaMessage, setLambdaMessage] = useState('')
 
@@ -38,7 +38,7 @@ async function LandingPage() {
           <CCol>
             <Button onClick={lambdaHandler}>Press to invoke lambda</Button>
           </CCol>
-          <CCol>{isLoaded ? lambdaMessage : 'Lambda not invoked yet'}</CCol>
+          <CCol>{isLoaded === true ? lambdaMessage : 'Lambda not invoked yet'}</CCol>
         </CRow>
         <CRow>
           <CCol md={4} className="text-primary border bg-danger">
