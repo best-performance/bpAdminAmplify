@@ -31,6 +31,7 @@ function LandingPage() {
     let response = await axios({
       method: 'get',
       url: `${process.env.REACT_APP_ENDPOINT}test`,
+      params: { param01: 'this is a param' },
     })
     setIsLoaded(true)
     setLambdaMessage(`Lambda response: ${response.data}`)

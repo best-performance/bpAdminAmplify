@@ -41,16 +41,14 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`, // now reading from apiGateway route
       })
-      console.log(response)
       response.data.forEach((school) => {
         schools.push(school)
       })
+      setSchools(schools)
+      setIsLoading(false)
     } catch (error) {
       console.log(error)
     }
-    console.log(schools)
-    setSchools(schools)
-    setIsLoading(false)
   }
 
   const selectSchool = useCallback((e) => {
