@@ -41,19 +41,10 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`, // now reading from apiGateway route
       })
-      // response.data.data.forEach((school) => {
-      //   schools.push({
-      //     schoolName: school.name,
-      //     schoolID: school.id,
-      //     urn: school.urn,
-      //     address1: school.address.address_line_1,
-      //     address2: school.address.address_line_2,
-      //     town: school.address.address_town,
-      //     country: school.address.address_country.name,
-      //   })
-      // })
+      response.data.data.forEach((school) => {
+        schools.push(school)
+      })
       console.log(response)
-      schools = JSON.parse(response)
     } catch (error) {
       console.log(error)
     }
