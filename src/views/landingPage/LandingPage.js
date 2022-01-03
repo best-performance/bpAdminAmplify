@@ -30,7 +30,7 @@ function LandingPage() {
     console.log(process.env.REACT_APP_ENDPOINT)
     let response = await axios({
       method: 'get',
-      url: `${process.env.REACT_APP_ENDPOINT}hello`,
+      url: `${process.env.REACT_APP_ENDPOINT}test`,
     })
     setIsLoaded(true)
     setLambdaMessage(`Lambda response: ${response.data}`)

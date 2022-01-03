@@ -28,31 +28,32 @@ function NewSchool() {
   async function getAllSchools() {
     setIsLoading(true)
     setSchools([])
+    setSelectedSchool([])
+    // when loading the school list we clear teachers, students and assignments
     setRawStudents([])
     setRawTeachers([])
     setRawStudentClassrooms([])
     setRawTeacherClassrooms([])
-    setSelectedSchool([])
+
     let schools = []
     try {
       let response = await axios({
         method: 'get',
-        url: region.url,
-        headers: {
-          Authorization: region.token,
-        },
+        url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`, // now reading from apiGateway route
       })
-      response.data.data.forEach((school) => {
-        schools.push({
-          schoolName: school.name,
-          schoolID: school.id,
-          urn: school.urn,
-          address1: school.address.address_line_1,
-          address2: school.address.address_line_2,
-          town: school.address.address_town,
-          country: school.address.address_country.name,
-        })
-      })
+      // response.data.data.forEach((school) => {
+      //   schools.push({
+      //     schoolName: school.name,
+      //     schoolID: school.id,
+      //     urn: school.urn,
+      //     address1: school.address.address_line_1,
+      //     address2: school.address.address_line_2,
+      //     town: school.address.address_town,
+      //     country: school.address.address_country.name,
+      //   })
+      // })
+      console.log(response)
+      schools = JSON.parse(response)
     } catch (error) {
       console.log(error)
     }
