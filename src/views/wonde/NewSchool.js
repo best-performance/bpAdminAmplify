@@ -41,10 +41,10 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`, // now reading from apiGateway route
       })
-      response.data.data.forEach((school) => {
+      console.log(response)
+      response.data.forEach((school) => {
         schools.push(school)
       })
-      console.log(response)
     } catch (error) {
       console.log(error)
     }
