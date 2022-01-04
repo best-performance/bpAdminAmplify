@@ -69,7 +69,7 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}/students`,
+        url: `${process.env.REACT_APP_ENDPOINT}students`,
       })
       // eslint-disable-next-line no-loop-func
       response.data.data.students.forEach((student) => {
