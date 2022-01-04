@@ -71,7 +71,6 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
       })
-      console.log(response)
       // eslint-disable-next-line no-loop-func
       response.data.students.forEach((student) => {
         students.push({ student })
@@ -83,6 +82,7 @@ function NewSchool() {
       console.log(error)
     }
     //students = _.sortBy(students, (y) => parseInt(y.year))
+    console.log(students)
     setRawStudents(students)
     setRawStudentClassrooms(classrooms)
     setIsLoadingStudents(false)
@@ -264,7 +264,7 @@ function NewSchool() {
                     dataSource={rawStudents}
                   >
                     <SearchPanel visible={true} />
-                    <MasterDetail enabled={true} component={StudentClassrooms} />
+                    {/* <MasterDetail enabled={true} component={StudentClassrooms} /> */}
                   </DataGrid>
                 )}
               </CRow>
