@@ -102,8 +102,6 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
       })
-
-      console.log('no of employees', response.data.data.length)
       // eslint-disable-next-line no-loop-func
       response.data.teachers.forEach((teacher) => {
         teachers.push(teacher)
