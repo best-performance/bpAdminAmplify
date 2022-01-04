@@ -91,66 +91,39 @@ function NewSchool() {
   // get the teachers (employees) list in a school
   // the has_class=true parameter selects employees who are teachers
   async function getTeachers() {
-    const teacherClassrooms = []
     if (selectedSchool === {}) return
+    let teacherClassrooms = []
+    let teachers = []
     setIsLoadingTeachers(true)
     setRawTeachers([])
-    let teachersList = []
     try {
-      let URL = `${region.url}/${selectedSchool.schoolID}/employees/?has_class=true&include=contact_details,classes&per_page=50`
-      let morePages = true
-      while (morePages) {
-        console.log(URL)
-        let response = await axios({
-          method: 'get',
-          url: URL,
-          headers: {
-            Authorization: region.token,
-          },
-        })
+      console.log(URL)
+      let response = await axios({
+        method: 'get',
+        url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
+      })
 
-        console.log('no of employees', response.data.data.length)
-        // eslint-disable-next-line no-loop-func
-        response.data.data.forEach((employee) => {
-          if (employee.classes.data.length > 0) {
-            let teacherObj = {
-              id: employee.id,
-              title: employee.title,
-              firstName: employee.forename,
-              lastName: employee.surname,
-              email: employee.contact_details.data.emails.email,
-            }
-            teachersList.push(teacherObj)
-            employee.classes.data.forEach((classroom) => {
-              teacherClassrooms.push({
-                teacherId: employee.id,
-                classId: classroom.id,
-                classDescription: classroom.description,
-              })
-            })
-          }
-        })
-
-        // now we want to check the paginaton
-        if (response.data.meta.pagination.next != null) {
-          URL = response.data.meta.pagination.next
-        } else {
-          morePages = false
-        }
-      }
+      console.log('no of employees', response.data.data.length)
+      // eslint-disable-next-line no-loop-func
+      response.data.teachers.forEach((teacher) => {
+        teachers.push(teacher)
+      })
+      response.data.classrooms.forEach((classroom) => {
+        teacherClassrooms.push(classroom)
+      })
       //console.log(teachers);
     } catch (error) {
       console.log(error)
     }
 
-    setRawTeachers(teachersList)
+    setRawTeachers(teachers)
     setRawTeacherClassrooms(teacherClassrooms)
     setIsLoadingTeachers(false)
   }
 
   async function getSchoolData() {
-    await getStudents()
-    //await getTeachers()
+    await getStudents() // students and student-classrooms
+    await getTeachers() // teachrs and teacher-classrooms
   }
 
   // This is a Detail component to show student-classrooms assignments
