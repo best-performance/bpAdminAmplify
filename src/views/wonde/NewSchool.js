@@ -58,71 +58,30 @@ function NewSchool() {
     })
   }, [])
 
-  // gets the students list from one school - with classrooms and teachers
+  // gets all students from one school - with teachers and class assignments
   async function getStudents() {
     if (selectedSchool === {}) return
     setRawStudents([])
+    setRawStudentClassrooms([])
     setIsLoadingStudents(true)
     let students = []
     let classrooms = []
     try {
-      let URL = `${region.url}/${selectedSchool.schoolID}/students?include=classes.employees,year&per_page=200`
-      let morePages = true
-      while (morePages) {
-        console.log(URL)
-        let response = await axios({
-          method: 'get',
-          url: URL,
-          headers: {
-            Authorization: region.token,
-          },
-        })
-        // eslint-disable-next-line no-loop-func
-        response.data.data.forEach((student) => {
-          //if (student.id === 'B1345707233') console.log(student)
-          if (student.classes.data.length > 0 && student.year.data.code !== '40') {
-            students.push({
-              id: student.id,
-              mis_id: student.mis_id,
-              firstName: student.forename,
-              lastName: student.surname,
-              gender: student.gender,
-              dob: student.date_of_birth,
-              year: student.year.data.code,
-            })
-            student.classes.data.forEach((classroom) => {
-              classrooms.push({
-                studentID: student.id,
-                mis_id: classroom.mis_id,
-                classId: classroom.id,
-                className: classroom.name,
-                teacherId:
-                  classroom.employees.data.length > 0
-                    ? classroom.employees.data[0].id
-                    : 'no teacher',
-                teacherFirstName:
-                  classroom.employees.data.length > 0
-                    ? classroom.employees.data[0].forename
-                    : 'no teacher',
-                teacherLastName:
-                  classroom.employees.data.length > 0
-                    ? classroom.employees.data[0].surname
-                    : 'no teacher',
-              })
-            })
-          }
-        })
-        // check if all pages are read
-        if (response.data.meta.pagination.next != null) {
-          URL = response.data.meta.pagination.next
-        } else {
-          morePages = false
-        }
-      }
+      let response = await axios({
+        method: 'get',
+        url: `${process.env.REACT_APP_ENDPOINT}/students`,
+      })
+      // eslint-disable-next-line no-loop-func
+      response.data.data.students.forEach((student) => {
+        students.push({ student })
+      })
+      response.data.data.classroomss.forEach((classroom) => {
+        classrooms.push({ classroom })
+      })
     } catch (error) {
       console.log(error)
     }
-    students = _.sortBy(students, (y) => parseInt(y.year))
+    //students = _.sortBy(students, (y) => parseInt(y.year))
     setRawStudents(students)
     setRawStudentClassrooms(classrooms)
     setIsLoadingStudents(false)
@@ -190,7 +149,7 @@ function NewSchool() {
 
   async function getSchoolData() {
     await getStudents()
-    await getTeachers()
+    //await getTeachers()
   }
 
   // This is a Detail component to show student-classrooms assignments
