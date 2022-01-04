@@ -100,7 +100,7 @@ function NewSchool() {
       console.log(URL)
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
+        url: `${process.env.REACT_APP_ENDPOINT}wondeteachers`,
       })
       // eslint-disable-next-line no-loop-func
       response.data.teachers.forEach((teacher) => {
