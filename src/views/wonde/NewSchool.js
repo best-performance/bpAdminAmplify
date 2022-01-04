@@ -73,10 +73,10 @@ function NewSchool() {
       })
       // eslint-disable-next-line no-loop-func
       response.data.students.forEach((student) => {
-        students.push({ student })
+        students.push(student)
       })
       response.data.classrooms.forEach((classroom) => {
-        classrooms.push({ classroom })
+        classrooms.push(classroom)
       })
     } catch (error) {
       console.log(error)
@@ -264,7 +264,7 @@ function NewSchool() {
                     dataSource={rawStudents}
                   >
                     <SearchPanel visible={true} />
-                    {/* <MasterDetail enabled={true} component={StudentClassrooms} /> */}
+                    <MasterDetail enabled={true} component={StudentClassrooms} />
                   </DataGrid>
                 )}
               </CRow>
