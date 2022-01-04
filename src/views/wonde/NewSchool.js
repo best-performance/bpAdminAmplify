@@ -71,11 +71,12 @@ function NewSchool() {
         method: 'get',
         url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
       })
+      console.log(response)
       // eslint-disable-next-line no-loop-func
-      response.data.data.students.forEach((student) => {
+      response.data.students.forEach((student) => {
         students.push({ student })
       })
-      response.data.data.classroomss.forEach((classroom) => {
+      response.data.classrooms.forEach((classroom) => {
         classrooms.push({ classroom })
       })
     } catch (error) {
