@@ -11,6 +11,7 @@ const UKURL = 'https://api.wonde.com/v1.0/schools'
 const UKTOKEN = 'Bearer 6c69f7050215eff18895eeb63d6bd0df0545f0da'
 const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
 const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
+const API_URL = 'https://8f9yklycy9.execute-api.ap-southeast-2.amazonaws.com/prod/'
 
 function NewSchool() {
   const [schools, setSchools] = useState([])
@@ -39,7 +40,8 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`, // now reading from apiGateway route
+        //url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`,
+        url: `${API_URL}wondeallschools`,
       })
       response.data.forEach((school) => {
         schools.push(school)
@@ -58,6 +60,20 @@ function NewSchool() {
     })
   }, [])
 
+  async function saveSchoolToSchoolsTable() {
+    if (selectedSchool === {}) return // can't save unless school is selected
+    try {
+      let response = await axios({
+        method: 'put',
+        url: `${API_URL}saveWondeSchool`,
+        data: { selectedSchool }, // this will go into the request body
+      })
+      console.log(response)
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
   // gets all students from one school - with teachers and class assignments
   async function getStudents() {
     if (selectedSchool === {}) return
@@ -69,7 +85,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
+        // url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
+        url: `${API_URL}wondestudents`,
+        params: { wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.students.forEach((student) => {
@@ -97,10 +115,11 @@ function NewSchool() {
     setIsLoadingTeachers(true)
     setRawTeachers([])
     try {
-      console.log(URL)
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondeteachers`,
+        //url: `${process.env.REACT_APP_ENDPOINT}`,
+        url: `${API_URL}wondeteachers`,
+        params: { wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.teachers.forEach((teacher) => {
@@ -182,7 +201,7 @@ function NewSchool() {
           ) : (
             <DataGrid
               id="dataGrid"
-              keyExpr="schoolID"
+              keyExpr="wondeID"
               showBorders={true}
               hoverStateEnabled={true}
               onSelectionChanged={selectSchool}
@@ -209,6 +228,13 @@ function NewSchool() {
         <CCol></CCol>
       </CRow>
       <div className="d-flex justify-content-center">
+        <Button
+          className="btn btn-primary"
+          style={{ marginBottom: '10px' }}
+          onClick={saveSchoolToSchoolsTable}
+        >
+          Save selected school to Schools table
+        </Button>
         <Button
           className="btn btn-primary"
           style={{ marginBottom: '10px' }}
