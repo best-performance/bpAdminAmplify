@@ -4,7 +4,7 @@ import Button from 'devextreme-react/button'
 import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import axios from 'axios'
-//import _ from 'lodash'
+//import _ from 'lodash '
 
 // These are hard-coded for convenience ToDo: Save elsewhere
 // const UKURL = 'https://api.wonde.com/v1.0/schools'
