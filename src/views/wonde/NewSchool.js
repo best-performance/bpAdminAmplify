@@ -4,13 +4,13 @@ import Button from 'devextreme-react/button'
 import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import axios from 'axios'
-import _ from 'lodash'
+//import _ from 'lodash'
 
 // These are hard-coded for convenience ToDo: Save elsewhere
-const UKURL = 'https://api.wonde.com/v1.0/schools'
-const UKTOKEN = 'Bearer 6c69f7050215eff18895eeb63d6bd0df0545f0da'
-const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
-const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
+// const UKURL = 'https://api.wonde.com/v1.0/schools'
+// const UKTOKEN = 'Bearer 6c69f7050215eff18895eeb63d6bd0df0545f0da'
+// const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
+// const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
 const API_URL = 'https://8f9yklycy9.execute-api.ap-southeast-2.amazonaws.com/prod/'
 
 function NewSchool() {
@@ -19,17 +19,19 @@ function NewSchool() {
   const [rawTeachers, setRawTeachers] = useState([])
   const [rawStudentClassrooms, setRawStudentClassrooms] = useState([])
   const [rawTeacherClassrooms, setRawTeacherClassrooms] = useState([])
-  const [region, setRegion] = useState({ url: AUSURL, token: AUSTOKEN })
-  const [selectedSchool, setSelectedSchool] = useState({})
-  const [isLoading, setIsLoading] = useState(false)
+  const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
+  const [isLoadingSchools, setIsLoadingSchools] = useState(false)
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
+  const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
+  const [savingSchoolData, setSavingSchoolData] = useState(false)
 
   // Read all available schools
   async function getAllSchools() {
-    setIsLoading(true)
+    setIsLoadingSchools(true)
     setSchools([])
-    setSelectedSchool([])
+    setSelectedSchool({ schoolName: 'none' })
+    setSchoolDataLoaded(false)
     // when loading the school list we clear teachers, students and assignments
     setRawStudents([])
     setRawTeachers([])
@@ -47,26 +49,28 @@ function NewSchool() {
         schools.push(school)
       })
       setSchools(schools)
-      setIsLoading(false)
+      setIsLoadingSchools(false)
     } catch (error) {
       console.log(error)
     }
   }
 
+  // this is executed if we select a school from the list of schools
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
       setSelectedSchool(school)
       console.log(school)
     })
+    setSchoolDataLoaded(false)
   }, [])
 
-  async function saveSchoolToSchoolsTable() {
-    if (selectedSchool === {}) return // can't save unless school is selected
+  async function saveSchoolDataToEdCompanion() {
+    if (!schoolDataLoaded) return // can't save unless data has been loaded
     try {
       let response = await axios({
         method: 'put',
         url: `${API_URL}saveWondeSchool`,
-        data: { selectedSchool }, // this will go into the request body
+        data: { selectedSchool, studentList: rawStudents }, // this will go into the request body
       })
       console.log(response)
     } catch (error) {
@@ -96,14 +100,14 @@ function NewSchool() {
       response.data.classrooms.forEach((classroom) => {
         classrooms.push(classroom)
       })
+      setRawStudents(students)
+      setRawStudentClassrooms(classrooms)
+      setIsLoadingStudents(false)
+      return true
     } catch (error) {
       console.log(error)
+      return false
     }
-    //students = _.sortBy(students, (y) => parseInt(y.year))
-    console.log(students)
-    setRawStudents(students)
-    setRawStudentClassrooms(classrooms)
-    setIsLoadingStudents(false)
   }
 
   // get the teachers (employees) list in a school
@@ -128,19 +132,23 @@ function NewSchool() {
       response.data.classrooms.forEach((classroom) => {
         teacherClassrooms.push(classroom)
       })
-      //console.log(teachers);
+      setRawTeachers(teachers)
+      setRawTeacherClassrooms(teacherClassrooms)
+      setIsLoadingTeachers(false)
+      return true
     } catch (error) {
       console.log(error)
+      return false
     }
-
-    setRawTeachers(teachers)
-    setRawTeacherClassrooms(teacherClassrooms)
-    setIsLoadingTeachers(false)
   }
 
   async function getSchoolData() {
-    await getStudents() // students and student-classrooms
-    await getTeachers() // teachrs and teacher-classrooms
+    let teachersLoaded = false
+    let studentsLoaded = await getStudents() // students and student-classrooms
+    if (studentsLoaded) {
+      teachersLoaded = await getTeachers()
+    } // teachrs and teacher-classrooms
+    if (teachersLoaded && studentsLoaded) setSchoolDataLoaded(true)
   }
 
   // This is a Detail component to show student-classrooms assignments
@@ -196,7 +204,7 @@ function NewSchool() {
       <CRow>
         <CCol></CCol>
         <CCol>
-          {isLoading ? (
+          {isLoadingSchools ? (
             <CSpinner />
           ) : (
             <DataGrid
@@ -221,28 +229,33 @@ function NewSchool() {
           <h6 className="text-center">Selected School:</h6>
         </CCol>
         <CCol>
-          <h6 className="text-center">{`${
-            selectedSchool.schoolName ? selectedSchool.schoolName : 'none'
-          }`}</h6>
+          <h6 className="text-center">{selectedSchool.schoolName}</h6>
         </CCol>
         <CCol></CCol>
       </CRow>
       <div className="d-flex justify-content-center">
-        <Button
-          className="btn btn-primary"
-          style={{ marginBottom: '10px' }}
-          onClick={saveSchoolToSchoolsTable}
-        >
-          Save selected school to Schools table
-        </Button>
-        <Button
-          className="btn btn-primary"
-          style={{ marginBottom: '10px' }}
-          onClick={getSchoolData}
-        >
-          Get Data For Selected Schools
-        </Button>
+        {selectedSchool.schoolName !== 'none' ? (
+          <Button
+            className="btn btn-primary"
+            style={{ marginBottom: '10px' }}
+            onClick={getSchoolData}
+          >
+            {`Get data for ${selectedSchool.schoolName} from Wonde`}
+          </Button>
+        ) : null}
       </div>
+      <div className="d-flex justify-content-center">
+        {schoolDataLoaded ? (
+          <Button
+            className="btn btn-primary"
+            style={{ marginBottom: '10px' }}
+            onClick={saveSchoolDataToEdCompanion}
+          >
+            {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
+          </Button>
+        ) : null}
+      </div>
+
       <CRow>
         <TabPanel>
           <Item title="Student-Classes">
