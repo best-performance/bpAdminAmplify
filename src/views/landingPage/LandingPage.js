@@ -31,7 +31,7 @@ function LandingPage() {
     let response = await axios({
       method: 'get',
       //url: `${process.env.REACT_APP_ENDPOINT}test`,
-      url: 'https://8f9yklycy9.execute-api.ap-southeast-2.amazonaws.com/prod/test',
+      url: 'https://gniisj5nq6.execute-api.ap-southeast-2.amazonaws.com/prod/test',
       params: { param01: 'this is a param' },
     })
     setIsLoaded(true)

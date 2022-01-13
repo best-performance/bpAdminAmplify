@@ -11,12 +11,13 @@ import axios from 'axios'
 // const UKTOKEN = 'Bearer 6c69f7050215eff18895eeb63d6bd0df0545f0da'
 // const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
 // const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
-const API_URL = 'https://8f9yklycy9.execute-api.ap-southeast-2.amazonaws.com/prod/'
+const API_URL = 'https://gniisj5nq6.execute-api.ap-southeast-2.amazonaws.com/prod/'
 
 function NewSchool() {
   const [schools, setSchools] = useState([])
   const [rawStudents, setRawStudents] = useState([])
   const [rawTeachers, setRawTeachers] = useState([])
+  const [uniqueClassrooms, setUniqueClassrooms] = useState([]) // list of unique classrooms
   const [rawStudentClassrooms, setRawStudentClassrooms] = useState([])
   const [rawTeacherClassrooms, setRawTeacherClassrooms] = useState([])
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
@@ -70,7 +71,12 @@ function NewSchool() {
       let response = await axios({
         method: 'put',
         url: `${API_URL}saveWondeSchool`,
-        data: { selectedSchool, studentList: rawStudents }, // this will go into the request body
+        data: {
+          selectedSchool,
+          studentList: rawStudents,
+          teacherList: rawTeachers,
+          uniqueClassroomList: uniqueClassrooms,
+        }, // this will go into the request body
       })
       console.log(response)
     } catch (error) {
@@ -86,6 +92,7 @@ function NewSchool() {
     setIsLoadingStudents(true)
     let students = []
     let classrooms = []
+    let uniqueClassrooms = []
     try {
       let response = await axios({
         method: 'get',
@@ -100,8 +107,14 @@ function NewSchool() {
       response.data.classrooms.forEach((classroom) => {
         classrooms.push(classroom)
       })
+      response.data.uniqueClassrooms.forEach((uniqueClassroom) => {
+        uniqueClassrooms.push(uniqueClassroom)
+      })
+      console.log('no of Unique Classrooms', uniqueClassrooms.length)
+      console.log('Unique Classrooms', uniqueClassrooms)
       setRawStudents(students)
       setRawStudentClassrooms(classrooms)
+      setUniqueClassrooms(uniqueClassrooms)
       setIsLoadingStudents(false)
       return true
     } catch (error) {
