@@ -13,7 +13,7 @@ import axios from 'axios'
 // const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
 // const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
 // const API_URL = 'https://gniisj5nq6.execute-api.ap-southeast-2.amazonaws.com/prod/'
-const API_URL = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/'
+const API_URL = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
 
 function NewSchool() {
   const [schools, setSchools] = useState([])
