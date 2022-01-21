@@ -45,8 +45,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        //url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`,
-        url: `${API_URL}wondeallschools`,
+        url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`,
+        params: { region: `${process.env.REACT_APP_REGION}` },
+        //url: `${API_URL}wondeallschools`,
       })
       response.data.forEach((school) => {
         schools.push(school)
@@ -74,6 +75,7 @@ function NewSchool() {
         method: 'put',
         url: `${API_URL}saveWondeSchool`,
         data: {
+          region: `${process.env.REACT_APP_REGION}`,
           selectedSchool,
           studentList: rawStudents,
           teacherList: rawTeachers,
@@ -98,9 +100,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        // url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
-        url: `${API_URL}wondestudents`,
-        params: { wondeID: selectedSchool.wondeID },
+        url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
+        //url: `${API_URL}wondestudents`,
+        params: { region: `${process.env.REACT_APP_REGION}`, wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.students.forEach((student) => {
@@ -136,9 +138,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        //url: `${process.env.REACT_APP_ENDPOINT}`,
-        url: `${API_URL}wondeteachers`,
-        params: { wondeID: selectedSchool.wondeID },
+        url: `${process.env.REACT_APP_ENDPOINT}`,
+        //url: `${API_URL}wondeteachers`,
+        params: { region: `${process.env.REACT_APP_REGION}`, wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.teachers.forEach((teacher) => {
