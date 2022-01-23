@@ -1,142 +1,81 @@
 import React, { useState } from 'react'
-import {
-  CContainer,
-  CCol,
-  CRow,
-  CForm,
-  CFormLabel,
-  CFormInput,
-  CFormText,
-  CFormCheck,
-  CButton,
-  CTable,
-  CTableHead,
-  CTableBody,
-  CTableDataCell,
-  CTableRow,
-  CTableHeaderCell,
-} from '@coreui/react'
-
+import { CContainer, CCol, CRow } from '@coreui/react'
 import axios from 'axios'
 import Button from 'devextreme-react/button'
-import TabPanel, { Item } from 'devextreme-react/tab-panel'
+
+const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
+
+// pick the right API url for the deployed region FEATURE_TOGGLE
+const URL = process.env.REACT_APP_ENDPOINT
+  ? `${process.env.REACT_APP_ENDPOINT}test`
+  : `${API_URL_DEFAULT}test`
 
 function LandingPage() {
   const [isLoaded, setIsLoaded] = useState(false)
   const [lambdaMessage, setLambdaMessage] = useState('')
 
-  // invoked when Button pressed
+  // invoked when verify location Button is pressed
   async function lambdaHandler() {
     console.log(process.env.REACT_APP_ENDPOINT)
     let response = await axios({
       method: 'get',
-      url: `${process.env.REACT_APP_ENDPOINT}test`,
-      //url: 'https://gniisj5nq6.execute-api.ap-southeast-2.amazonaws.com/prod/test',
-      params: { param01: 'this is a param' },
+      url: URL,
+      params: { param01: 'this is a test param' },
     })
     setIsLoaded(true)
-    setLambdaMessage(`Lambda response: ${response.data}`)
+    setLambdaMessage(`${response.data}`)
+  }
+
+  // invoked when Login Button is pressed
+  async function loginHandler() {
+    console.log('attempting o log in')
   }
 
   return (
     <>
       <CContainer>
         <CRow>
-          <h3 className="text-center">Landing Page for experimentation - Use Sidebar Menu</h3>
+          <img src="../assets/images/angular.jpg" className="img-fluid" alt=""></img>
+          <h3 className="text-center">BPAdmin App</h3>
         </CRow>
         <CRow>
-          <CCol>
-            <Button onClick={lambdaHandler}>Press to invoke lambda</Button>
-          </CCol>
-          <CCol>{isLoaded === true ? lambdaMessage : 'Lambda not invoked yet'}</CCol>
+          <h6>This application is for exclusive use by Authorised Administrators for:</h6>
         </CRow>
         <CRow>
-          <CCol md={4} className="text-primary border bg-danger">
-            .col-md-4
+          <h6> - Uploading Wonde School data for new schools</h6>
+        </CRow>
+        <CRow>
+          <h6> - Safely uploading school data into region specific locations for new schools</h6>
+        </CRow>
+        <CRow>
+          <h6> - Uploading test results</h6>
+        </CRow>
+        <CRow>
+          <h6> - Running standard administrative queries</h6>
+        </CRow>
+        <CRow>
+          <CCol sm="auto">
+            <Button onClick={lambdaHandler}>Verify location of storage (disc and tables)</Button>
           </CCol>
-          <CCol md={4} className="ms-auto">
-            .col-md-4 .ms-auto
+          <CCol sm="auto">
+            <div style={{ marginTop: '10px' }}>
+              {isLoaded === true ? (
+                <>
+                  <span style={{ fontWeight: 'bold' }}>Backend resources are in </span>
+                  <span>{lambdaMessage}</span>
+                </>
+              ) : (
+                ''
+              )}
+            </div>
           </CCol>
         </CRow>
         <CRow>
-          <CCol md={3} className="ms-md-auto">
-            .col-md-3 .ms-md-auto
+          <CCol sm="auto" style={{ marginTop: '10px' }}>
+            <Button onClick={loginHandler}>Login</Button>
           </CCol>
-          <CCol md={3} className="ms-md-auto">
-            .col-md-3 .ms-md-auto
-          </CCol>
-        </CRow>
-        <CRow>
-          <CCol xs="auto" className="me-auto">
-            .col-auto .me-auto
-          </CCol>
-          <CCol xs="auto">.col-auto</CCol>
-        </CRow>
-        <CRow>
-          <Button onClick={() => alert('pressed Dev-Extreme Button')}>Dev Extreme Buton</Button>
         </CRow>
       </CContainer>
-      <CForm>
-        <div className="mb-3">
-          <CFormLabel htmlFor="exampleInputEmail1">Email address</CFormLabel>
-          <CFormInput type="email" id="exampleInputEmail1" aria-describedby="emailHelp" />
-          <CFormText id="emailHelp">We will never share your email with anyone else.</CFormText>
-        </div>
-        <div className="mb-3">
-          <CFormLabel htmlFor="exampleInputPassword1">Email Password</CFormLabel>
-          <CFormInput type="password" id="exampleInputPassword1" />
-        </div>
-        <CFormCheck
-          className="mb-3"
-          label="Check me out"
-          onChange={(e) => {
-            console.log(e.target)
-          }}
-        />
-        <CButton type="submit" color="primary">
-          Submit
-        </CButton>
-      </CForm>
-      <CTable>
-        <CTableHead>
-          <CTableRow>
-            <CTableHeaderCell scope="col">#</CTableHeaderCell>
-            <CTableHeaderCell scope="col">Class</CTableHeaderCell>
-            <CTableHeaderCell scope="col">Heading</CTableHeaderCell>
-            <CTableHeaderCell scope="col">Heading</CTableHeaderCell>
-          </CTableRow>
-        </CTableHead>
-        <CTableBody>
-          <CTableRow>
-            <CTableHeaderCell scope="row">1</CTableHeaderCell>
-            <CTableDataCell>Mark</CTableDataCell>
-            <CTableDataCell>Otto</CTableDataCell>
-            <CTableDataCell>@mdo</CTableDataCell>
-          </CTableRow>
-          <CTableRow>
-            <CTableHeaderCell scope="row">2</CTableHeaderCell>
-            <CTableDataCell>Jacob</CTableDataCell>
-            <CTableDataCell>Thornton</CTableDataCell>
-            <CTableDataCell>@fat</CTableDataCell>
-          </CTableRow>
-          <CTableRow>
-            <CTableHeaderCell scope="row">3</CTableHeaderCell>
-            <CTableDataCell colSpan="2">Larry the Bird</CTableDataCell>
-            <CTableDataCell>@twitter</CTableDataCell>
-          </CTableRow>
-        </CTableBody>
-      </CTable>
-      <TabPanel>
-        <Item title="Employee">
-          <div>Item 1 Content</div>
-        </Item>
-        <Item title="Notes">
-          <div>Item 2 Content</div>
-        </Item>
-        <Item title="Role">
-          <div>Item 3 Content</div>
-        </Item>
-      </TabPanel>
     </>
   )
 }

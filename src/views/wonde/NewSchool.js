@@ -7,13 +7,12 @@ import axios from 'axios'
 //import _ from 'lodash '
 // force change 1
 
-// These are hard-coded for convenience ToDo: Save elsewhere
-// const UKURL = 'https://api.wonde.com/v1.0/schools'
-// const UKTOKEN = 'Bearer 6c69f7050215eff18895eeb63d6bd0df0545f0da'
-// const AUSURL = 'https://api-ap-southeast-2.wonde.com/v1.0/schools'
-// const AUSTOKEN = 'Bearer 66018aef288a2a7dadcc53e26e4daf383dbb5e8e'
-// const API_URL = 'https://gniisj5nq6.execute-api.ap-southeast-2.amazonaws.com/prod/'
-const API_URL = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
+const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
+
+// pick the right API url for the deployed region FEATURE_TOGGLE
+const URL = process.env.REACT_APP_ENDPOINT
+  ? `${process.env.REACT_APP_ENDPOINT}`
+  : `${API_URL_DEFAULT}`
 
 function NewSchool() {
   const [schools, setSchools] = useState([])
@@ -27,7 +26,6 @@ function NewSchool() {
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
-  const [savingSchoolData, setSavingSchoolData] = useState(false)
 
   // Read all available schools
   async function getAllSchools() {
@@ -45,10 +43,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondeallschools`,
-        params: { region: `${process.env.REACT_APP_REGION}` },
-        //url: `${API_URL}wondeallschools`,
+        url: `${URL}wondeallschools`,
       })
+      console.log(response)
       response.data.forEach((school) => {
         schools.push(school)
       })
@@ -73,9 +70,8 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'put',
-        url: `${API_URL}saveWondeSchool`,
+        url: `${URL}saveWondeSchool`,
         data: {
-          region: `${process.env.REACT_APP_REGION}`,
           selectedSchool,
           studentList: rawStudents,
           teacherList: rawTeachers,
@@ -100,9 +96,8 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}wondestudents`,
-        //url: `${API_URL}wondestudents`,
-        params: { region: `${process.env.REACT_APP_REGION}`, wondeID: selectedSchool.wondeID },
+        url: `${URL}wondestudents`,
+        params: { wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.students.forEach((student) => {
@@ -138,9 +133,9 @@ function NewSchool() {
     try {
       let response = await axios({
         method: 'get',
-        url: `${process.env.REACT_APP_ENDPOINT}`,
+        url: `${URL}wondeteachers`,
         //url: `${API_URL}wondeteachers`,
-        params: { region: `${process.env.REACT_APP_REGION}`, wondeID: selectedSchool.wondeID },
+        params: { wondeID: selectedSchool.wondeID },
       })
       // eslint-disable-next-line no-loop-func
       response.data.teachers.forEach((teacher) => {
@@ -207,7 +202,7 @@ function NewSchool() {
   return (
     <CContainer>
       <CRow>
-        <h4 className="text-center">Wonde Integration - New School Uptake (Australia)</h4>
+        <h4 className="text-center">Wonde Integration - New School Uptake</h4>
       </CRow>
       <div className="d-flex justify-content-center">
         <Button

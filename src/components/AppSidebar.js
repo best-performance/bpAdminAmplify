@@ -1,19 +1,34 @@
 import React from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 
-import { CSidebar, CSidebarBrand, CSidebarNav, CSidebarToggler } from '@coreui/react'
-import CIcon from '@coreui/icons-react'
+import { CSidebar, CSidebarNav, CSidebarToggler, CContainer, CCol, CRow } from '@coreui/react'
+
+import flagOz from './australia.png' //
+import flagUk from './uk.png' //
 
 import { AppSidebarNav } from './AppSidebarNav'
-
-import { logoNegative } from 'src/assets/brand/logo-negative'
-import { sygnet } from 'src/assets/brand/sygnet'
 
 import SimpleBar from 'simplebar-react'
 import 'simplebar/dist/simplebar.min.css'
 
 // sidebar nav config
 import navigation from '../_nav'
+
+const region = process.env.REACT_APP_REGION ? process.env.REACT_APP_REGION : 'ap-southeast-2'
+
+// display a flag to represent teh region of deployment FEATURE-TOGGLE
+function getFlag() {
+  switch (region) {
+    case 'ap-southeast-2':
+      return flagOz
+
+    case 'eu-west-2':
+      return flagUk
+
+    default:
+      return flagOz
+  }
+}
 
 const AppSidebar = () => {
   const dispatch = useDispatch()
@@ -29,10 +44,14 @@ const AppSidebar = () => {
         dispatch({ type: 'set', sidebarShow: visible })
       }}
     >
-      <CSidebarBrand className="d-none d-md-flex" to="/">
-        <CIcon className="sidebar-brand-full" icon={logoNegative} height={35} />
-        <CIcon className="sidebar-brand-narrow" icon={sygnet} height={35} />
-      </CSidebarBrand>
+      <CContainer fluid>
+        <CRow>
+          <CCol style={{ textAlign: 'center' }}>
+            <img src={getFlag()} alt="" width="100" height="70"></img>
+          </CCol>
+        </CRow>
+      </CContainer>
+
       <CSidebarNav>
         <SimpleBar>
           <AppSidebarNav items={navigation} />
