@@ -20,10 +20,10 @@ const region = process.env.REACT_APP_REGION ? process.env.REACT_APP_REGION : 'ap
 function getRegionName() {
   switch (region) {
     case 'ap-southeast-2':
-      return `Syndey, Australia (${region})`
+      return `Sydney, Australia (${region})`
 
     case 'eu-west-2':
-      return `Londan, England ${region}`
+      return `London, England ${region}`
 
     default:
       return `Syndey, Australia (${region})`
