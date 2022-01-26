@@ -26,7 +26,7 @@ function getRegionName() {
       return `London, England ${region}`
 
     default:
-      return `Syndey, Australia (${region})`
+      return `Sydney, Australia (${region})`
   }
 }
 

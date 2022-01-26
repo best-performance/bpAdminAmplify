@@ -28,7 +28,7 @@ function LandingPage() {
 
   // invoked when Login Button is pressed
   async function loginHandler() {
-    console.log('attempting o log in')
+    console.log('attempting to log in')
   }
 
   return (
