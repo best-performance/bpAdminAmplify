@@ -14,11 +14,11 @@ const URL = process.env.REACT_APP_ENDPOINT
   ? `${process.env.REACT_APP_ENDPOINT}`
   : `${API_URL_DEFAULT}`
 
+// React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
   const [schools, setSchools] = useState([])
   const [rawStudents, setRawStudents] = useState([])
   const [rawTeachers, setRawTeachers] = useState([])
-  const [uniqueClassrooms, setUniqueClassrooms] = useState([]) // list of unique classrooms
   const [rawStudentClassrooms, setRawStudentClassrooms] = useState([])
   const [rawTeacherClassrooms, setRawTeacherClassrooms] = useState([])
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
@@ -66,6 +66,23 @@ function NewSchool() {
   }, [])
 
   async function saveSchoolDataToEdCompanion() {
+    //TODO Urgent - 29/01/2022
+    // Consider what classroom data to send for saving by saveWondeSchool lambda
+    // We have 2 classroom lists
+    //    1) List of classrooms attended by each student
+    //    2) List of classroom taught by each teacher
+    //    Have all classrooms attended by a student got a teacher?
+    //    Can a classroom have multiple year levels?
+    //    yearLevel of a classroom can only be found in the student classroom list
+    //    Can a classroom have no students?
+    //    In the saveWondeSchool lambda we need to fill in 5 tables related to classrooms
+    //        Classrooms             - a unique list of Classrooms
+    //                               - some possibly with no students (check)
+    //                               - some possibly with no teachers (Check)
+    //        ClassroomYearLevel
+    //        ClassroomLearningArea
+    //        ClassroomTeacher
+    //        ClassroomStudent
     if (!schoolDataLoaded) return // can't save unless data has been loaded
     try {
       let response = await axios({
@@ -75,7 +92,7 @@ function NewSchool() {
           selectedSchool,
           studentList: rawStudents,
           teacherList: rawTeachers,
-          uniqueClassroomList: uniqueClassrooms,
+          classroomList: rawStudentClassrooms,
         }, // this will go into the request body
       })
       console.log(response)
@@ -92,7 +109,6 @@ function NewSchool() {
     setIsLoadingStudents(true)
     let students = []
     let classrooms = []
-    let uniqueClassrooms = []
     try {
       let response = await axios({
         method: 'get',
@@ -106,14 +122,8 @@ function NewSchool() {
       response.data.classrooms.forEach((classroom) => {
         classrooms.push(classroom)
       })
-      response.data.uniqueClassrooms.forEach((uniqueClassroom) => {
-        uniqueClassrooms.push(uniqueClassroom)
-      })
-      console.log('no of Unique Classrooms', uniqueClassrooms.length)
-      console.log('Unique Classrooms', uniqueClassrooms)
       setRawStudents(students)
       setRawStudentClassrooms(classrooms)
-      setUniqueClassrooms(uniqueClassrooms)
       setIsLoadingStudents(false)
       return true
     } catch (error) {
@@ -154,6 +164,7 @@ function NewSchool() {
     }
   }
 
+  // wrapper funtion triggered by "Get data for ..." button to read all school data
   async function getSchoolData() {
     let teachersLoaded = false
     let studentsLoaded = await getStudents() // students and student-classrooms
