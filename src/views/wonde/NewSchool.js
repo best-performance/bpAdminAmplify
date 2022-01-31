@@ -69,21 +69,77 @@ function NewSchool() {
     //TODO Urgent - 29/01/2022
     // Consider what classroom data to send for saving by saveWondeSchool lambda
     // We have 2 classroom lists
-    //    1) List of classrooms attended by each student
-    //    2) List of classroom taught by each teacher
-    //    Have all classrooms attended by a student got a teacher?
-    //    Can a classroom have multiple year levels?
-    //    yearLevel of a classroom can only be found in the student classroom list
-    //    Can a classroom have no students?
+    //    1) List of classrooms attended by each student, which includes yearLevel and LearningArea
+    //    2) List of classroom taught by each teacher, which includes learningArea
+
     //    In the saveWondeSchool lambda we need to fill in 5 tables related to classrooms
     //        Classrooms             - a unique list of Classrooms
-    //                               - some possibly with no students (check)
-    //                               - some possibly with no teachers (Check)
-    //        ClassroomYearLevel
-    //        ClassroomLearningArea
-    //        ClassroomTeacher
-    //        ClassroomStudent
+    //        ClassroomYearLevel     - classroomID, yearlevelID
+    //        ClassroomLearningArea  - classroomID, learningAreaID
+    //        ClassroomTeacher       - classroomID, teacherID
+    //        ClassroomStudent       - classroomID, studentID
+    //   Steps
+    //    1) Make a unique classroom list from rawTeacherClassrooms and rawStudentClassrooms
+    //    2) Verify the list is consistent
+    //    3) Make minimal lists to end to the lambda
     if (!schoolDataLoaded) return // can't save unless data has been loaded
+
+    //console.log('no of raw classrooms', rawStudentClassrooms.length)
+    let uniqueStudentClassrooms = new Map()
+    rawStudentClassrooms.forEach((classroom) => {
+      if (!uniqueStudentClassrooms.get(classroom.wondeClassroomId)) {
+        uniqueStudentClassrooms.set(classroom.wondeClassroomId, classroom)
+      }
+    })
+
+    // 1) Make a unique classroom list from rawTeacherClassrooms and rawStudentClassrooms
+    let uniqueTeacherClassrooms = new Map()
+    rawTeacherClassrooms.forEach((classroom) => {
+      if (!uniqueTeacherClassrooms.get(classroom.wondeClassroomId))
+        uniqueTeacherClassrooms.set(classroom.wondeClassroomId, classroom)
+    })
+
+    // 2) Verify the list is consistent
+    uniqueStudentClassrooms.forEach((classroom) => {
+      if (!uniqueTeacherClassrooms.get(classroom.wondeClassroomId))
+        console.log(`${classroom} not found in teacherClassroom list`)
+    })
+    uniqueTeacherClassrooms.forEach((classroom) => {
+      if (!uniqueStudentClassrooms.get(classroom.wondeClassroomId))
+        console.log(`${classroom} not found in studentClassroom list`)
+    })
+    // conver list to an array
+    let uniqueClassrooms = Array.from(uniqueStudentClassrooms.values())
+
+    let minmalUniqueClassrooms = uniqueClassrooms.map((classroom) => {
+      return {
+        wondeClassroomId: classroom.wondeClassroomId,
+        mis_id: classroom.mis_id,
+        classroomLearningArea: classroom.classroomLearningArea,
+        classroomName: classroom.classroomName,
+        yearLevel: classroom.yearLevel,
+      }
+    })
+
+    let minimalTeacherClassrooms = rawTeacherClassrooms.map((teacherClassroom) => {
+      return {
+        wondeTeacherId: teacherClassroom.wondeTeacherId,
+        wondeClassroomId: teacherClassroom.wondeClassroomId,
+      }
+    })
+
+    let minimalStudentClassrooms = rawStudentClassrooms.map((studentClassroom) => {
+      return {
+        wondeStudentId: studentClassroom.wondeTeacherId,
+        wondeClassroomId: studentClassroom.wondeClassroomId,
+      }
+    })
+
+    console.log('minimalUnique Classrooms', minmalUniqueClassrooms)
+    console.log('minimalTeacherClassrooms', minimalTeacherClassrooms)
+    console.log('minimalStudentClassrooms', minimalStudentClassrooms)
+
+    // send to save in Dynamo tables
     try {
       let response = await axios({
         method: 'put',
@@ -92,14 +148,16 @@ function NewSchool() {
           selectedSchool,
           studentList: rawStudents,
           teacherList: rawTeachers,
-          classroomList: rawStudentClassrooms,
+          teacherClassroomList: minimalTeacherClassrooms,
+          studentClassroomList: minimalStudentClassrooms,
+          uniqueClassroomList: uniqueClassrooms,
         }, // this will go into the request body
       })
       console.log(response)
     } catch (error) {
       console.log(error)
     }
-  }
+  } // end saveSchoolDataToEdCompanion()
 
   // gets all students from one school - with teachers and class assignments
   async function getStudents() {
@@ -176,9 +234,9 @@ function NewSchool() {
 
   // This is a Detail component to show student-classrooms assignments
   function StudentClassrooms(params) {
-    let studentID = params.data.data.id
+    let studentID = params.data.data.wondeStudentId
     let studentClassroomList = rawStudentClassrooms.filter((student) => {
-      return student.studentID === studentID
+      return student.wondeStudentID === studentID
     })
 
     return (
@@ -194,9 +252,9 @@ function NewSchool() {
 
   // This is a Detail component to show teacher-classrooms assignments
   function TeacherClassrooms(params) {
-    let teacherId = params.data.data.id
+    let teacherId = params.data.data.wondeTeacherId
     let teacherClassroomList = rawTeacherClassrooms.filter((teacher) => {
-      return teacher.teacherId === teacherId
+      return teacher.wondeTeacherId === teacherId
     })
 
     return (
@@ -289,7 +347,7 @@ function NewSchool() {
                 ) : (
                   <DataGrid
                     id="dataGrid"
-                    keyExpr="id"
+                    keyExpr="wondeStudentId"
                     showBorders={true}
                     hoverStateEnabled={true}
                     allowColumnReordering={true}
@@ -311,7 +369,7 @@ function NewSchool() {
                 ) : (
                   <DataGrid
                     id="dataGrid"
-                    keyExpr="id"
+                    keyExpr="wondeTeacherId"
                     showBorders={true}
                     hoverStateEnabled={true}
                     allowColumnReordering={true}
