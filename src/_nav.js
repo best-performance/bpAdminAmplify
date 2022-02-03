@@ -1,6 +1,14 @@
 import React from 'react'
 import CIcon from '@coreui/icons-react'
-import { cilCursor, cilDrop, cilPencil, cilPuzzle } from '@coreui/icons'
+import {
+  cilCursor,
+  cilDrop,
+  cilPencil,
+  cilPuzzle,
+  cilArrowThickFromBottom,
+  cilBuilding,
+  cilWc,
+} from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
 const _nav = [
@@ -68,6 +76,28 @@ const _nav = [
         to: '/queries/query3',
       },
     ],
+  },
+  {
+    component: CNavTitle,
+    name: 'School Data',
+  },
+  {
+    component: CNavItem,
+    name: 'Data Upload',
+    to: '/school/upload',
+    icon: <CIcon icon={cilArrowThickFromBottom} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Upload History',
+    to: '/school/list',
+    icon: <CIcon icon={cilBuilding} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Current Users',
+    to: '/school/users',
+    icon: <CIcon icon={cilWc} customClassName="nav-icon" />,
   },
 ]
 

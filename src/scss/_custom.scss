@@ -1,1 +1,66 @@
 // Here you can add other styles
+.dropzone {
+    display: block;
+    height: 150px;
+    border-style: dashed;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.dropzone-header-title {
+    font-size: 12px;
+    margin-top: 20px;
+}
+
+.dropzone > p {
+    margin-top: 60px;
+}
+
+.upload-button {
+    width: 150px;
+    margin: auto;
+    margin-bottom: 20px;
+}
+
+.upload-select-card {
+    padding-left: 0px;
+    padding-right: 0px;
+    margin-bottom: 20px;
+}
+
+.dx-list-item-content > div {
+    padding: 5px;
+    font-size: 15px;
+  }
+  
+.options {
+    margin-top: 20px;
+    padding: 20px;
+    background: rgba(191, 191, 191, 0.15);
+}
+  
+.options .caption {
+    font-size: 18px;
+    font-weight: 500;
+}
+  
+.option {
+    margin-top: 10px;
+}
+  
+.option > span {
+    margin-right: 10px;
+}
+  
+.option > .dx-selectbox {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 350px;
+    width: 100%;
+}
+
+.school-selected {
+    margin-top: 20px;
+    margin-bottom: 0px;
+}
