@@ -3,12 +3,11 @@ import { CContainer, CCol, CRow } from '@coreui/react'
 import axios from 'axios'
 import Button from 'devextreme-react/button'
 
-const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
-
+// const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
 // pick the right API url for the deployed region FEATURE_TOGGLE
 const URL = process.env.REACT_APP_ENDPOINT
-  ? `${process.env.REACT_APP_ENDPOINT}test`
-  : `${API_URL_DEFAULT}test`
+// ? `${process.env.REACT_APP_ENDPOINT}test`
+// : `${API_URL_DEFAULT}test`
 
 function LandingPage() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -19,7 +18,7 @@ function LandingPage() {
     console.log(process.env.REACT_APP_ENDPOINT)
     let response = await axios({
       method: 'get',
-      url: URL,
+      url: `${URL}test`,
       params: { param01: 'this is a test param' },
     })
     setIsLoaded(true)

@@ -14,7 +14,7 @@ import { cilMenu } from '@coreui/icons'
 
 import { logoNegative } from 'src/assets/brand/logo-negative'
 
-const region = process.env.REACT_APP_REGION ? process.env.REACT_APP_REGION : 'ap-southeast-2'
+const region = process.env.REACT_APP_REGION
 
 // get the region name for display purposes FEATURE-TOGGLE
 function getRegionName() {

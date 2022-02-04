@@ -7,12 +7,15 @@ import axios from 'axios'
 //import _ from 'lodash '
 // force change 1
 
-const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
-
+// Note: We are now using env-cmd to read the hardcoded env variables copied from the Amplify environment variables
+// The enviromnet variables will be loaded automatically by the build script in amplify.yml when the app is being
+// deployed. But for local starts, the build script is not activated, so instead we use ""> npm run start:local"
+// which first runs the env-cmd that loads teh environment variables prior to the main start script
+// const API_URL_DEFAULT = 'https://r5pic75kwf.execute-api.ap-southeast-2.amazonaws.com/prod/' // apigateway for lambdas
 // pick the right API url for the deployed region FEATURE_TOGGLE
 const URL = process.env.REACT_APP_ENDPOINT
-  ? `${process.env.REACT_APP_ENDPOINT}`
-  : `${API_URL_DEFAULT}`
+// ? `${process.env.REACT_APP_ENDPOINT}`
+// : `${API_URL_DEFAULT}`
 
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
@@ -108,7 +111,7 @@ function NewSchool() {
       if (!uniqueStudentClassrooms.get(classroom.wondeClassroomId))
         console.log(`${classroom} not found in studentClassroom list`)
     })
-    // conver list to an array
+    // convetr list to an array
     let uniqueClassrooms = Array.from(uniqueStudentClassrooms.values())
 
     let minmalUniqueClassrooms = uniqueClassrooms.map((classroom) => {
@@ -121,6 +124,7 @@ function NewSchool() {
       }
     })
 
+    console.log('rawTeacherClassrooms[10]', rawTeacherClassrooms[10])
     let minimalTeacherClassrooms = rawTeacherClassrooms.map((teacherClassroom) => {
       return {
         wondeTeacherId: teacherClassroom.wondeTeacherId,
@@ -128,14 +132,15 @@ function NewSchool() {
       }
     })
 
+    console.log('rawStudentClassrooms[10]', rawStudentClassrooms[10])
     let minimalStudentClassrooms = rawStudentClassrooms.map((studentClassroom) => {
       return {
-        wondeStudentId: studentClassroom.wondeTeacherId,
+        wondeStudentId: studentClassroom.wondeStudentId,
         wondeClassroomId: studentClassroom.wondeClassroomId,
       }
     })
 
-    console.log('minimalUnique Classrooms', minmalUniqueClassrooms)
+    console.log('minimalUniqueClassrooms', minmalUniqueClassrooms)
     console.log('minimalTeacherClassrooms', minimalTeacherClassrooms)
     console.log('minimalStudentClassrooms', minimalStudentClassrooms)
 

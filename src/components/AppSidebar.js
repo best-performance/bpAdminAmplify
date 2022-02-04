@@ -14,7 +14,7 @@ import 'simplebar/dist/simplebar.min.css'
 // sidebar nav config
 import navigation from '../_nav'
 
-const region = process.env.REACT_APP_REGION ? process.env.REACT_APP_REGION : 'ap-southeast-2'
+const region = process.env.REACT_APP_REGION
 
 // display a flag to represent teh region of deployment FEATURE-TOGGLE
 function getFlag() {
