@@ -133,11 +133,6 @@ const Login = () => {
                           Logout
                         </CButton>
                       </CCol>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4" onClick={handleRegister}>
-                          Test Register
-                        </CButton>
-                      </CCol>
                     </CRow>
                   </CForm>
                 </CCardBody>
