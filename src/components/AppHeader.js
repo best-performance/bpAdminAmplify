@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useContext } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
+import loggedInContext from 'src/loggedInContext'
 import {
   CContainer,
   CHeader,
@@ -31,8 +32,13 @@ function getRegionName() {
 }
 
 const AppHeader = () => {
+  const { loggedIn } = useContext(loggedInContext)
   const dispatch = useDispatch()
   const sidebarShow = useSelector((state) => state.sidebarShow)
+
+  function getLoggedInUser() {
+    return loggedIn.username
+  }
 
   return (
     <CHeader position="sticky" className="mb-4">
@@ -54,6 +60,10 @@ const AppHeader = () => {
             <span style={{ fontWeight: 'bold' }}>Region:</span>
           </CCol>
           <CCol sm="auto">{getRegionName()}</CCol>
+          <CCol sm="auto">
+            <span style={{ fontWeight: 'bold' }}>Logged In User:</span>
+          </CCol>
+          <CCol sm="auto">{getLoggedInUser()}</CCol>
         </CRow>
       </CContainer>
     </CHeader>

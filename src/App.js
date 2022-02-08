@@ -1,15 +1,16 @@
-import React, { Component } from 'react'
+import React, { useState } from 'react'
+import loggedInContext from './loggedInContext'
 import { HashRouter, Route, Switch } from 'react-router-dom'
 import './scss/style.scss'
 import 'devextreme/dist/css/dx.material.blue.light.css'
 //import 'devextreme/dist/css/dx.light.css'
 
-// These are for authentication using the amplify react login components and
-// using the Cognito user poo via AUTH class of aws-amplify library
-//import Amplify from 'aws-amplify'
-//import awsconfig from './aws-config' // this is where we store the links to the APIs and Cognito
-//aws-config takes the place of "aws-exports" that Amplify CLI would generate
-//Amplify.configure(awsconfig)
+// To use react's "context" we need to create a context object,
+// Then wrap a suitable parent in a <ContextProvider> component,
+// which passes down the context value, and a function to allow children to update it
+// Child components then use the useContext() hook to access or change the context
+// In this app, the context vale is a loggenIn state variable whose value is
+// set in the login components, but can be read by any other component
 
 const loading = (
   <div className="pt-3 text-center">
@@ -21,19 +22,22 @@ const loading = (
 const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 
 // Pages
-const Login = React.lazy(() => import('./views/pages/login/Login'))
 //const Register = React.lazy(() => import('./views/pages/register/Register'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 
-class App extends Component {
-  render() {
-    return (
+function App() {
+  // changed to a functional component to enable use of hooks (bc)
+  const [loggedIn, setLoggedIn] = useState({ username: false }) // when logged in this will have a value like "brendan"
+  console.log('in App', loggedIn)
+  return (
+    <loggedInContext.Provider value={{ loggedIn, setLoggedIn }}>
       <HashRouter>
         <React.Suspense fallback={loading}>
           <Switch>
-            <Route exact path="/login" name="Login Page" render={(props) => <Login {...props} />} />
-            {/* <Route
+            {/* <Route exact path="/login" name="Login Page" render={(props) => <Login {...props} />} /> */}
+            {/* Uncomment if you want a Register form
+              <Route
               exact
               path="/register"
               name="Register Page"
@@ -45,8 +49,8 @@ class App extends Component {
           </Switch>
         </React.Suspense>
       </HashRouter>
-    )
-  }
+    </loggedInContext.Provider>
+  )
 }
 
 export default App

@@ -25,11 +25,6 @@ function LandingPage() {
     setLambdaMessage(`${response.data}`)
   }
 
-  // invoked when Login Button is pressed
-  async function loginHandler() {
-    console.log('attempting to log in')
-  }
-
   return (
     <>
       <CContainer>
@@ -38,7 +33,7 @@ function LandingPage() {
           <h3 className="text-center">BPAdmin App</h3>
         </CRow>
         <CRow>
-          <h6>This application is for exclusive use by Authorised Administrators for:</h6>
+          <h6>This application is for exclusive use by authorised administrators for:</h6>
         </CRow>
         <CRow>
           <h6> - Uploading Wonde School data for new schools</h6>
@@ -70,9 +65,7 @@ function LandingPage() {
           </CCol>
         </CRow>
         <CRow>
-          <CCol sm="auto" style={{ marginTop: '10px' }}>
-            <Button onClick={loginHandler}>Login</Button>
-          </CCol>
+          <h6 style={{ color: 'red' }}> - Please Login to access secure menu items</h6>
         </CRow>
       </CContainer>
     </>

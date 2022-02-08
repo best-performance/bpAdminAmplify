@@ -16,7 +16,7 @@ import navigation from '../_nav'
 
 const region = process.env.REACT_APP_REGION
 
-// display a flag to represent teh region of deployment FEATURE-TOGGLE
+// display a flag to represent the region of deployment FEATURE-TOGGLE
 function getFlag() {
   switch (region) {
     case 'ap-southeast-2':

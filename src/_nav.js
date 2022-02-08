@@ -1,9 +1,21 @@
 import React from 'react'
 import CIcon from '@coreui/icons-react'
-import { cilCursor, cilDrop, cilPencil, cilPuzzle } from '@coreui/icons'
+import { cilCursor, cilDrop, cilPencil, cilPuzzle, cilHome, cilGolf } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
 const _nav = [
+  {
+    component: CNavItem,
+    name: 'Login/Logout',
+    to: '/Login',
+    icon: <CIcon icon={cilGolf} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'LandingPage',
+    to: '/LandingPage',
+    icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
+  },
   {
     component: CNavTitle,
     name: 'Wonde Integration',

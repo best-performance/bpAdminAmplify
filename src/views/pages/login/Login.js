@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useContext } from 'react'
+import loggedInContext from 'src/loggedInContext'
 import {
   CButton,
   CCard,
@@ -20,6 +21,9 @@ const Login = () => {
   const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
 
+  // We need to be able to set the logged in status from <Login>
+  const { setLoggedIn } = useContext(loggedInContext)
+
   // console.log(process.env.REACT_APP_ENDPOINT)
   // console.log(process.env.REACT_APP_REGION)
   // console.log(process.env.REACT_APP_USER_POOL_ID)
@@ -31,7 +35,10 @@ const Login = () => {
       let user = await Auth.signIn(userName, password)
       //const attributes = await Auth.userAttributes(user)
       console.log('signIn user', user)
-      //console.log('attributes', attributes)
+      setLoggedIn({
+        username: user.username,
+        email: user.attributes.email,
+      })
     } catch (err) {
       console.log(err)
     }
@@ -39,11 +46,34 @@ const Login = () => {
 
   async function handleLogout() {
     try {
-      console.log(`username: ${userName}, password ${password}`)
-      let user = await Auth.currentAuthenticatedUser()
-      console.log('authenticated user', user)
+      await Auth.signOut()
+      setLoggedIn({
+        username: false,
+      })
     } catch (err) {
-      console.log('error currentAuthenticatedUser():', err)
+      console.log('Logging out error', err)
+    }
+  }
+
+  // Test function to create a new user
+  async function handleRegister() {
+    const username = 'testUser3'
+    const password = 'testUser#3'
+    const nickname = 'nickname barney'
+    const email = 'brendan@bcperth.com'
+    let user = {}
+    try {
+      user = await Auth.signUp({
+        username,
+        password,
+        attributes: {
+          email,
+          nickname,
+        },
+      })
+      console.log('User signed registered', user)
+    } catch (error) {
+      console.log('error signing up:', error)
     }
   }
 
@@ -69,7 +99,7 @@ const Login = () => {
               <CCard className="p-4">
                 <CCardBody>
                   <CForm>
-                    <h1>Login to BPAdmin</h1>
+                    <h5>Login to BPAdmin</h5>
                     <p className="text-medium-emphasis">Sign In to your account</p>
                     <CInputGroup className="mb-3">
                       <CInputGroupText>
@@ -77,7 +107,7 @@ const Login = () => {
                       </CInputGroupText>
                       <CFormInput
                         placeholder="Username"
-                        autoComplete="username"
+                        //autoComplete="username"
                         onChange={handleUserName}
                       />
                     </CInputGroup>
@@ -101,6 +131,11 @@ const Login = () => {
                       <CCol xs={6}>
                         <CButton color="primary" className="px-4" onClick={handleLogout}>
                           Logout
+                        </CButton>
+                      </CCol>
+                      <CCol xs={6}>
+                        <CButton color="primary" className="px-4" onClick={handleRegister}>
+                          Test Register
                         </CButton>
                       </CCol>
                     </CRow>

@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useContext } from 'react'
+import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
 import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
@@ -19,6 +20,8 @@ const URL = process.env.REACT_APP_ENDPOINT
 
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
+  const { loggedIn } = useContext(loggedInContext)
+
   const [schools, setSchools] = useState([])
   const [rawStudents, setRawStudents] = useState([])
   const [rawTeachers, setRawTeachers] = useState([])
@@ -273,6 +276,13 @@ function NewSchool() {
     )
   }
 
+  if (!loggedIn.username) {
+    return (
+      <CContainer>
+        <CRow>Please login first</CRow>
+      </CContainer>
+    )
+  }
   return (
     <CContainer>
       <CRow>
