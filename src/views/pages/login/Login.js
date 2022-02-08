@@ -24,10 +24,10 @@ const Login = () => {
   // We need to be able to set the logged in status from <Login>
   const { setLoggedIn } = useContext(loggedInContext)
 
-  // console.log(process.env.REACT_APP_ENDPOINT)
-  // console.log(process.env.REACT_APP_REGION)
-  // console.log(process.env.REACT_APP_USER_POOL_ID)
-  // console.log(process.env.REACT_APP_USER_POOL_CLIENT_ID)
+  //  console.log(process.env.REACT_APP_ENDPOINT)
+  //  console.log(process.env.REACT_APP_REGION)
+  //  console.log(process.env.REACT_APP_USER_POOL_ID)
+  //  console.log(process.env.REACT_APP_USER_POOL_CLIENT_ID)
 
   async function handleLogin() {
     try {
