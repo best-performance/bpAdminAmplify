@@ -1,18 +1,15 @@
-import React from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
-
 import { CSidebar, CSidebarNav, CSidebarToggler, CContainer, CCol, CRow } from '@coreui/react'
-
 import flagOz from './australia.png' //
 import flagUk from './uk.png' //
-
 import { AppSidebarNav } from './AppSidebarNav'
-
 import SimpleBar from 'simplebar-react'
 import 'simplebar/dist/simplebar.min.css'
-
 // sidebar nav config
 import navigation from '../_nav'
+import loggedInContext from 'src/loggedInContext'
+import _ from 'lodash'
 
 const region = process.env.REACT_APP_REGION
 
@@ -34,6 +31,16 @@ const AppSidebar = () => {
   const dispatch = useDispatch()
   const unfoldable = useSelector((state) => state.sidebarUnfoldable)
   const sidebarShow = useSelector((state) => state.sidebarShow)
+  const { loggedIn } = useContext(loggedInContext)
+
+  const [navItems, setNavItems] = useState([])
+
+  useEffect(() => {
+    const items = _.chain(navigation)
+      .filter((item) => (!item.visibleWithoutLogin && !loggedIn.username ? false : true))
+      .value()
+    setNavItems(items)
+  }, [loggedIn])
 
   return (
     <CSidebar
@@ -54,7 +61,7 @@ const AppSidebar = () => {
 
       <CSidebarNav>
         <SimpleBar>
-          <AppSidebarNav items={navigation} />
+          <AppSidebarNav items={navItems} />
         </SimpleBar>
       </CSidebarNav>
       <CSidebarToggler

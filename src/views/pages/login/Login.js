@@ -67,6 +67,7 @@ const Login = () => {
         username,
         password,
         attributes: {
+          emailVerified: true,
           email,
           nickname,
         },
