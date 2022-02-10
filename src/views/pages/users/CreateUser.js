@@ -33,7 +33,6 @@ const Login = () => {
           'custom:schoolName': schoolName, // custom attribute, not standard
         },
       })
-      console.log(user)
       notify('👋 The user has been registered', 'success', 3000)
     } catch (error) {
       notify(`${error.message}`, 'error', 3000)
