@@ -15,7 +15,7 @@ const _nav = [
   {
     visibleWithoutLogin: true,
     component: CNavItem,
-    name: 'Login/Logout',
+    name: 'Login',
     to: '/Login',
     icon: <CIcon icon={cilGolf} customClassName="nav-icon" />,
   },

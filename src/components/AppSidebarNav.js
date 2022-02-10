@@ -1,11 +1,28 @@
-import React from 'react'
+import React, { useContext } from 'react'
+import loggedInContext from 'src/loggedInContext'
 import { NavLink, useLocation } from 'react-router-dom'
 import PropTypes from 'prop-types'
-
+import { CNavItem } from '@coreui/react'
 import { CBadge } from '@coreui/react'
+import { Auth } from 'aws-amplify'
 
 export const AppSidebarNav = ({ items }) => {
   const location = useLocation()
+
+  // We need to be able to set the logged in status from <Login>
+  const { setLoggedIn, loggedIn } = useContext(loggedInContext)
+
+  async function logout() {
+    try {
+      await Auth.signOut()
+      setLoggedIn({
+        username: false,
+      })
+    } catch (err) {
+      console.log('Logging out error', err)
+    }
+  }
+
   const navLink = (name, icon, badge) => {
     return (
       <>
@@ -57,8 +74,17 @@ export const AppSidebarNav = ({ items }) => {
 
   return (
     <React.Fragment>
-      {items &&
-        items.map((item, index) => (item.items ? navGroup(item, index) : navItem(item, index)))}
+      <div>
+        {items &&
+          items.map((item, index) => (item.items ? navGroup(item, index) : navItem(item, index)))}
+        {loggedIn.username && (
+          <CNavItem>
+            <div onClick={logout} className="logoutButton">
+              Logout
+            </div>
+          </CNavItem>
+        )}
+      </div>
     </React.Fragment>
   )
 }

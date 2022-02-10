@@ -16,10 +16,13 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 import { Auth } from 'aws-amplify'
+import { useHistory } from 'react-router-dom'
 
 const Login = () => {
   const [userName, setUserName] = useState('')
   const [password, setPassword] = useState('')
+
+  const history = useHistory()
 
   // We need to be able to set the logged in status from <Login>
   const { setLoggedIn } = useContext(loggedInContext)
@@ -39,42 +42,9 @@ const Login = () => {
         username: user.username,
         email: user.attributes.email,
       })
+      history.push('/LandingPage')
     } catch (err) {
       console.log(err)
-    }
-  }
-
-  async function handleLogout() {
-    try {
-      await Auth.signOut()
-      setLoggedIn({
-        username: false,
-      })
-    } catch (err) {
-      console.log('Logging out error', err)
-    }
-  }
-
-  // Test function to create a new user
-  async function handleRegister() {
-    const username = 'testUser3'
-    const password = 'testUser#3'
-    const nickname = 'nickname barney'
-    const email = 'brendan@bcperth.com'
-    let user = {}
-    try {
-      user = await Auth.signUp({
-        username,
-        password,
-        attributes: {
-          emailVerified: true,
-          email,
-          nickname,
-        },
-      })
-      console.log('User signed registered', user)
-    } catch (error) {
-      console.log('error signing up:', error)
     }
   }
 
@@ -127,11 +97,6 @@ const Login = () => {
                       <CCol xs={6}>
                         <CButton color="primary" className="px-4" onClick={handleLogin}>
                           Login
-                        </CButton>
-                      </CCol>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4" onClick={handleLogout}>
-                          Logout
                         </CButton>
                       </CCol>
                     </CRow>

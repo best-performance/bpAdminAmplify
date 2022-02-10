@@ -37,7 +37,15 @@ const AppSidebar = () => {
 
   useEffect(() => {
     const items = _.chain(navigation)
-      .filter((item) => (!item.visibleWithoutLogin && !loggedIn.username ? false : true))
+      .filter((item) => {
+        if (!item.visibleWithoutLogin && !loggedIn.username) {
+          return false
+        }
+        if (item.visibleWithoutLogin && loggedIn.username) {
+          return false
+        }
+        return true
+      })
       .value()
     setNavItems(items)
   }, [loggedIn])
