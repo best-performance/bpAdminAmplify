@@ -1,23 +1,17 @@
-import React, { useState, useContext } from 'react'
-import {
-  CButton,
-  CCard,
-  CCardBody,
-  CCardGroup,
-  CCol,
-  CContainer,
-  CForm,
-  CFormInput,
-  CInputGroup,
-  CRow,
-} from '@coreui/react'
+import React, { useContext, useState } from 'react'
+import { CCard, CCardBody } from '@coreui/react'
 import { Auth } from 'aws-amplify'
 import loggedInContext from 'src/loggedInContext'
 import notify from 'devextreme/ui/notify'
+import { CRow, CContainer, CCol, CCardGroup } from '@coreui/react'
+import TextBox from 'devextreme-react/text-box'
+import Button from 'devextreme-react/button'
+import ValidationSummary from 'devextreme-react/validation-summary'
+import { Validator, RequiredRule, EmailRule, PatternRule } from 'devextreme-react/validator'
 
 const Login = () => {
-  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
+  const [username, setUsername] = useState('')
   const [nickname, setNickname] = useState('')
   const [schoolName, setSchoolName] = useState('')
 
@@ -25,6 +19,9 @@ const Login = () => {
 
   // Test function to create a new user
   async function handleUserCreation() {
+    if (!email || !nickname || !schoolName) {
+      notify('All files are required', 'error', 3000)
+    }
     let user = {}
     try {
       user = await Auth.signUp({
@@ -39,14 +36,16 @@ const Login = () => {
       console.log(user)
       notify('👋 The user has been registered', 'success', 3000)
     } catch (error) {
-      alert('The user was not created, please contact support')
-      notify('The user was not created, please contact support', 'error', 3000)
+      notify(`${error.message}`, 'error', 3000)
+      console.log(error)
+      handleResetForm()
     }
   }
 
   function handleResetForm() {
-    setUsername('')
     setEmail('')
+    setUsername('')
+    setNickname('')
     setSchoolName('')
   }
 
@@ -65,61 +64,104 @@ const Login = () => {
           <CCol style={{ height: '100px' }}></CCol>
         </CRow>
         <CRow className="justify-content-center">
-          <CCol md={4}>
+          <CCol md={8}>
             <CCardGroup>
-              <CCard className="p-4">
+              <CCard>
                 <CCardBody>
-                  <CForm>
-                    <h5>Users Creation</h5>
-                    <p className="text-medium-emphasis">Create a new user in the Admin App</p>
-                    <CInputGroup className="mb-3">
-                      <CFormInput
-                        type="email"
-                        id="exampleFormControlInput1"
-                        placeholder="Email"
-                        value={email}
-                        onChange={(e) => {
-                          setEmail(e.target.value)
-                          setUsername(
-                            e.target.value.split('@')[0] ? e.target.value.split('@')[0] : '',
-                          )
-                        }}
+                  <form onSubmit={handleUserCreation}>
+                    <div className="dx-fieldset">
+                      <div className="dx-fieldset-header">User info</div>
+
+                      <div className="dx-field">
+                        <div className="dx-field-label">Username</div>
+                        <div className="dx-field-value">
+                          <TextBox
+                            value={username}
+                            onValueChange={(e) => {
+                              setUsername(e)
+                            }}
+                          >
+                            <Validator>
+                              <RequiredRule message="Username is required" />
+                              <PatternRule
+                                message="Please enter a valid user name with no spaces or special characters."
+                                pattern={/^(?=.{4,20}$)(?:[a-zA-Z\d]+(?:(?:\.|-|_)[a-zA-Z\d])*)+$/}
+                              />
+                            </Validator>
+                          </TextBox>
+                        </div>
+                      </div>
+
+                      <div className="dx-field">
+                        <div className="dx-field-label">Email</div>
+                        <div className="dx-field-value">
+                          <TextBox
+                            value={email}
+                            onValueChange={(e) => {
+                              setEmail(e)
+                            }}
+                          >
+                            <Validator>
+                              <RequiredRule message="Email is required" />
+                              <EmailRule message="Email is invalid" />
+                            </Validator>
+                          </TextBox>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="dx-fieldset">
+                      <div className="dx-fieldset-header">Personal Data</div>
+
+                      <div className="dx-field">
+                        <div className="dx-field-label">Nickname</div>
+                        <div className="dx-field-value">
+                          <TextBox
+                            value={nickname}
+                            onValueChange={(e) => {
+                              setNickname(e)
+                            }}
+                          >
+                            <Validator>
+                              <RequiredRule message="Nickname is required" />
+                            </Validator>
+                          </TextBox>
+                        </div>
+                      </div>
+
+                      <div className="dx-field">
+                        <div className="dx-field-label">School Name</div>
+                        <div className="dx-field-value">
+                          <TextBox
+                            value={schoolName}
+                            onValueChange={(e) => {
+                              setSchoolName(e)
+                            }}
+                          >
+                            <Validator>
+                              <RequiredRule message="School Name is required" />
+                            </Validator>
+                          </TextBox>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="dx-fieldset">
+                      <ValidationSummary
+                        id="summary"
+                        style={{ marginTop: '15px', marginBottom: '15px' }}
+                      ></ValidationSummary>
+                      <Button id="button" text="Register" type="success" useSubmitBehavior={true} />
+                      <Button
+                        id="button"
+                        text="Reset Form"
+                        type="success"
+                        useSubmitBehavior={true}
+                        onClick={handleResetForm}
+                        style={{ marginLeft: '20px' }}
                       />
-                    </CInputGroup>
-                    <CInputGroup className="mb-3">
-                      <CFormInput placeholder="Username" disabled={true} value={username} />
-                    </CInputGroup>
-                    <CInputGroup className="mb-3">
-                      <CFormInput
-                        placeholder="Nickname"
-                        value={nickname}
-                        onChange={(e) => {
-                          setNickname(e.target.value)
-                        }}
-                      />
-                    </CInputGroup>
-                    <CInputGroup className="mb-3">
-                      <CFormInput
-                        placeholder="School Name"
-                        value={schoolName}
-                        onChange={(e) => {
-                          setSchoolName(e.target.value)
-                        }}
-                      />
-                    </CInputGroup>
-                    <CRow>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4" onClick={handleUserCreation}>
-                          Create User
-                        </CButton>
-                      </CCol>
-                      <CCol xs={6}>
-                        <CButton color="primary" className="px-4" onClick={handleResetForm}>
-                          Reset Form
-                        </CButton>
-                      </CCol>
-                    </CRow>
-                  </CForm>
+                    </div>
+                  </form>
                 </CCardBody>
               </CCard>
             </CCardGroup>
