@@ -10,6 +10,7 @@ const Query3 = React.lazy(() => import('./views/queries/Query3'))
 const LandingPage = React.lazy(() => import('./views/landingPage/LandingPage'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
 const createUser = React.lazy(() => import('./views/pages/users/CreateUser'))
+const fileUploader = React.lazy(() => import('./views/pages/schools/fileUploader/FileUploader'))
 
 const routes = [
   { path: '/Login', name: 'Login', component: Login },
@@ -22,7 +23,8 @@ const routes = [
   { path: '/queries/query3', name: 'Query3', component: Query3 },
   { path: '/landingPage', name: 'LandingPage', component: LandingPage },
   { path: '/users/createUser', name: 'Create User', component: createUser },
-  { path: '/', name: 'LandingPage', component: LandingPage },
+  { path: '/schools/uploadData', name: 'Upload school data', component: createUser },
+  { path: '/', name: 'LandingPage', component: fileUploader },
 ]
 
 export default routes
