@@ -43,6 +43,7 @@
     "chart.js": "^3.6.0",
     "classnames": "^2.3.1",
     "core-js": "^3.19.1",
+    "dayjs": "latestt",
     "devextreme": "21.2",
     "devextreme-react": "21.2",
     "env-cmd": "^10.1.0",
