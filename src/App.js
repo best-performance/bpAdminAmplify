@@ -31,7 +31,6 @@ function App() {
   // changed to a functional component to enable use of hooks (bc)
   const [loggedIn, setLoggedIn] = useState({ username: false }) // when logged in this will have a value like "brendan"
   console.log('in App', loggedIn)
-  console.log('imprimi')
 
   useEffect(() => {
     const reviewAuthenticatedUser = async () => {
