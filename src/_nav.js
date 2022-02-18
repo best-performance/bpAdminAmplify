@@ -1,42 +1,57 @@
 import React from 'react'
 import CIcon from '@coreui/icons-react'
-import { cilCursor, cilDrop, cilPencil, cilPuzzle, cilHome, cilGolf } from '@coreui/icons'
+import {
+  cilCursor,
+  cilDrop,
+  cilPencil,
+  cilPuzzle,
+  cilHome,
+  cilGolf,
+  cilPeople,
+} from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
 const _nav = [
   {
+    visibleWithoutLogin: true,
     component: CNavItem,
-    name: 'Login/Logout',
+    name: 'Login',
     to: '/Login',
     icon: <CIcon icon={cilGolf} customClassName="nav-icon" />,
   },
   {
+    visibleWithoutLogin: true,
     component: CNavItem,
     name: 'LandingPage',
     to: '/LandingPage',
     icon: <CIcon icon={cilHome} customClassName="nav-icon" />,
   },
   {
+    visibleWithoutLogin: false,
     component: CNavTitle,
     name: 'Wonde Integration',
   },
   {
+    visibleWithoutLogin: false,
     component: CNavItem,
     name: 'New School Uptake',
     to: '/wonde/newSchool',
     icon: <CIcon icon={cilDrop} customClassName="nav-icon" />,
   },
   {
+    visibleWithoutLogin: false,
     component: CNavItem,
     name: 'School Updates',
     to: '/wonde/updateSchool',
     icon: <CIcon icon={cilPencil} customClassName="nav-icon" />,
   },
   {
+    visibleWithoutLogin: false,
     component: CNavTitle,
     name: 'Test Uploaders',
   },
   {
+    visibleWithoutLogin: false,
     component: CNavGroup,
     name: 'Uploaders',
     to: '/tests',
@@ -55,10 +70,12 @@ const _nav = [
     ],
   },
   {
+    visibleWithoutLogin: false,
     component: CNavTitle,
     name: 'Custom Queries',
   },
   {
+    visibleWithoutLogin: false,
     component: CNavGroup,
     name: 'Queries',
     to: '/queries',
@@ -78,6 +95,30 @@ const _nav = [
         component: CNavItem,
         name: 'Query 3',
         to: '/queries/query3',
+      },
+    ],
+  },
+  {
+    visibleWithoutLogin: false,
+    component: CNavTitle,
+    name: 'Users Module',
+  },
+  {
+    visibleWithoutLogin: false,
+    component: CNavGroup,
+    name: 'Users',
+    to: '/users',
+    icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Create User',
+        to: '/users/createUser',
+      },
+      {
+        component: CNavItem,
+        name: 'Manage Users',
+        to: '/users/manageUsers',
       },
     ],
   },

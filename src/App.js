@@ -1,8 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import loggedInContext from './loggedInContext'
 import { HashRouter, Route, Switch } from 'react-router-dom'
 import './scss/style.scss'
 import 'devextreme/dist/css/dx.material.blue.light.css'
+import { Auth } from 'aws-amplify'
 //import 'devextreme/dist/css/dx.light.css'
 
 // To use react's "context" we need to create a context object,
@@ -30,6 +31,22 @@ function App() {
   // changed to a functional component to enable use of hooks (bc)
   const [loggedIn, setLoggedIn] = useState({ username: false }) // when logged in this will have a value like "brendan"
   console.log('in App', loggedIn)
+  console.log('imprimi')
+
+  useEffect(() => {
+    const reviewAuthenticatedUser = async () => {
+      const userAuth = await Auth.currentAuthenticatedUser()
+      console.log('data', userAuth)
+      if (userAuth) {
+        setLoggedIn({
+          username: userAuth.username,
+          email: userAuth.attributes.email,
+        })
+      }
+    }
+    reviewAuthenticatedUser()
+  }, [])
+
   return (
     <loggedInContext.Provider value={{ loggedIn, setLoggedIn }}>
       <HashRouter>
