@@ -8,12 +8,14 @@ import TextBox from 'devextreme-react/text-box'
 import Button from 'devextreme-react/button'
 import ValidationSummary from 'devextreme-react/validation-summary'
 import { Validator, RequiredRule, EmailRule, PatternRule } from 'devextreme-react/validator'
+import { useHistory } from 'react-router-dom'
 
 const Login = () => {
   const [email, setEmail] = useState('')
   const [username, setUsername] = useState('')
   const [nickname, setNickname] = useState('')
   const [schoolName, setSchoolName] = useState('')
+  const history = useHistory()
 
   const { loggedIn } = useContext(loggedInContext)
 
@@ -22,9 +24,9 @@ const Login = () => {
     if (!email || !nickname || !schoolName) {
       notify('All files are required', 'error', 3000)
     }
-    let user = {}
+
     try {
-      user = await Auth.signUp({
+      let result = await Auth.signUp({
         username,
         password: `${username}P${new Date().getFullYear()}!`,
         attributes: {
@@ -34,6 +36,7 @@ const Login = () => {
         },
       })
       notify('👋 The user has been registered', 'success', 3000)
+      history.push('/users/manageUsers')
     } catch (error) {
       notify(`${error.message}`, 'error', 3000)
       console.log(error)

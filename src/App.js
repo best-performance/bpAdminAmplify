@@ -41,6 +41,7 @@ function App() {
         setLoggedIn({
           username: userAuth.username,
           email: userAuth.attributes.email,
+          schoolName: userAuth.attributes['custom:schoolName'],
         })
       }
     }

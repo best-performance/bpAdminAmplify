@@ -5,9 +5,11 @@ import PropTypes from 'prop-types'
 import { CNavItem } from '@coreui/react'
 import { CBadge } from '@coreui/react'
 import { Auth } from 'aws-amplify'
+import { useHistory } from 'react-router-dom'
 
 export const AppSidebarNav = ({ items }) => {
   const location = useLocation()
+  const history = useHistory()
 
   // We need to be able to set the logged in status from <Login>
   const { setLoggedIn, loggedIn } = useContext(loggedInContext)
@@ -18,6 +20,7 @@ export const AppSidebarNav = ({ items }) => {
       setLoggedIn({
         username: false,
       })
+      history.push('/LandingPage')
     } catch (err) {
       console.log('Logging out error', err)
     }
