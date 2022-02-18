@@ -8,6 +8,7 @@ import {
   cilHome,
   cilGolf,
   cilPeople,
+  cilSchool,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem, CNavTitle } from '@coreui/react'
 
@@ -119,6 +120,25 @@ const _nav = [
         component: CNavItem,
         name: 'Manage Users',
         to: '/users/manageUsers',
+      },
+    ],
+  },
+  {
+    visibleWithoutLogin: false,
+    component: CNavTitle,
+    name: 'Schools',
+  },
+  {
+    visibleWithoutLogin: false,
+    component: CNavGroup,
+    name: 'Schools',
+    to: '/schools',
+    icon: <CIcon icon={cilSchool} customClassName="nav-icon" />,
+    items: [
+      {
+        component: CNavItem,
+        name: 'Upload Data',
+        to: '/schools/uploadData',
       },
     ],
   },

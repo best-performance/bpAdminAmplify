@@ -41,6 +41,7 @@ const Login = () => {
       setLoggedIn({
         username: user.username,
         email: user.attributes.email,
+        schoolName: user.attributes['custom:schoolName'],
       })
       history.push('/LandingPage')
     } catch (err) {
