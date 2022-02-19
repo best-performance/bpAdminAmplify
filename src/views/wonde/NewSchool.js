@@ -12,6 +12,7 @@ import AWS from 'aws-sdk'
 // Helper functions
 import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
+import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 
 // Note: We are now using env-cmd to read the hardcoded env variables copied from the Amplify environment variables
 // The environment variables will be loaded automatically by the build script in amplify.yml when the app is being
@@ -43,8 +44,6 @@ const CLASSROOM_LEARNING_AREA_TABLE = 'ClassroomLearningArea'
 const STUDENT_DATA_TABLE = 'StudentData'
 
 const SCHOOL_GSI_INDEX = 'wondeIDIndex'
-
-const BATCH_SIZE = 25 // max number of records for a docClient.batchWrite()
 
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
@@ -344,13 +343,26 @@ function NewSchool() {
   // Its intended to be used only during testing - it empties all tables
   async function deleteSchoolDataFromDynamoDB() {
     const docClient = new AWS.DynamoDB.DocumentClient()
-    await updateAWSCredentials()
+    await updateAWSCredentials() // credentials get lost between react renders!
+    // list of table to delete
+    let tablesList = [
+      { tableName: SCHOOL_TABLE, partitionKeyName: 'id' },
+      { tableName: STUDENT_TABLE, partitionKeyName: 'id' },
+      { tableName: USER_TABLE, partitionKeyName: 'email' }, // note partition Key for User table
+      { tableName: SCHOOL_STUDENT_TABLE, partitionKeyName: 'id' },
+      { tableName: CLASSROOM_TABLE, partitionKeyName: 'id' },
+      { tableName: CLASSROOM_TEACHER_TABLE, partitionKeyName: 'id' },
+      { tableName: CLASSROOM_STUDENT_TABLE, partitionKeyName: 'id' },
+      { tableName: CLASSROOM_YEARLEVEL_TABLE, partitionKeyName: 'id' },
+      { tableName: CLASSROOM_LEARNING_AREA_TABLE, partitionKeyName: 'id' },
+      { tableName: STUDENT_DATA_TABLE, partitionKeyName: 'id' },
+    ]
     // first lets delete one data from one table
     // scan teh table
-    let students = []
+    let tableRecords = []
 
+    // fn to scan in the records
     async function getAll(tableName) {
-      let n = 8
       let response = []
       let accumulated = []
       let ExclusiveStartKey
@@ -359,21 +371,68 @@ function NewSchool() {
           .scan({
             TableName: tableName,
             ExclusiveStartKey,
-            Limit: 100,
           })
           .promise()
-        console.log('response', response)
-        n--
         ExclusiveStartKey = response.LastEvaluatedKey
         accumulated = [...accumulated, ...response.Items]
-      } while (n > 0)
-      //while (response.Items.length || response.LastEvaluatedKey)
+      } while (response.LastEvaluatedKey)
       return accumulated
     }
 
-    students = await getAll(STUDENT_TABLE)
-    console.log('all students', students)
-  }
+    // fn to delete the records in batchs
+    async function deleteAll(records, tableName, partitionKeyName) {
+      const BATCH_SIZE = 25
+      // find no of batches of 25 and add 1 for teh remainder
+      let batchesCount = parseInt(records.length / BATCH_SIZE) + 1
+      let lastBatchSize = records.length % BATCH_SIZE // which could be 0
+      console.log(
+        `${tableName} has ${records.length} records, ${batchesCount} batches, last batch ${lastBatchSize}`,
+      )
+
+      //process each batch
+      let recNo = 0 // index into the records array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        // prepare the batc
+        let batchToDelete = []
+        for (let n = 0; n < batchSize; n++) {
+          batchToDelete.push({
+            DeleteRequest: { Key: { [partitionKeyName]: records[recNo][partitionKeyName] } },
+          })
+          recNo++
+        } // end of batch loop
+
+        // construct batchWrite() params obkect
+        let params = {
+          RequestItems: {
+            [tableName]: batchToDelete, //[] notation constructs key name from variable
+          },
+        }
+        // cary out the bacthDelete
+        //console.log(`deleting batch ${i}`)
+        try {
+          await docClient.batchWrite(params).promise()
+          //console.log(`batch ${i} deleted`)
+        } catch (err) {
+          console.log(`problem deleting batch ${i} in ${tableName}`, err)
+        }
+      } // end of aray loop
+    }
+
+    // now delete all the records in every table in list above
+    // if a table is empty already it does nothing
+    tablesList.forEach(async (table) => {
+      tableRecords = await getAll(table.tableName)
+      console.log(`${table.tableName} read and has ${tableRecords.length} records`)
+      console.log(`Record 1 looks like ${tableRecords[1]}`)
+      if (tableRecords.length > 0) {
+        await deleteAll(tableRecords, table.tableName, table.partitionKeyName)
+        console.log(`${table.tableName} deleted`)
+      }
+    })
+  } // end of test function deleteSchoolDataFromDynamoDB()
 
   // This is the new function to save a school to edComapnion based on the filtered CSV data
   /**
