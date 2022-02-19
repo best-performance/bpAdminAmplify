@@ -12,7 +12,8 @@ import AWS from 'aws-sdk'
 // Helper functions
 import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
-import { DocumentClient } from 'aws-sdk/clients/dynamodb'
+import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
+import { updateAWSCredentials } from './helpers/updateAWSCredentials'
 
 // Note: We are now using env-cmd to read the hardcoded env variables copied from the Amplify environment variables
 // The environment variables will be loaded automatically by the build script in amplify.yml when the app is being
@@ -132,29 +133,25 @@ function NewSchool() {
     }
   }
 
-  async function updateAWSCredentials() {
-    let credentials
-    try {
-      credentials = await Auth.currentCredentials()
-    } catch (err) {
-      console.log(err)
-      return
-    }
-
-    AWS.config.update({
-      credentials: credentials,
-      region: 'ap-southeast-2',
-    })
-  }
-
   // TEST FUNCTION TO BE REMOVED LATER
-  // There is  UI button that will run teh function
+  // There is  UI button that will run the function
+  // Any sort of test function here is acceptable
   async function testFunction() {
     console.log('testFuntion() invoked')
-    console.log('Countries', countriesLookup)
-    console.log('States', statesLookup)
-    console.log('yearLevels', yearLevelsLookup)
-    console.log('learningAreas', learningAreasLookup)
+    //console.log('Countries', countriesLookup)
+    //console.log('States', statesLookup)
+    //console.log('yearLevels', yearLevelsLookup)
+    //console.log('learningAreas', learningAreasLookup)
+
+    // this function will add a record to the test Cognito pool
+    console.log('environment variables available')
+    console.log(`REGION ${process.env.REACT_APP_REGION}`) //
+    console.log(`USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
+    console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
+    console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
+    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
+    console.log(`USER_POOL_ID2 ${process.env.REACT_APP_USER_POOL_ID2}`)
+    console.log(`USER_POOL_CLIENT_ID2 ${process.env.REACT_APP_USER_POOL_CLIENT_ID2}`)
   }
 
   // This clears all the major state and then
@@ -339,101 +336,11 @@ function NewSchool() {
     setSchoolDataLoaded(true)
   }
 
-  // This is a new function to delete all records from the dynamo tables ( except the lookups)
-  // Its intended to be used only during testing - it empties all tables
-  async function deleteSchoolDataFromDynamoDB() {
-    const docClient = new AWS.DynamoDB.DocumentClient()
-    await updateAWSCredentials() // credentials get lost between react renders!
-    // list of table to delete
-    let tablesList = [
-      { tableName: SCHOOL_TABLE, partitionKeyName: 'id' },
-      { tableName: STUDENT_TABLE, partitionKeyName: 'id' },
-      { tableName: USER_TABLE, partitionKeyName: 'email' }, // note partition Key for User table
-      { tableName: SCHOOL_STUDENT_TABLE, partitionKeyName: 'id' },
-      { tableName: CLASSROOM_TABLE, partitionKeyName: 'id' },
-      { tableName: CLASSROOM_TEACHER_TABLE, partitionKeyName: 'id' },
-      { tableName: CLASSROOM_STUDENT_TABLE, partitionKeyName: 'id' },
-      { tableName: CLASSROOM_YEARLEVEL_TABLE, partitionKeyName: 'id' },
-      { tableName: CLASSROOM_LEARNING_AREA_TABLE, partitionKeyName: 'id' },
-      { tableName: STUDENT_DATA_TABLE, partitionKeyName: 'id' },
-    ]
-    // first lets delete one data from one table
-    // scan teh table
-    let tableRecords = []
-
-    // fn to scan in the records
-    async function getAll(tableName) {
-      let response = []
-      let accumulated = []
-      let ExclusiveStartKey
-      do {
-        response = await docClient
-          .scan({
-            TableName: tableName,
-            ExclusiveStartKey,
-          })
-          .promise()
-        ExclusiveStartKey = response.LastEvaluatedKey
-        accumulated = [...accumulated, ...response.Items]
-      } while (response.LastEvaluatedKey)
-      return accumulated
-    }
-
-    // fn to delete the records in batchs
-    async function deleteAll(records, tableName, partitionKeyName) {
-      const BATCH_SIZE = 25
-      // find no of batches of 25 and add 1 for teh remainder
-      let batchesCount = parseInt(records.length / BATCH_SIZE) + 1
-      let lastBatchSize = records.length % BATCH_SIZE // which could be 0
-      console.log(
-        `${tableName} has ${records.length} records, ${batchesCount} batches, last batch ${lastBatchSize}`,
-      )
-
-      //process each batch
-      let recNo = 0 // index into the records array
-      for (let i = 0; i < batchesCount; i++) {
-        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
-        if (batchSize === 0) break // must have been an even no of batches
-
-        // prepare the batc
-        let batchToDelete = []
-        for (let n = 0; n < batchSize; n++) {
-          batchToDelete.push({
-            DeleteRequest: { Key: { [partitionKeyName]: records[recNo][partitionKeyName] } },
-          })
-          recNo++
-        } // end of batch loop
-
-        // construct batchWrite() params obkect
-        let params = {
-          RequestItems: {
-            [tableName]: batchToDelete, //[] notation constructs key name from variable
-          },
-        }
-        // cary out the bacthDelete
-        //console.log(`deleting batch ${i}`)
-        try {
-          await docClient.batchWrite(params).promise()
-          //console.log(`batch ${i} deleted`)
-        } catch (err) {
-          console.log(`problem deleting batch ${i} in ${tableName}`, err)
-        }
-      } // end of aray loop
-    }
-
-    // now delete all the records in every table in list above
-    // if a table is empty already it does nothing
-    tablesList.forEach(async (table) => {
-      tableRecords = await getAll(table.tableName)
-      console.log(`${table.tableName} read and has ${tableRecords.length} records`)
-      console.log(`Record 1 looks like ${tableRecords[1]}`)
-      if (tableRecords.length > 0) {
-        await deleteAll(tableRecords, table.tableName, table.partitionKeyName)
-        console.log(`${table.tableName} deleted`)
-      }
-    })
-  } // end of test function deleteSchoolDataFromDynamoDB()
-
+  // This is for tesing to delete all records form the Dynamo tables
+  async function deleteAllTables() {
+    await updateAWSCredentials() // react tends to lose credentials between renders
+    await deleteSchoolDataFromDynamoDB()
+  }
   // This is the new function to save a school to edComapnion based on the filtered CSV data
   /**
    * Notes:
@@ -807,7 +714,7 @@ function NewSchool() {
             <Button
               className="btn btn-primary"
               style={{ marginBottom: '10px' }}
-              onClick={deleteSchoolDataFromDynamoDB}
+              onClick={deleteAllTables}
             >
               {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
             </Button>
