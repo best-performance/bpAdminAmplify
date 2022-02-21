@@ -1,4 +1,8 @@
-export async function batchWrite(arrayOfItems, tableName, docClient) {
+import { updateAWSCredentials } from './updateAWSCredentials'
+import AWS from 'aws-sdk'
+export async function batchWrite(arrayOfItems, tableName) {
+  await updateAWSCredentials()
+  let docClient = new AWS.DynamoDB.DocumentClient()
   // This is a generic function to batch write up to 25 items to a nominated table
   // It is used by any function that needs to save a lot of records in batches of 25
   // it expects an array of objects with 1 - 25 elements

@@ -9,11 +9,14 @@ import dayjs from 'dayjs'
 import _ from 'lodash'
 import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
+import { v4 } from 'uuid'
 // Helper functions
 import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
 import { updateAWSCredentials } from './helpers/updateAWSCredentials'
+import { addNewUser, handleUserCreation } from './helpers/cognitoFns'
+import { batchWrite } from './helpers/batchWrite'
 
 // Note: We are now using env-cmd to read the hardcoded env variables copied from the Amplify environment variables
 // The environment variables will be loaded automatically by the build script in amplify.yml when the app is being
@@ -33,6 +36,8 @@ const LEARNINGAREA_TABLE = 'LearningArea'
 const YEARLEVEL_TABLE = 'YearLevel'
 
 // Tables to store school data
+// We need to generalise this for regional table names
+// Maybe to a dynamo query to list the available table names?
 const SCHOOL_TABLE = 'Schools'
 const STUDENT_TABLE = 'Student'
 const USER_TABLE = 'User'
@@ -52,14 +57,17 @@ function NewSchool() {
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
   const [schools, setSchools] = useState([])
+
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([])
   const [wondeTeachers, setWondeTeachers] = useState([])
+
   // Next four are for the steduent-teacher and classroom-teacher displays
   const [displayStudents, setDisplayStudents] = useState([])
   const [displayTeachers, setDisplayTeachers] = useState([])
   const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
   const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
+
   // This one is for the upload display (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
   const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
@@ -112,7 +120,8 @@ function NewSchool() {
 
   // FEATURE-TOGGLE
   function getURL() {
-    switch (process.env.AWS_REGION) {
+    //return UKURL
+    switch (process.env.REACT_APP_REGION) {
       case 'ap-southeast-2':
         return AUSURL
       case 'eu-west-2':
@@ -123,7 +132,8 @@ function NewSchool() {
   }
   // FEATURE-TOGGLE
   function getToken() {
-    switch (process.env.AWS_REGION) {
+    //return UKTOKEN
+    switch (process.env.REACT_APP_REGION) {
       case 'ap-southeast-2':
         return AUSTOKEN
       case 'eu-west-2':
@@ -133,14 +143,14 @@ function NewSchool() {
     }
   }
 
-  // TEST FUNCTION TO BE REMOVED LATER
+  // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
   // There is  UI button that will run the function
   // Any sort of test function here is acceptable
   async function testFunction() {
     console.log('testFuntion() invoked')
     //console.log('Countries', countriesLookup)
     //console.log('States', statesLookup)
-    //console.log('yearLevels', yearLevelsLookup)
+    console.log('yearLevels', yearLevelsLookup)
     //console.log('learningAreas', learningAreasLookup)
 
     // this function will add a record to the test Cognito pool
@@ -152,10 +162,14 @@ function NewSchool() {
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
     console.log(`USER_POOL_ID2 ${process.env.REACT_APP_USER_POOL_ID2}`)
     console.log(`USER_POOL_CLIENT_ID2 ${process.env.REACT_APP_USER_POOL_CLIENT_ID2}`)
+
+    // for (let n = 20; n < 25; n++) {
+    //   await addNewUser(`testUser${n + 1}@BPAdmin.com.au`, process.env.REACT_APP_USER_POOL_ID2)
+    // }
   }
 
-  // This clears all the major state and then
-  // invokes function to get the list of available schools from Wonde
+  // Invokes function to get the list of available schools from Wonde
+  // first clears all state
   async function getAllSchools() {
     setIsLoadingSchools(true)
     setSchools([])
@@ -210,7 +224,7 @@ function NewSchool() {
         // eslint-disable-next-line no-loop-func
         response.data.data.forEach((student) => {
           wondeStudentsTemp.push(student) // save the original response data
-          // only add classroom entries of the student is assigned to a class
+          // only add classroom entries if the student is assigned to a class
           if (student.classes.data.length > 0) {
             student.classes.data.forEach((classroom) => {
               classrooms.push({
@@ -230,7 +244,7 @@ function NewSchool() {
           }
           let dob = 'XXXX-XX-XX'
           if (student.date_of_birth && student.date_of_birth.date) {
-            dob = dayjs(student.date_of_birth.date).format('DD MMM YYYY')
+            dob = dayjs(student.date_of_birth.date).format('DD/MMM/YYYY')
           }
           students.push({
             wondeStudentId: student.id,
@@ -336,149 +350,215 @@ function NewSchool() {
     setSchoolDataLoaded(true)
   }
 
-  // This is for tesing to delete all records form the Dynamo tables
+  // This is for testing to delete all records form the Dynamo tables if they exist
   async function deleteAllTables() {
-    await updateAWSCredentials() // react tends to lose credentials between renders
     await deleteSchoolDataFromDynamoDB()
   }
+
   // This is the new function to save a school to edComapnion based on the filtered CSV data
-  /**
-   * Notes:
-   * The code calling teh existing lambda has a loop that is called onece for every "classroom"
-   * Im not sure what a classroom data structure is - but probably is either
-   * a) One line of the csv ( most probable)
-   * b) grouped lines of the CSV
-   * b) an invesion of the CSV data that shows classrooms
-   */
   async function saveSchoolCSVtoDynamoDB() {
+    // see doco of old loader at end of file
     if (!schoolDataLoaded) return // can't save unless data has been loaded
+    console.log('Saving School to DynamoDB')
 
     /**
-     * First pseudo code for the existing loader in EdCompanion
-     * Passed in a datastructure that includes the classroom
-     * The sequence is
-     * a) GetClassroom() - reads or creates the classroom
-     * b) process the teachers
-     * c) process the students
-     *
-     * In Depth
-     * a) Get or create the classroom based on schoolID, schoolYear and classname (GetClassroom())
-     *    check if the classroom exists ( based on schoolID, schoolYear, classname - unique!)
-     *          if creating a classroom
-     *              for each year level in the classroom
-     *                create classroomYearLevel entries
-     *          if classroom already exists
-     *              for each year level in the classroom
-     *                    lookup the yearlevel ID
-     *                     check if the classroom year level exists
-     *                      if it does not exist
-     *                            create the classroomYearlevel for that classroom
-     *
-     * b) process teachers
-     *    for every teacher in the classroom
-     *        call getTeacher(email) returns either null or the User entry
-     *        if Null
-     *           create the teacher createTeacher() - see details
-     *        save the UserId
-     *        if the teacher is found but the schoolID has changed AND its the current year
-     *           update the User record to teh new schoolID (updateTeacher(teacher, schoolID))
-     *        if the classroomTeacher record does not exist
-     *           create the classroomTeacherRecord
-     *
-     *     createTeacher(teacher,schoolID) details
-     *        if the cognitoUser does not exist
-     *            create the Cognito user
-     *            adding user to the  Users group
-     *        add the teacher to the User table
-     *
-     * c) Process the students
-     *    for every student in the classroom
-     *        check if the students exists (by firstname, lastname, birthdate)
-     *
-     *        if the student does not exist
-     *           change the birthdate format
-     *           check again if the student exists
-     *           if the student now exists
-     *              update the birthdate in the Student table
-     *
-     *        get the yearLevel code for the student
-     *
-     *        if the student (still) does not exist
-     *            create the record in Student table
-     *
-     *        if the student already exists
-     *            update the record in Student table - including yearLevelID
-     *
-     *        when we reach here the student record exists!!
-     *
-     *        check if there is a record in SchoolStudent table
-     *        if SchoolStudent record not exists
-     *           create the record in SchoolStudent
-     *        if exists
-     *           if studentYearLevel is wrong - say a previous year
-     *               update the studentYearlevel in Student table
-     *
-     *        check if there is a record in StudentData for that student for this year
-     *            if no data
-     *               check if there is a record in StudentData for that student for previous year
-     *                  if data exists for previous year
-     *                      carry over the data to the current year
-     *
-     *        check if there is already a record in studentClassroom - search by classroomID, studentID
-     *            if no matching studentClassroom record
-     *                 add the record to studentClassroom
-     *
-     *
-     *  Suggested psedo code for Wonde uploader and updater
-     *  Notes:
-     *  1) We can extract data from Wonde in whatever way we like but start with this:
-     *    school
-     *     students ( a school can have many students)
-     *       classrooms ( a student can belong to multiple classrooms)
-     *          teachers ( a classroom can have multiple teachers)
-     *
-     *    First apply filter rules to:
-     *       remove classrooms of no interest
-     *       remove duplicate classrooms (esp Infant)
-     *       convert yearLevel code
-     *       make composite classroom names ( like "5 English")
-     *
-     *    First the new school case.......
-     *    for every unique student (based on WondeID)
-     *       verify the student does not exist in Student table (index wondeID#schoolID) - note could still be a duplicate name,birthdate from another non-Wonde school!
-     *          if student not exists
-     *              create the Student record ( look up the yearLevelID)
-     *              create the SchoolStudent record
-     *       verify the student is not already in Cognito
-     *          if not in cognito
-     *              add the student to Cognito, group Users
-     *
-     *   for every unique classroom ( based on WondeID)
-     *
-     *
+     * Save the selected school to School table if not already saves
+     * returns the EC schoolID of the saved school
      */
-    /**
-     * Save the selected school to School table
-     */
-    let docClient // can be used by all of teh save functions
     let schoolID // the EC id of the saved School
     try {
-      docClient = new AWS.DynamoDB.DocumentClient()
+      schoolID = await saveSchool(selectedSchool, countriesLookup, SCHOOL_TABLE, SCHOOL_GSI_INDEX)
+      console.log('School saved', schoolID)
+    } catch (err) {
+      console.log('error saving school', err)
+    }
+
+    //From here we assume [FilteredStudentClassrooms] contains filtered data
+    //We can scan it to get unique classrooms, teachers and students for upload
+    // Each row represents a student, a classroom and up to 5 teachers
+    let uniqueClassroomsMap = new Map()
+    let uniqueTeachersMap = new Map()
+    let uniqueStudentsMap = new Map()
+
+    filteredStudentClassrooms.forEach((row) => {
+      // Unique list of classrooms
+      if (!uniqueClassroomsMap.get(row.CwondeId)) {
+        uniqueClassroomsMap.set(row.CwondeId, {
+          wondeId: row.CwondeId, // not in EdC
+          className: row.classroomName,
+          yearCode: row.yearCode,
+        })
+      }
+      // Unique list of students
+      if (!uniqueStudentsMap.get(row.SwondeId)) {
+        uniqueStudentsMap.set(row.SwondeId, {
+          wondeId: row.SwondeId, // not in EdC
+          firstName: row.firstName,
+          lastName: row.lastName,
+          yearCode: row.yearCode,
+          gender: row.gender,
+          dob: row.dob,
+        })
+      }
+      // Unique list of teachers
+      for (let n = 0; n < 4; n++) {
+        let wondeId = `T${n + 1} WondeId`
+        let fnameKey = `teacher${n + 1} FirstName`
+        let lnameKey = `teacher${n + 1} LastName`
+        let emailKey = `teacher${n + 1} email`
+        if (row[wondeId] !== '-') {
+          // mostly they are empty ie 1 teacher
+          if (!uniqueTeachersMap.get(row[wondeId])) {
+            uniqueTeachersMap.set(row[wondeId], {
+              wondeId: row[wondeId], // not in EdC
+              firstName: row[fnameKey],
+              lastName: row[lnameKey],
+              email: row[emailKey],
+            })
+          }
+        }
+      }
+    })
+    // // see what emerges (note ANZ has all filtered out except year 10)
+    // console.dir(uniqueClassroomsMap)
+    // console.dir(uniqueTeachersMap)
+    // console.dir(uniqueStudentsMap)
+
+    const uniqueClassroomsArray = Array.from(uniqueClassroomsMap.values())
+    const uniqueTeachersArray = Array.from(uniqueTeachersMap.values())
+    const uniqueStudentsArray = Array.from(uniqueStudentsMap.values())
+    console.dir(uniqueClassroomsArray)
+    console.dir(uniqueTeachersArray)
+    console.dir(uniqueStudentsArray)
+
+    /**
+     * Save the classrooms
+     * For each classroom
+          add to classrooms *
+          add to classroomYearLevel
+	        add to classroomLearningArea
+     */
+    const BATCH_SIZE = 25
+    try {
+      console.time('Saved Classrooms') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      // process each batch
+      let index = 0 //index to uniqueClassroomsArray
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: id, // this is the EdC id generated locally
+                classType: 'Classroom',
+                // focusGroupType: null, // its not a focus group
+                className: uniqueClassroomsArray[index].className,
+                schoolYear: '2022', // hardcoded for now
+                schoolID: schoolID, // not in Wonde - generated above when saving the school
+                wondeId: uniqueClassroomsArray[index].wondeId, // not in EdC
+                mis_id: 'to be included', // not in EdC
+                __typename: 'Classroom', // used hard coded as tableName may change with env
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                // other optional fields not uploaded
+                // focusGroupType
+              },
+            },
+          })
+
+          uniqueClassroomsArray[index].classroomID = id // add teh generate EC id for user below
+          index++
+        } // end batch loop
+
+        console.log(`writing batch ${i} batchsize ${batchToWrite.length}`)
+        let response = await batchWrite(batchToWrite, CLASSROOM_TABLE)
+        console.log(response)
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved Classrooms')
     } catch (err) {
       console.log(err)
-      return
-    }
+    } // end saving classrooms
+
+    /**
+     * Save the classrooms
+     * For each classroom
+          add to classrooms
+          add to classroomYearLevel *
+	        add to classroomLearningArea
+     */
+    // Classrooms saves - next save classroomYearLevels
+    console.log('saving ClassroomYearLevels')
     try {
-      schoolID = await saveSchool(
-        docClient,
-        selectedSchool,
-        countriesLookup,
-        SCHOOL_TABLE,
-        SCHOOL_GSI_INDEX,
-      )
+      console.time('Saved ClassroomYearLevels') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      // process each batch
+      let index = 0 //index in the classrooms array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          // lookup the yearLevelID to save
+          console.log(
+            'uniqueClassroomsArray[index].yearCode',
+            uniqueClassroomsArray[index].yearCode,
+          )
+          let yearLevelRecord = yearLevelsLookup.find(
+            // eslint-disable-next-line no-loop-func
+            (o) => uniqueClassroomsArray[index].yearCode === o.yearCode,
+            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
+          )
+
+          //console.log("yearLevelRecord", yearLevelRecord);
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: v4(), // this is the EdC id generated locally
+                classroomID: uniqueClassroomsArray[index].classroomID, // as poked in saving the classroom
+                schoolID: schoolID, // not in Wonde - generated above when saving the school
+                yearLevelID: yearLevelRecord.id,
+                __typename: 'ClassroomYearLevel',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          index++
+        } // end batch loop
+
+        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, CLASSROOM_YEARLEVEL_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved ClassroomYearLevels')
     } catch (err) {
-      console.lg(err)
-    }
+      console.log(err)
+      return { result: false, msg: err.message } // abandon ship
+    } // end save classrommYearLevel
 
     /**
      * Save the students
@@ -486,11 +566,7 @@ function NewSchool() {
      * Create a record in Student for each unique student
      * Create a record in SchoolStudent for every unique student
      */
-    saveStudents(docClient, schoolID, wondeStudents, STUDENT_TABLE, CLASSROOM_STUDENT_TABLE)
-  }
-
-  function saveStudents(docClient, schoolID, wondeStudents, studentTable, classroomTable) {
-    console.log('saving Student and schoolStudent records for school', schoolID)
+    //saveStudents(schoolID, wondeStudents, STUDENT_TABLE, CLASSROOM_STUDENT_TABLE)
   }
 
   // find a class's learning Area (relocated from the lambda)
@@ -513,15 +589,13 @@ function NewSchool() {
   }
 
   // This displays data in the same format as we would use in the manual uploader
-  // This function/ui display was an afterthought so the data processing is non-optimal
-  // because linked data was destructured in the lambda for other purposes.
+  // was an afterthought - so overall processing looks convoluted
+  function formatStudentClassrooms(wondeStudents, wondeTeachers) {
+    console.log('Wonde Students', wondeStudents)
+    console.log('wondeTeachers', wondeTeachers)
 
-  function formatStudentClassrooms(wondeStudentsTemp, wondeTeachersTemp) {
-    console.log('Wonde Students', wondeStudentsTemp)
-    console.log('wondeTeachers', wondeTeachersTemp)
-
-    let studentClassroomList = []
-    wondeStudentsTemp.forEach((student) => {
+    let studentClassroomsTmp = []
+    wondeStudents.forEach((student) => {
       let studentPart = {}
       // first put defaults for gender and dob if they are missing ( often they are)
       let gender = 'X'
@@ -529,33 +603,57 @@ function NewSchool() {
       let dob = 'XXXX-XX-XX'
       if (dayjs(student.date_of_birth.date).isValid())
         dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
+
+      // we have to try to get a good year level
+      let yearCode
+      let num = student.year.data.code.match(/\d+/) // is it a number?
+      if (num) {
+        if (num > 0 && num < 14) {
+          yearCode = `Y${num.toString()}`
+        } else {
+          if (num === 0) {
+            yearCode = 'FY' // for Foundation Year
+          } else {
+            yearCode = 'UNKNOWN' // and filter them out later
+          }
+        }
+      } else {
+        // We can test for known strings here (when we know them!)
+        yearCode = 'UNKNOWN' // and filter them out later
+      }
+
+      studentPart.SwondeId = student.id // need to make unique list for upload
       studentPart.firstName = student.forename
       studentPart.lastName = student.surname
-      studentPart.yearLevel = student.year.data.name // like Year 6
+      studentPart.yearCode = yearCode // like Yn or K or FY
       studentPart.gender = gender
       studentPart.dateOfBirth = dob
 
-      // now process the classrooms - but could be none
+      // now process the classrooms - could has no classroom assigned
       student.classes.data.forEach((classroom) => {
         let classroomPart = {}
+        classroomPart.CwondeId = classroom.id // need to make unique list for upload
         classroomPart.classroomName = classroom.name
         // now process the teacher(s) - may be none, 1, multiple teachers per classroom
 
         // First make dummy columns for the teachers (up to 4 teachers)
-        // If we dont this DevExtreme will only display the number of teachers in teh first record!
+        // If we dont this DevExtreme will only display the number of teachers in the first record!
         for (let n = 0; n < 4; n++) {
+          let wondeId = `T${n + 1} WondeId`
           let fnameKey = `teacher${n + 1} FirstName`
           let lnameKey = `teacher${n + 1} LastName`
           let emailKey = `teacher${n + 1} email`
+          classroomPart[wondeId] = '-'
           classroomPart[fnameKey] = '-'
           classroomPart[lnameKey] = '-'
           classroomPart[emailKey] = '-'
         }
+        // now populate teacher columns
         classroom.employees.data.forEach((teacher, index) => {
           // find the email address from wondeTeachersTemp
           let email = 'placeholder'
           let teacherID = teacher.id
-          let teacherRec = wondeTeachersTemp.find((teacher) => teacher.id === teacherID)
+          let teacherRec = wondeTeachers.find((teacher) => teacher.id === teacherID)
           if (teacherRec) {
             email = teacherRec.contact_details.data.emails.email
           }
@@ -563,17 +661,19 @@ function NewSchool() {
           let fnameKey = `teacher${index + 1} FirstName`
           let lnameKey = `teacher${index + 1} LastName`
           let emailKey = `teacher${index + 1} email`
+          let wondeId = `T${index + 1} WondeId`
           classroomPart[fnameKey] = teacher.forename
           classroomPart[lnameKey] = teacher.surname
           classroomPart[emailKey] = email
+          classroomPart[wondeId] = teacher.id
         })
-        studentClassroomList.push({ ...studentPart, ...classroomPart })
+        studentClassroomsTmp.push({ ...studentPart, ...classroomPart })
       })
 
       //})
     })
-    setStudentClassrooms(studentClassroomList)
-    setFilteredStudentClassrooms(applyFilters(studentClassroomList))
+    setStudentClassrooms(studentClassroomsTmp) // for display in "upload Format" tab
+    setFilteredStudentClassrooms(applyFilters(studentClassroomsTmp)) // for dsplay in "upload Format filtered" tab
   }
 
   // This filters the studentclassroom list to remove unwanted records
@@ -589,14 +689,15 @@ function NewSchool() {
     // only keep Maths, English and Science
     filteredList = listToFilter.filter((item) => {
       return (
-        item.classroomName === 'Mathematics' ||
-        item.classroomName === 'English' ||
-        item.classroomName === 'Science'
+        item.yearCode !== 'UNKNOWN' &&
+        (item.classroomName === 'Mathematics' ||
+          item.classroomName === 'English' ||
+          item.classroomName === 'Science')
       )
     })
 
     return filteredList
-  }
+  } // end function applyFilters()
 
   // This is a Detail component to show student-classrooms assignments
   function StudentClassrooms(params) {
@@ -816,3 +917,115 @@ function NewSchool() {
   )
 }
 export default NewSchool
+/**
+ * Notes:
+ * The code calling teh existing lambda has a loop that is called onece for every "classroom"
+ * Im not sure what a classroom data structure is - but probably is either
+ * a) One line of the csv ( most probable)
+ * b) grouped lines of the CSV
+ * b) an invesion of the CSV data that shows classrooms
+ */
+/**
+ * Pseudo code for Frank's old loader in EdCompanion
+ * Passed in a datastructure that includes the classroom
+ * The sequence is
+ * a) GetClassroom() - reads or creates the classroom
+ * b) process the teachers
+ * c) process the students
+ *
+ * In Depth
+ * a) Get or create the classroom based on schoolID, schoolYear and classname (GetClassroom())
+ *    check if the classroom exists ( based on schoolID, schoolYear, classname - unique!)
+ *          if creating a classroom
+ *              for each year level in the classroom
+ *                create classroomYearLevel entries
+ *          if classroom already exists
+ *              for each year level in the classroom
+ *                    lookup the yearlevel ID
+ *                     check if the classroom year level exists
+ *                      if it does not exist
+ *                            create the classroomYearlevel for that classroom
+ *
+ * b) process teachers
+ *    for every teacher in the classroom
+ *        call getTeacher(email) returns either null or the User entry
+ *        if Null
+ *           create the teacher createTeacher() - see details
+ *        save the UserId
+ *        if the teacher is found but the schoolID has changed AND its the current year
+ *           update the User record to teh new schoolID (updateTeacher(teacher, schoolID))
+ *        if the classroomTeacher record does not exist
+ *           create the classroomTeacherRecord
+ *
+ *     createTeacher(teacher,schoolID) details
+ *        if the cognitoUser does not exist
+ *            create the Cognito user
+ *            adding user to the  Users group
+ *        add the teacher to the User table
+ *
+ * c) Process the students
+ *    for every student in the classroom
+ *        check if the students exists (by firstname, lastname, birthdate)
+ *
+ *        if the student does not exist
+ *           change the birthdate format
+ *           check again if the student exists
+ *           if the student now exists
+ *              update the birthdate in the Student table
+ *
+ *        get the yearLevel code for the student
+ *
+ *        if the student (still) does not exist
+ *            create the record in Student table
+ *
+ *        if the student already exists
+ *            update the record in Student table - including yearLevelID
+ *
+ *        when we reach here the student record exists!!
+ *
+ *        check if there is a record in SchoolStudent table
+ *        if SchoolStudent record not exists
+ *           create the record in SchoolStudent
+ *        if exists
+ *           if studentYearLevel is wrong - say a previous year
+ *               update the studentYearlevel in Student table
+ *
+ *        check if there is a record in StudentData for that student for this year
+ *            if no data
+ *               check if there is a record in StudentData for that student for previous year
+ *                  if data exists for previous year
+ *                      carry over the data to the current year
+ *
+ *        check if there is already a record in studentClassroom - search by classroomID, studentID
+ *            if no matching studentClassroom record
+ *                 add the record to studentClassroom
+ *
+ *
+ *  Suggested psedo code for Wonde uploader and updater
+ *  Notes:
+ *  1) We can extract data from Wonde in whatever way we like but start with this:
+ *    school
+ *     students ( a school can have many students)
+ *       classrooms ( a student can belong to multiple classrooms)
+ *          teachers ( a classroom can have multiple teachers)
+ *
+ *    First apply filter rules to:
+ *       remove classrooms of no interest
+ *       remove duplicate classrooms (esp Infant)
+ *       convert yearLevel code
+ *       make composite classroom names ( like "5 English")
+ *
+ *    First the new school case.......
+ *    for every unique student (based on WondeID)
+ *       verify the student does not exist in Student table (index wondeID#schoolID) - note could still be a duplicate name,birthdate from another non-Wonde school!
+ *          if student not exists
+ *              create the Student record ( look up the yearLevelID)
+ *              create the SchoolStudent record
+ *       verify the student is not already in Cognito
+ *          if not in cognito
+ *              add the student to Cognito, group Users
+ *
+ *   for every unique classroom ( based on WondeID)
+ *
+ *
+ */

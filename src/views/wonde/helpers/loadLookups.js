@@ -34,7 +34,7 @@ export async function populateLookups() {
     fnArray.push(populateState)
     fnArray.push(populateLearningArea)
     //fnArray.push(populateYearLevel); // not used. Instead we use the batch version below
-    fnArray.push(populateYearLevelBatch) // 14 recods in 700mS with docClient.batchWrite() vs 1.8secs above
+    fnArray.push(populateYearLevelBatch) // 14 records in 700mS with docClient.batchWrite() vs 1.8secs above
 
     for (const fn of fnArray) {
       let response = await fn() // call function to get returned Promise
@@ -287,7 +287,7 @@ export async function populateLookups() {
           })
           index++
         } // end batch loop
-        let response = await batchWrite(batchToWrite, YEARLEVEL_TABLE, docClient)
+        let response = await batchWrite(batchToWrite, YEARLEVEL_TABLE)
         if (!response.result) {
           console.log(`exiting at index ${index}`)
           break

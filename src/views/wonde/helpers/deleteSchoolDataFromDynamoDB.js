@@ -1,4 +1,6 @@
 import AWS from 'aws-sdk'
+import { updateAWSCredentials } from './updateAWSCredentials.js'
+
 // Tables to store school data (NB its repeated in NewSchool)
 const SCHOOL_TABLE = 'Schools'
 const STUDENT_TABLE = 'Student'
@@ -10,9 +12,11 @@ const CLASSROOM_STUDENT_TABLE = 'ClassroomStudent'
 const CLASSROOM_YEARLEVEL_TABLE = 'ClassroomYearLevel'
 const CLASSROOM_LEARNING_AREA_TABLE = 'ClassroomLearningArea'
 const STUDENT_DATA_TABLE = 'StudentData'
+
 // This is a new function to delete all records from the dynamo tables ( except the lookups)
 // Its intended to be used only during testing - it empties all tables
 export async function deleteSchoolDataFromDynamoDB() {
+  await updateAWSCredentials()
   const docClient = new AWS.DynamoDB.DocumentClient()
   // list of table to delete
   // SHOULD REALLY CHECK IF THE TABLE EXISTS FIRST
@@ -29,7 +33,7 @@ export async function deleteSchoolDataFromDynamoDB() {
     //{ tableName: STUDENT_DATA_TABLE, partitionKeyName: 'id' },
   ]
   // first lets delete one data from one table
-  // scan teh table
+  // scan the table
   let tableRecords = []
 
   // fn to scan in the records
@@ -103,7 +107,7 @@ export async function deleteSchoolDataFromDynamoDB() {
     tableRecords = await getAll(table.tableName)
     console.log(`${table.tableName} read and has ${tableRecords.length} records`)
     if (tableRecords.length > 0) {
-      console.log(`Record 1 looks like ${tableRecords[1]}`)
+      console.log(`Record 0 looks like ${tableRecords[0]}`)
       await deleteAll(tableRecords, table.tableName, table.partitionKeyName)
       console.log(`${table.tableName} deleted`)
     }

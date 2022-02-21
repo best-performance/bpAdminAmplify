@@ -9,9 +9,10 @@ export async function updateAWSCredentials() {
     console.log(err)
     return
   }
-
+  // Note: the AWS.credentials object is described here
+  // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Credentials.html
   AWS.config.update({
     credentials: credentials,
-    region: 'ap-southeast-2',
+    region: process.env.REACT_APP_REGION,
   })
 }
