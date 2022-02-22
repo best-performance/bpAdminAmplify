@@ -51,6 +51,11 @@ const STUDENT_DATA_TABLE = 'StudentData'
 
 const SCHOOL_GSI_INDEX = 'wondeIDIndex'
 
+// some constant to avoid string proliferations
+const EMPTY = 'EMPTY'
+const UNKNOWN = 'UNKNOWN'
+const BATCH_SIZE = 25 // for batchWrite() operations
+
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
@@ -114,8 +119,8 @@ function NewSchool() {
       response = await docClient.scan({ TableName: YEARLEVEL_TABLE }).promise()
       setYearLevelsLoookup(response.Items)
     }
-    console.log('in useEffect2')
     getLookupData()
+    console.log('Loaded lookup tables from dynamoDB in UseEffect()')
   }, [])
 
   // FEATURE-TOGGLE
@@ -153,7 +158,6 @@ function NewSchool() {
     console.log('yearLevels', yearLevelsLookup)
     //console.log('learningAreas', learningAreasLookup)
 
-    // this function will add a record to the test Cognito pool
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
     console.log(`USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
@@ -163,6 +167,7 @@ function NewSchool() {
     console.log(`USER_POOL_ID2 ${process.env.REACT_APP_USER_POOL_ID2}`)
     console.log(`USER_POOL_CLIENT_ID2 ${process.env.REACT_APP_USER_POOL_CLIENT_ID2}`)
 
+    // this function will add a record to the test Cognito pool
     // for (let n = 20; n < 25; n++) {
     //   await addNewUser(`testUser${n + 1}@BPAdmin.com.au`, process.env.REACT_APP_USER_POOL_ID2)
     // }
@@ -210,7 +215,7 @@ function NewSchool() {
     let noClassesCount = 0 // debug message to flag students with no clasrooms
     setIsLoadingStudents(true)
     try {
-      let URL = `${getURL()}/${wondeSchoolID}/students?include=classes.employees,year&per_page=200`
+      let URL = `${getURL()}/${wondeSchoolID}/students?include=contact_details,classes.employees,year&per_page=200`
       let morePages = true
       while (morePages) {
         console.log(URL)
@@ -392,6 +397,7 @@ function NewSchool() {
       // Unique list of students
       if (!uniqueStudentsMap.get(row.SwondeId)) {
         uniqueStudentsMap.set(row.SwondeId, {
+          email: row.email,
           wondeId: row.SwondeId, // not in EdC
           firstName: row.firstName,
           lastName: row.lastName,
@@ -419,10 +425,6 @@ function NewSchool() {
         }
       }
     })
-    // // see what emerges (note ANZ has all filtered out except year 10)
-    // console.dir(uniqueClassroomsMap)
-    // console.dir(uniqueTeachersMap)
-    // console.dir(uniqueStudentsMap)
 
     const uniqueClassroomsArray = Array.from(uniqueClassroomsMap.values())
     const uniqueTeachersArray = Array.from(uniqueTeachersMap.values())
@@ -438,7 +440,7 @@ function NewSchool() {
           add to classroomYearLevel
 	        add to classroomLearningArea
      */
-    const BATCH_SIZE = 25
+
     try {
       console.time('Saved Classrooms') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
@@ -462,11 +464,11 @@ function NewSchool() {
                 classType: 'Classroom',
                 // focusGroupType: null, // its not a focus group
                 className: uniqueClassroomsArray[index].className,
-                schoolYear: '2022', // hardcoded for now
+                schoolYear: dayjs().format('YYYY'),
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
                 wondeId: uniqueClassroomsArray[index].wondeId, // not in EdC
                 mis_id: 'to be included', // not in EdC
-                __typename: 'Classroom', // used hard coded as tableName may change with env
+                __typename: 'Classroom',
                 createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
                 updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
                 // other optional fields not uploaded
@@ -475,7 +477,7 @@ function NewSchool() {
             },
           })
 
-          uniqueClassroomsArray[index].classroomID = id // add teh generate EC id for user below
+          uniqueClassroomsArray[index].classroomID = id // add the generated EC id for user below
           index++
         } // end batch loop
 
@@ -492,6 +494,42 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classrooms
+
+    // -----------------------------------------------------------------------
+    // Now make a classroomTeacherArray for records to save in classroomTeachers
+    // NB: Must be run AFTER classrooms are saved
+    //     so the ClassroomID is available
+    // First make a classroomTeacher array from the raw Wonde Teacher data
+    let classroomTeachersArrayRaw = []
+    wondeTeachers.forEach((teacher) => {
+      teacher.classes.data.forEach((classroom) => {
+        classroomTeachersArrayRaw.push({
+          wondeClassroomId: classroom.id,
+          wondeTeacherId: teacher.id,
+          email: teacher.contact_details.data.emails.email,
+        })
+      })
+    })
+    // Then remove teachers and classrooms that were filtered out
+    function validClassroomTeacher(row) {
+      if (
+        uniqueClassroomsMap.get(row.wondeClassroomId) &&
+        uniqueTeachersMap.get(row.wondeTeacherId)
+      ) {
+        return true
+      }
+      return false
+    }
+    let classroomTeachersArrayTmp = classroomTeachersArrayRaw.filter((row) => {
+      return validClassroomTeacher(row)
+    })
+    // now shape the array into {classroomId, email:email} objects for EdC
+    let classroomTeachersArray = classroomTeachersArrayTmp.map((row) => {
+      return {
+        email: row.email,
+        classroomID: uniqueClassroomsMap.get(row.wondeClassroomId).classroomID,
+      }
+    })
 
     /**
      * Save the classrooms
@@ -518,10 +556,6 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           // lookup the yearLevelID to save
-          console.log(
-            'uniqueClassroomsArray[index].yearCode',
-            uniqueClassroomsArray[index].yearCode,
-          )
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
             (o) => uniqueClassroomsArray[index].yearCode === o.yearCode,
@@ -545,9 +579,7 @@ function NewSchool() {
           index++
         } // end batch loop
 
-        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
         let response = await batchWrite(batchToWrite, CLASSROOM_YEARLEVEL_TABLE)
-        //console.log(response);
 
         if (!response.result) {
           console.log(`exiting at index ${index}`)
@@ -561,12 +593,429 @@ function NewSchool() {
     } // end save classrommYearLevel
 
     /**
-     * Save the students
-     * (NB: all students irrespective of classroom assignments)
-     * Create a record in Student for each unique student
-     * Create a record in SchoolStudent for every unique student
+     * Save the classrooms
+     * For each classroom
+          add to classrooms
+          add to classroomYearLevel 
+	        add to classroomLearningArea * ( currently no way to guess learningArea)
      */
-    //saveStudents(schoolID, wondeStudents, STUDENT_TABLE, CLASSROOM_STUDENT_TABLE)
+
+    // Save the teachers
+    // add to user *
+    // add to Cognito
+    // add to schoolTeacher
+    // add to classroomTeacher
+
+    // This saves the teachers in table User
+    try {
+      console.time('Saved Teachers') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueTeachersArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueTeachersArray.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('teachers batchesCount', batchesCount)
+      console.log('teachers lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the teacherList array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          let id = v4()
+          // patch the teacher email if missing (often missing in Wonde)
+          if (!uniqueTeachersArray[index].email) {
+            uniqueTeachersArray[index].email = `${id}@placeholder.com`
+          }
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                userId: id, // this is the EdC id generated locally
+                firstName: uniqueTeachersArray[index].firstName,
+                lastName: uniqueTeachersArray[index].lastName,
+                email: uniqueTeachersArray[index].email,
+                userGroup: 'Users',
+                userType: 'Educator', // or could be "Student"
+                lastSignIn: '', // this will be a date
+                userSchoolID: schoolID, // not in Wonde - generated above when saving the school
+                wondeId: uniqueTeachersArray[index].wondeId, // not in EdC
+                mis_id: 'to be included',
+                enabled: false, // login enabled or not
+                dbType: 'user',
+                __typename: 'User',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          uniqueTeachersArray[index].userID = id // save the ID for the ClassroomTeachers tables
+          index++
+        } // end batch loop
+
+        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, USER_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved Teachers')
+    } catch (err) {
+      console.log(err)
+    } // end saving teachers
+
+    // Save the teachers
+    // add to user
+    // add to Cognito
+    // add to classroomTeacher *
+
+    try {
+      console.time('Saved classroomTeachers') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(classroomTeachersArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = classroomTeachersArray.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('classroomTeachers batchesCount', batchesCount)
+      console.log('classroomTeachers lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the classroomTeachersArray array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: id, // this is the EdC id generated locally
+                classroomID: classroomTeachersArray[index].classroomID,
+                email: classroomTeachersArray[index].email,
+                __typename: 'ClassroomTeacher',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          index++
+        } // end batch loop
+
+        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, CLASSROOM_TEACHER_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved classroomTeachers')
+    } catch (err) {
+      console.log(err)
+      return { result: false, msg: err.message } // abandon ship
+    } // end saving classroomTeachers
+
+    //Save the Students
+    //  add to student *
+    //  add to user
+    //  add to schoolStudent
+    //  add to classroomStudent
+    //  add to Cognito
+    try {
+      console.time('Saved Students') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueStudentsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueStudentsArray.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('Students batchesCount', batchesCount)
+      console.log('Students lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the studentList array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          // lookup the yearLevelID to save
+          let yearLevelRecord = yearLevelsLookup.find(
+            // eslint-disable-next-line no-loop-func
+            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+          )
+          //console.log('yearLevelRecord', yearLevelRecord)
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: id, // this is the EdC id generated locally
+                firstName: uniqueStudentsArray[index].firstName,
+                lastName: uniqueStudentsArray[index].lastName,
+                middleName: '',
+                gender: uniqueStudentsArray[index].gender,
+                birthDate: uniqueStudentsArray[index].dob,
+                yearLevelID: yearLevelRecord.id, // the lookup value
+                wondeId: uniqueStudentsArray[index].wondeId, // not in EdC
+                mis_id: 'to be included', // not in EdC
+                __typename: 'Student', // used hard coded as tableName may change with env
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                // optional fields not populated
+                // photo
+              },
+            },
+          })
+          uniqueStudentsArray[index].studentID = id // save the ID for tables below
+          index++
+        } // end batch loop
+
+        // console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, STUDENT_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved Students')
+    } catch (err) {
+      console.log(err)
+    } // end saving students
+
+    // -----------------------------------------------------------------------
+    // Now make a classroomStudentArray for records to save in classroomStudents
+    // NB: Must be run AFTER classrooms and Students are saved
+    //     so the ClassroomID and StudentID are available
+    // First make a classroomStudent array from the raw Wonde Student data
+    let classroomStudentsArrayRaw = []
+    wondeStudents.forEach((student) => {
+      student.classes.data.forEach((classroom) => {
+        classroomStudentsArrayRaw.push({
+          wondeClassroomId: classroom.id, // its a Wonde id
+          wondeStudentId: student.id, // also a Wonde id
+        })
+      })
+    })
+    // Then remove students and classrooms that were filtered out
+    function validClassroomStudent(row) {
+      if (
+        uniqueClassroomsMap.get(row.wondeClassroomId) &&
+        uniqueStudentsMap.get(row.wondeStudentId)
+      ) {
+        return true
+      }
+      return false
+    }
+    let classroomStudentsArrayTmp = classroomStudentsArrayRaw.filter((row) => {
+      return validClassroomStudent(row)
+    })
+    // now shape the array into {classroomId, studentID} objects for EdC
+    let classroomStudentsArray = classroomStudentsArrayTmp.map((row) => {
+      return {
+        classroomID: uniqueClassroomsMap.get(row.wondeClassroomId).classroomID,
+        studentID: uniqueStudentsMap.get(row.wondeStudentId).studentID,
+      }
+    })
+    //console.log('classroomStudentsArray', classroomStudentsArray)
+
+    //Save the Students
+    //  add to student *
+    //  add to user *
+    //  add to schoolStudent
+    //  add to classroomStudent
+    //  add to Cognito
+    try {
+      console.time('Saved Student Users') // measure how long it takes to save
+
+      // in the case of Student users, many students have no email address which precludes them
+      // from both having a User record or a Cognito record
+
+      let uniqueStudentsArrayWithEmail = uniqueStudentsArray.filter((student) => {
+        return student.email !== EMPTY
+      })
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueStudentsArrayWithEmail.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueStudentsArrayWithEmail.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('Students Users batchesCount', batchesCount)
+      console.log('Students Users lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the studentList array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          //console.log('yearLevelRecord', yearLevelRecord)
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                userId: id, // this is the EdC id generated locally
+                firstName: uniqueStudentsArrayWithEmail[index].firstName,
+                lastName: uniqueStudentsArrayWithEmail[index].lastName,
+                email: uniqueStudentsArrayWithEmail[index].email,
+                userGroup: 'Users',
+                userType: 'Student', // or could be "Educator"
+                lastSignIn: '', // this will be a date
+                userSchoolID: schoolID,
+                wondeId: uniqueStudentsArrayWithEmail[index].wondeId, // of the student
+                mis_id: 'to be included', // not in EdC
+                enabled: false, // login enabled or not
+                dbType: 'user',
+                __typename: 'User',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          index++
+        } // end batch loop
+
+        // console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, USER_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved Student Users')
+    } catch (err) {
+      console.log(err)
+    } // end saving student User
+
+    //Save the Students
+    //  add to student *
+    //  add to user *
+    //  add to schoolStudent *
+    //  add to classroomStudent
+    //  add to Cognito
+
+    try {
+      console.time('Saved SchoolStudents') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueStudentsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueStudentsArray.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('SchoolStudents batchesCount', batchesCount)
+      console.log('SchoolStudents lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the studentList array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          // lookup the yearLevelID to save
+          let yearLevelRecord = yearLevelsLookup.find(
+            // eslint-disable-next-line no-loop-func
+            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+          )
+          //console.log("yearLevelRecord", yearLevelRecord);
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: id, // this is the EdC id generated locally
+                schoolID: schoolID,
+                studentID: uniqueStudentsArray[index].studentID,
+                schooolYear: dayjs().format('YYYY'),
+                yearLevelID: yearLevelRecord.id, // the lookup value
+                firstName: uniqueStudentsArray[index].firstName,
+                lastName: uniqueStudentsArray[index].lastName,
+                userId: '', // will be filled when student gets a login (its id not email!)
+                __typename: 'SchoolStudent',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          index++
+        } // end batch loop
+
+        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+        let response = await batchWrite(batchToWrite, SCHOOL_STUDENT_TABLE)
+        //console.log(response);
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved SchoolStudents')
+    } catch (err) {
+      console.log(err)
+    } // end saving schoolStudents
+
+    //Save the Students
+    //  add to student *
+    //  add to user *
+    //  add to schoolStudent *
+    //  add to classroomStudent *
+    //  add to Cognito
+    try {
+      console.time('Saved classroomStudents') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(classroomStudentsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = classroomStudentsArray.length % BATCH_SIZE // which could be 0
+      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      console.log('classroomStudents batchesCount', batchesCount)
+      console.log('classroomStudents lastBatchSize', lastBatchSize)
+
+      // process each batch
+      let index = 0 //index in the classroomTeachersArray array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          let id = v4()
+          batchToWrite.push({
+            PutRequest: {
+              Item: {
+                id: id, // this is the EdC id generated locally
+                classroomID: classroomStudentsArray[index].classroomID,
+                studentID: classroomStudentsArray[index].studentID,
+                __typename: 'ClassroomStudent',
+                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+              },
+            },
+          })
+          index++
+        } // end batch loop
+
+        let response = await batchWrite(batchToWrite, CLASSROOM_STUDENT_TABLE)
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved classroomStudents')
+    } catch (err) {
+      console.log(err)
+    } // end saving classroomStudents
   }
 
   // find a class's learning Area (relocated from the lambda)
@@ -590,12 +1039,13 @@ function NewSchool() {
 
   // This displays data in the same format as we would use in the manual uploader
   // was an afterthought - so overall processing looks convoluted
+  // wondeStudents, wondeTeachers are both raw data as read from Wonde
   function formatStudentClassrooms(wondeStudents, wondeTeachers) {
     console.log('Wonde Students', wondeStudents)
     console.log('wondeTeachers', wondeTeachers)
 
     let studentClassroomsTmp = []
-    wondeStudents.forEach((student) => {
+    wondeStudents.forEach((student, index) => {
       let studentPart = {}
       // first put defaults for gender and dob if they are missing ( often they are)
       let gender = 'X'
@@ -606,22 +1056,27 @@ function NewSchool() {
 
       // we have to try to get a good year level
       let yearCode
-      let num = student.year.data.code.match(/\d+/) // is it a number?
-      if (num) {
+      let numStr = student.year.data.code.match(/\d+/) // match returns an array
+      if (numStr) {
+        let num = parseInt(numStr[0])
         if (num > 0 && num < 14) {
           yearCode = `Y${num.toString()}`
         } else {
           if (num === 0) {
             yearCode = 'FY' // for Foundation Year
           } else {
-            yearCode = 'UNKNOWN' // and filter them out later
+            //console.log('num value in year code', num)
+            yearCode = UNKNOWN // and filter them out later
           }
         }
       } else {
         // We can test for known strings here (when we know them!)
-        yearCode = 'UNKNOWN' // and filter them out later
+        console.log('strange value in year code', student.year.data.code)
+        yearCode = UNKNOWN // and filter them out later
       }
-
+      studentPart.email = student.contact_details // late addition
+        ? student.contact_details.data.emails.email
+        : EMPTY
       studentPart.SwondeId = student.id // need to make unique list for upload
       studentPart.firstName = student.forename
       studentPart.lastName = student.surname
@@ -689,7 +1144,7 @@ function NewSchool() {
     // only keep Maths, English and Science
     filteredList = listToFilter.filter((item) => {
       return (
-        item.yearCode !== 'UNKNOWN' &&
+        item.yearCode !== UNKNOWN &&
         (item.classroomName === 'Mathematics' ||
           item.classroomName === 'English' ||
           item.classroomName === 'Science')
