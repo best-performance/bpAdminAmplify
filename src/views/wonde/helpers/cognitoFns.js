@@ -4,58 +4,37 @@ import { CognitoIdentityServiceProvider } from 'aws-sdk'
 import { updateAWSCredentials } from './updateAWSCredentials.js'
 
 // Frank's original code had a global CognitoIdentityServiceProvider object
-// His code however was running in a lambda that recreated the object for every
-// api call
-// In our approach we are calling the fns directly and between React renders
-// so the CognitoIdentityServiceProvider object is not guaranteed to exist
-// The simplest workaround was to creat a new object for each call and
-// update the permissions and region as described below:
+// but thats not suitable for React, so create a new one in each function
 
-// NB: All these calls are being done with the security credentials attached to
-// the CognitoIdentityPool where users log in.
-// There to make a call we have to retrieve the credentials of the current logged
-// in user, lookup the region and make an object like:
-// {
+// To make call we have to retrieve the credentials of the current logged
+//
+// let credentials = await Auth.currentCredentials()
+// then
+// AWS.config.update({
+//   credentials: credentials,
+//   region: process.env.REACT_APP_REGION,
+// })
+
+// alternatively
+// let credentials = await Auth.currentCredentials()
+// const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider({
 //  credentials: credentials,
-//  region: process.env.REACT_APP_REGION,
-// }
-// Then Either
-// 1) update the AWS.config global object (see below)
-// 2) or - Add the credentials,region object to the service call
-// I tested both and they worked
-// Later I made and external updateAWSCredentials() to update the AWS.config global object
-// I am leaving addNewUser() fully commented so you can see the alternatives
+//  region: 'ap-southeast-2',
+// })
 
 // Note: the AWS.credentials object is described here
 // https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Credentials.html
 
-// This is a temp userpool created in sandbox fro test purposes
-const userPoolId = process.env.REACT_APP_USER_POOL_ID2
+const FAILED = 'failed'
 
-export async function addNewUser(username, userPoolId_passedIn) {
-  // let credentials = await Auth.currentCredentials()
-  // then set the global AWS.config object
-  // AWS.config.update({
-  //   credentials: credentials,
-  //   region: process.env.REACT_APP_REGION,
-  // })
-
-  // alternatively
-  // let credentials = await Auth.currentCredentials()
-  // Then make the service call with the credentials/region in the params
-  // const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider({
-  //  credentials: credentials,
-  //  region: 'ap-southeast-2',
-  // })
-
-  // final cleanest way to do things (but they all work)
+export async function addNewCognitoUser(username, userPoolId) {
   await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
 
   const params = {
-    UserPoolId: userPoolId_passedIn,
+    UserPoolId: userPoolId,
     Username: username,
-    MessageAction: 'SUPPRESS',
+    MessageAction: 'SUPPRESS', // don't send a confirmation email
     UserAttributes: [
       { Name: 'email', Value: username },
       {
@@ -70,75 +49,68 @@ export async function addNewUser(username, userPoolId_passedIn) {
   try {
     const result = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
     return {
-      Username: result.User.Username,
-      message: `Success adding ${username}`,
+      username: result.User.Username,
     }
   } catch (err) {
-    console.error('error adding new user', params, err)
+    // it can fail because the user already exists
     if (err.code === 'UsernameExistsException') {
       const params = {
         UserPoolId: userPoolId,
         Username: username,
       }
-
       try {
         const result = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
-        return { Username: result.Username, code: err.code }
+        return { username: result.Username }
       } catch (err) {
         console.error('error getting existing user for adding', params, err)
-        throw err
+        return { username: FAILED }
       }
     } else {
-      throw err
+      // or can fail for some other unknown reason
+      console.error('error adding new user', err)
+      return { username: FAILED }
     }
   }
 }
-// Adds a new user to Cognito
-export async function addNewUserBeforeIChangeditBC(username, userPoolId_passedIn) {
+export async function getCognitoUser(Username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
-    UserPoolId: userPoolId_passedIn,
-    Username: username,
-    MessageAction: 'SUPPRESS',
-    UserAttributes: [
-      { Name: 'email', Value: username },
-      {
-        Name: 'email_verified',
-        Value: 'true',
-      },
-    ],
-    ForceAliasCreation: false,
-    TemporaryPassword: `Password${new Date().getFullYear().toString().slice(2)}!`,
+    UserPoolId: userPoolId,
+    Username,
   }
-
   try {
-    const result = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
-    return {
-      Username: result.User.Username,
-      message: `Success adding ${username}`,
-    }
+    // Note: Cognito considers it an error if user can't be found!!
+    const result = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
+    return result
   } catch (err) {
-    console.error('error adding new user', params, err)
-    if (err.code === 'UsernameExistsException') {
-      const params = {
-        UserPoolId: userPoolId,
-        Username: username,
-      }
-
-      try {
-        const result = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
-        return { Username: result.Username, code: err.code }
-      } catch (err) {
-        console.error('error getting existing user for adding', params, err)
-        throw err
-      }
-    } else {
-      throw err
-    }
+    if (err.code === 'UserNotFoundException') return FAILED
+    else return err
   }
 }
 
-export async function setUserPassword(username, password, temp = false) {
+export async function addUserToGroup(username, groupname, userPoolId) {
+  await updateAWSCredentials()
+  const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
+  const params = {
+    GroupName: groupname,
+    UserPoolId: userPoolId,
+    Username: username,
+  }
+
+  try {
+    const result = await cognitoIdentityServiceProvider.adminAddUserToGroup(params).promise()
+    return {
+      message: `Success adding ${username} to ${groupname}`,
+    }
+  } catch (err) {
+    console.error('error adding user to group', params, err)
+    throw err
+  }
+}
+
+export async function setUserPassword(username, password, temp = false, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -159,6 +131,7 @@ export async function setUserPassword(username, password, temp = false) {
 }
 
 export async function deleteUser(username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -176,26 +149,8 @@ export async function deleteUser(username, userPoolId) {
   }
 }
 
-export async function addUserToGroup(username, groupname) {
-  const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
-  const params = {
-    GroupName: groupname,
-    UserPoolId: userPoolId,
-    Username: username,
-  }
-
-  try {
-    const result = await cognitoIdentityServiceProvider.adminAddUserToGroup(params).promise()
-    return {
-      message: `Success adding ${username} to ${groupname}`,
-    }
-  } catch (err) {
-    console.error('error adding user to group', params, err)
-    throw err
-  }
-}
-
-export async function removeUserFromGroup(username, groupname) {
+export async function removeUserFromGroup(username, groupname, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     GroupName: groupname,
@@ -215,7 +170,8 @@ export async function removeUserFromGroup(username, groupname) {
 }
 
 // Confirms as an admin without using a confirmation code.
-export async function confirmUserSignUp(username) {
+export async function confirmUserSignUp(username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -233,7 +189,8 @@ export async function confirmUserSignUp(username) {
   }
 }
 
-async function disableUser(username) {
+async function disableUser(username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -251,7 +208,8 @@ async function disableUser(username) {
   }
 }
 
-export async function enableUser(username) {
+export async function enableUser(username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -269,7 +227,8 @@ export async function enableUser(username) {
   }
 }
 
-export async function getUser(Username) {
+export async function getUser(Username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -285,7 +244,8 @@ export async function getUser(Username) {
   }
 }
 
-export async function changeUserEmail(Username, email) {
+export async function changeUserEmail(Username, email, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -307,7 +267,8 @@ export async function changeUserEmail(Username, email) {
   }
 }
 
-export async function listUsers(Limit, PaginationToken) {
+export async function listUsers(Limit, PaginationToken, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
@@ -317,48 +278,18 @@ export async function listUsers(Limit, PaginationToken) {
 
   try {
     const result = await cognitoIdentityServiceProvider.listUsers(params).promise()
-
     // Rename to NextToken for consistency with other Cognito APIs
     result.NextToken = result.PaginationToken
     delete result.PaginationToken
-
     return result
   } catch (err) {
     console.error('error listing users', params, err)
-    throw err
+    return FAILED
   }
 }
 
-// async function listGroupsForUser(username, Limit, NextToken) {
-//   const params = {
-// UserPoolId: userPoolId,
-// Username: username,
-// ...(Limit && { Limit }),
-// ...(NextToken && { NextToken }),
-//   }
-//
-//   try {
-// const result = await cognitoIdentityServiceProvider.adminListGroupsForUser(params).promise()
-// /**
-//  * We are filtering out the results that seem to be innapropriate for client applications
-//  * to prevent any informaiton disclosure. Customers can modify if they have the need.
-//  */
-// result.Groups.forEach((val) => {
-//   delete val.UserPoolId,
-// delete val.LastModifiedDate,
-// delete val.CreationDate,
-// delete val.Precedence,
-// delete val.RoleArn
-// })
-//
-// return result
-//   } catch (err) {
-// console.error('error listing groups for user', params, err)
-// throw err
-//   }
-// }
-
-export async function listUsersInGroup(groupname, Limit, NextToken) {
+export async function listUsersInGroup(groupname, Limit, NextToken, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     GroupName: groupname,
@@ -377,7 +308,8 @@ export async function listUsersInGroup(groupname, Limit, NextToken) {
 }
 
 // Signs out from all devices, as an administrator.
-export async function signUserOut(username) {
+export async function signUserOut(username, userPoolId) {
+  await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
     UserPoolId: userPoolId,
