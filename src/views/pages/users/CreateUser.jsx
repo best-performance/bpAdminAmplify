@@ -50,7 +50,7 @@ const Login = () => {
     setNickname('')
     setSchoolName('')
   }
-
+  // testing
   if (!loggedIn.username) {
     return (
       <CContainer>
