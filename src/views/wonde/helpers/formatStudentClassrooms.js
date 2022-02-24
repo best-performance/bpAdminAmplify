@@ -65,6 +65,7 @@ export function formatStudentClassrooms(
     student.classes.data.forEach((classroom) => {
       let classroomPart = {}
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
+      classroomPart.mis_id = classroom.mis_id // need to make unique list for upload
       classroomPart.classroomName = classroom.name
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom
 

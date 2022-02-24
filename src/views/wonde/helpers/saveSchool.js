@@ -3,7 +3,13 @@ import dayjs from 'dayjs'
 import AWS from 'aws-sdk'
 import { updateAWSCredentials } from './updateAWSCredentials.js'
 /** ----------------------------------------------------------------------- */
-export async function saveSchool(selectedSchool, countriesLookup, tableName, indexName) {
+export async function saveSchool(
+  selectedSchool,
+  countriesLookup,
+  statesLookup,
+  tableName,
+  indexName,
+) {
   //This puts and entry in table School if not already there
   console.log('inside SaveSchool')
   console.log(selectedSchool)
@@ -38,6 +44,11 @@ export async function saveSchool(selectedSchool, countriesLookup, tableName, ind
   // locate the EdCompanion countryID
 
   let country = countriesLookup.find((country) => country.name === selectedSchool.country)
+
+  const noCountry = countriesLookup.find((country) => country.name === 'NO COUNTRY')
+
+  const noState = statesLookup.find((state) => state.name === 'NO STATE')
+
   //console.log("Country:", country);
   const params = {
     TableName: tableName,
@@ -45,16 +56,16 @@ export async function saveSchool(selectedSchool, countriesLookup, tableName, ind
       id: schoolID, // this is the EdC id
       wondeID: selectedSchool.wondeID, // not in EdC
       schoolName: selectedSchool.schoolName,
-      address: selectedSchool.address1, // not in EdC
-      country: selectedSchool.country, // not in EdC
-      countryID: country ? country.id : `${selectedSchool.country} not in list`, // not in Wonde
-      stateID: `Wonde has no states`, // not in Wonde
-      town: selectedSchool.town, // not in Wonde
+      // address: selectedSchool.address1, // not in EdC
+      // country: selectedSchool.country, // not in EdC
+      countryID: country ? country.id : noCountry.id, // not in Wonde
+      stateID: noState.id, // not in Wonde
+      // town: selectedSchool.town, // not in EdC
       motto: `May the force be with the students of ${selectedSchool.schoolName}`, // not in Wonde
-      studentLoginEnabed: false, // not in Wonde
+      studentLoginEnabled: false, // not in Wonde
       __typename: 'School', // used hard coded as tableName may change with env
-      createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-      updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+      createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+      updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
       // other optional EdC fields not loaded
       // dummy:       String
       // ealdProgress:Boolean

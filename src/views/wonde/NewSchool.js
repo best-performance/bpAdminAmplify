@@ -27,26 +27,27 @@ import { getToken, getURL } from './helpers/wondeUrlToken'
 // This first runs the env-cmd that loads the environment variables prior to the main start script
 
 //Lookup tables
-const COUNTRY_TABLE = 'Country'
-const YEARLEVEL_TABLE = 'YearLevel'
-//const STATE_TABLE = 'State'
-//const LEARNINGAREA_TABLE = 'LearningArea'
+const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
+const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
+const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
+//const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
 
 // Tables to store school data
 // We need to generalise this for regional table names
 // Maybe use a dynamo query to list the available table names?
-const SCHOOL_TABLE = 'Schools'
-const STUDENT_TABLE = 'Student'
-const USER_TABLE = 'User'
-const SCHOOL_STUDENT_TABLE = 'SchoolStudent'
-const CLASSROOM_TABLE = 'Classroom'
-const CLASSROOM_TEACHER_TABLE = 'ClassroomTeacher'
-const CLASSROOM_STUDENT_TABLE = 'ClassroomStudent'
-const CLASSROOM_YEARLEVEL_TABLE = 'ClassroomYearLevel'
-//const CLASSROOM_LEARNING_AREA_TABLE = 'ClassroomLearningArea'
-//const STUDENT_DATA_TABLE = 'StudentData'
+const SCHOOL_TABLE = process.env.REACT_APP_SCHOOL_TABLE
+const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
+const USER_TABLE = process.env.REACT_APP_USER_TABLE
+const SCHOOL_STUDENT_TABLE = process.env.REACT_APP_SCHOOL_STUDENT_TABLE
+const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
+const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
+const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
+const CLASSROOM_YEARLEVEL_TABLE = process.env.REACT_APP_CLASSROOM_YEARLEVEL_TABLE
+//const CLASSROOM_LEARNINGAREA_TABLE = process.env.REACT_APP_CLASSROOM_LEARNINGAREA_TABLE
+//const STUDENT_DATA_TABLE = process.env.REACT_APP_STUDENT_DATA_TABLE
 
-const SCHOOL_GSI_INDEX = 'wondeIDIndex'
+// Not environment varible as this is not region-dependent
+const SCHOOL_WONDE_INDEX = 'byWondeID'
 
 // some constants for good practice
 const EMPTY = 'EMPTY'
@@ -84,7 +85,7 @@ function NewSchool() {
   // to locate respective item ids
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
-  // const [statesLookup, setStatesLookup] = useState([])
+  const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
   // This useEffect() reads and saves the contents of 4 lookups
@@ -111,8 +112,8 @@ function NewSchool() {
       setCountriesLookup(response.Items)
       response = await docClient.scan({ TableName: YEARLEVEL_TABLE }).promise()
       setYearLevelsLoookup(response.Items)
-      // response = await docClient.scan({ TableName: STATE_TABLE }).promise()
-      // setStatesLookup(response.Items)
+      response = await docClient.scan({ TableName: STATE_TABLE }).promise()
+      setStatesLookup(response.Items)
       // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
       // setLearningAreasLookup(response.Items)
     }
@@ -131,6 +132,8 @@ function NewSchool() {
   async function testFunction() {
     console.log('testFuntion() invoked')
     console.log('yearLevels', yearLevelsLookup)
+    console.log('countries', countriesLookup)
+    console.log('states', statesLookup)
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
     console.log(`USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
@@ -235,7 +238,13 @@ function NewSchool() {
      */
     let schoolID // the EC id of the saved School
     try {
-      schoolID = await saveSchool(selectedSchool, countriesLookup, SCHOOL_TABLE, SCHOOL_GSI_INDEX)
+      schoolID = await saveSchool(
+        selectedSchool,
+        countriesLookup,
+        statesLookup,
+        SCHOOL_TABLE,
+        SCHOOL_WONDE_INDEX,
+      )
       console.log('School saved', schoolID)
     } catch (err) {
       console.log('error saving school', err)
@@ -256,6 +265,7 @@ function NewSchool() {
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
+          MISID: row.mis_id,
         })
       }
       // Make a unique list of students
@@ -295,7 +305,7 @@ function NewSchool() {
     const uniqueTeachersArray = Array.from(uniqueTeachersMap.values())
     const uniqueStudentsArray = Array.from(uniqueStudentsMap.values())
 
-    // console.dir(uniqueClassroomsArray)
+    console.dir(uniqueClassroomsArray)
     // console.dir(uniqueTeachersArray)
     // console.dir(uniqueStudentsArray)
 
@@ -306,6 +316,7 @@ function NewSchool() {
           add to classroomYearLevel
 	        add to classroomLearningArea
      */
+
     try {
       console.time('Saved Classrooms') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
@@ -315,27 +326,31 @@ function NewSchool() {
 
       // process each batch
       let index = 0 //index to uniqueClassroomsArray
-      for (let i = 0; i < batchesCount; i++) {
+      const schoolYear = parseInt(dayjs().format('YYYY'))
+      for (let i = 0; i < 1; i++) {
         let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
         if (batchSize === 0) break // must have been an even no of batches
 
         let batchToWrite = []
-        for (let n = 0; n < batchSize; n++) {
+        for (let n = 0; n < 1; n++) {
           let id = v4()
+          const className = uniqueClassroomsArray[index].className
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 classType: 'Classroom',
                 // focusGroupType: null, // its not a focus group
-                className: uniqueClassroomsArray[index].className,
-                schoolYear: dayjs().format('YYYY'),
+                className: className,
+                schoolYear: schoolYear,
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeId: uniqueClassroomsArray[index].wondeId, // not in EdC
-                mis_id: 'to be included', // not in EdC
+                wondeID: `${schoolID}${uniqueClassroomsArray[index].wondeId}`, // not in EdC
+                MISID: uniqueClassroomsArray[index].MISID, // not in EdC
                 __typename: 'Classroom',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'classType#schoolYear': `Classroom#${schoolYear}`,
+                'schoolYear#className': `${schoolYear}#${className}`,
                 // other optional fields not uploaded
                 //    focusGroupType
               },
@@ -358,7 +373,7 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classrooms
-
+    return
     // -----------------------------------------------------------------------
     // Now make a classroomTeacherArray for records to save in classroomTeachers
     // NB: Must be run AFTER classrooms are saved
@@ -435,8 +450,8 @@ function NewSchool() {
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
                 yearLevelID: yearLevelRecord.id,
                 __typename: 'ClassroomYearLevel',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -511,8 +526,8 @@ function NewSchool() {
                 enabled: false, // login enabled or not
                 dbType: 'user',
                 __typename: 'User',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -581,8 +596,8 @@ function NewSchool() {
                 classroomID: classroomTeachersArray[index].classroomID,
                 email: classroomTeachersArray[index].email,
                 __typename: 'ClassroomTeacher',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -648,8 +663,8 @@ function NewSchool() {
                 wondeId: uniqueStudentsArray[index].wondeId, // not in EdC
                 mis_id: 'to be included', // not in EdC
                 __typename: 'Student', // used hard coded as tableName may change with env
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 // optional fields not populated
                 // photo
               },
@@ -758,8 +773,8 @@ function NewSchool() {
                 enabled: false, // login enabled or not
                 dbType: 'user',
                 __typename: 'User',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -824,8 +839,8 @@ function NewSchool() {
                 lastName: uniqueStudentsArray[index].lastName,
                 userId: '', // will be filled when student gets a login (its id not email!)
                 __typename: 'SchoolStudent',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -878,8 +893,8 @@ function NewSchool() {
                 classroomID: classroomStudentsArray[index].classroomID,
                 studentID: classroomStudentsArray[index].studentID,
                 __typename: 'ClassroomStudent',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -1016,6 +1031,7 @@ function NewSchool() {
               className="btn btn-primary"
               style={{ marginBottom: '10px' }}
               onClick={deleteAllTables}
+              disabled={true}
             >
               {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
             </Button>
