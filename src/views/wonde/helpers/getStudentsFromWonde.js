@@ -59,7 +59,10 @@ export async function getStudentsFromWonde(
           lastName: student.surname,
           gender: student.gender ? student.gender : 'X',
           dob: dob,
-          year: student.year.data.code,
+          year:
+            student.year && student.year.data && student.year.data.code
+              ? student.year.data.code
+              : 'no year',
         })
       })
       // check if all pages are read

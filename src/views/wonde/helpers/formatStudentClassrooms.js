@@ -16,7 +16,7 @@ export function formatStudentClassrooms(
   console.log('wondeTeachers', wondeTeachers)
 
   let studentClassroomsTmp = []
-  wondeStudents.forEach((student) => {
+  wondeStudents.forEach((student, index) => {
     let studentPart = {}
     // first put defaults for gender and dob if they are missing ( often they are)
     let gender = 'X'
@@ -24,27 +24,32 @@ export function formatStudentClassrooms(
     let dob = 'XXXX-XX-XX'
     if (dayjs(student.date_of_birth.date).isValid())
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
-
-    // we have to try to get a good year level
     let yearCode
-    let numStr = student.year.data.code.match(/\d+/) // match returns an array
-    if (numStr) {
-      let num = parseInt(numStr[0])
-      if (num > 0 && num < 14) {
-        yearCode = `Y${num.toString()}`
-      } else {
-        if (num === 0) {
-          yearCode = 'FY' // for Foundation Year
+
+    try {
+      let numStr = student.year.data.code.match(/\d+/) // match returns an array
+      if (numStr) {
+        let num = parseInt(numStr[0])
+        if (num > 0 && num < 14) {
+          yearCode = `Y${num.toString()}`
         } else {
-          //console.log('num value in year code', num)
-          yearCode = UNKNOWN // and filter them out later
+          if (num === 0) {
+            yearCode = 'FY' // for Foundation Year
+          } else {
+            //console.log('num value in year code', num)
+            yearCode = UNKNOWN // and filter them out later
+          }
         }
+      } else {
+        // We can test for known strings here (when we know them!)
+        console.log('strange value in year code', student.year.data.code)
+        yearCode = UNKNOWN // and filter them out later
       }
-    } else {
-      // We can test for known strings here (when we know them!)
-      console.log('strange value in year code', student.year.data.code)
-      yearCode = UNKNOWN // and filter them out later
+    } catch (err) {
+      console.log('problem with student year', student.forename, student.surname, index)
     }
+    // we have to try to get a good year level
+
     // compose an email address - could be duplicate but we only check at point of
     // creating the Cognito entry - which will scream if duplicate exists
     studentPart.email =

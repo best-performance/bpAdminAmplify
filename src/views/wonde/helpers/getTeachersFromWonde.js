@@ -45,6 +45,7 @@ export async function getTeachersFromWonde(
           Authorization: getToken(),
         },
       })
+      console.log('teachers found:', response.data.data.length)
       // eslint-disable-next-line no-loop-func
       response.data.data.forEach((employee) => {
         wondeTeachersTemp.push(employee) // save the original response data
