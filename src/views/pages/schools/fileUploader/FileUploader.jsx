@@ -5,14 +5,31 @@ import { useState } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
+import DataGrid, { Column } from 'devextreme-react/data-grid'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()
   const [isSelected, setIsSelected] = useState(false)
   const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [schoolFiles, setSchoolFiles] = useState([])
 
   const { loggedIn } = useContext(loggedInContext)
 
+  async function listCurrentfiles() {
+    let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`)
+    setSchoolFiles(
+      listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
+    )
+  }
+
+  useEffect(() => {
+    Storage.configure({
+      bucket: 'bpadmin-sandbox-au',
+      region: 'ap-southeast-2',
+      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
+    })
+    listCurrentfiles()
+  }, [])
   const changeHandler = (event) => {
     setSelectedFile(event.target.files[0])
     setIsSelected(true)
@@ -23,14 +40,7 @@ const FileUploader = () => {
     if (selectedFile) {
       let extension = selectedFile.name.split('.').pop()
       if (['csv', 'xls', 'xlsx'].lastIndexOf(extension) > -1) {
-        Storage.configure({
-          bucket: 'bpadmin-sandbox-au',
-          region: 'ap-southeast-2',
-          identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
-        })
-
         let currentFolders = await Storage.list('')
-
         let schoolFolder = currentFolders.find((folder) => {
           if (folder.key) {
             return folder.key.replace('/', '') === loggedIn.schoolName
@@ -64,6 +74,9 @@ const FileUploader = () => {
     document.getElementById('fileInput').value = null
     setSelectedFile(null)
     setIsSelected(false)
+    setTimeout(function () {
+      listCurrentfiles()
+    }, 3000)
   }
 
   return (
@@ -84,7 +97,10 @@ const FileUploader = () => {
             {isSelected && selectedFile ? (
               <div style={{ padding: '15px' }}>
                 <p>File name: {selectedFile.name}</p>
-                <p>Size: {(selectedFile.size * 0.000001) / 1} MB</p>
+                <p>
+                  Size:{' '}
+                  {Math.round(((selectedFile.size * 0.000001) / 1 + Number.EPSILON) * 100) / 100} MB
+                </p>
                 <p>Last Modified Date: {selectedFile.lastModifiedDate.toLocaleDateString()}</p>
               </div>
             ) : (
@@ -98,6 +114,7 @@ const FileUploader = () => {
                 useSubmitBehavior={false}
                 onClick={uploadFileToS3}
                 style={{ marginTop: '30px' }}
+                disabled={!isSelected}
               />
             </div>
           </div>
@@ -120,6 +137,45 @@ const FileUploader = () => {
           <CSpinner style={{ margin: 'auto' }}></CSpinner>
         </div>
       )}
+      <CRow>
+        <DataGrid dataSource={schoolFiles}>
+          <Column
+            dataField="key"
+            caption="File Name"
+            dataType="string"
+            alignment="center"
+            cellRender={(cellData) => {
+              if (cellData && cellData.value) {
+                return <>{cellData.value.split('/')[1]}</>
+              }
+              return <></>
+            }}
+          />
+          <Column
+            dataField="lastModified"
+            caption="Last Modified"
+            dataType="date"
+            alignment="center"
+            format={'dd/MM/yyyy'}
+          />
+          <Column
+            dataField="size"
+            caption="Size"
+            dataType="string"
+            alignment="center"
+            cellRender={(cellData) => {
+              if (cellData && cellData.value) {
+                return (
+                  <>
+                    {Math.round(((cellData.value * 0.000001) / 1 + Number.EPSILON) * 100) / 100} MB
+                  </>
+                )
+              }
+              return <></>
+            }}
+          />
+        </DataGrid>
+      </CRow>
     </CContainer>
   )
 }
