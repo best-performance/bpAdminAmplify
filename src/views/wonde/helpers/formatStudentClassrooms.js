@@ -19,11 +19,14 @@ export function formatStudentClassrooms(
   wondeStudents.forEach((student, index) => {
     let studentPart = {}
     // first put defaults for gender and dob if they are missing ( often they are)
+    // Converting the original wonde values set for gender,dob to the ones required by the CSV upload format
     let gender = 'X'
     if (student.gender && student.gender !== 'X') gender = student.gender.charAt(0)
+
     let dob = 'XXXX-XX-XX'
     if (dayjs(student.date_of_birth.date).isValid())
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
+
     let yearCode
 
     try {
@@ -55,17 +58,19 @@ export function formatStudentClassrooms(
     studentPart.email =
       `${student.forename}${student.surname}@${selectedSchool.schoolName}`.replace(/\s/g, '')
     studentPart.SwondeId = student.id // need to make unique list for upload
+    studentPart.Smis_id = student.mis_id
     studentPart.firstName = student.forename
+    studentPart.middleName = student.middle_names ? student.middle_names : ''
     studentPart.lastName = student.surname
     studentPart.yearCode = yearCode // like Yn or K or FY
     studentPart.gender = gender
-    studentPart.dateOfBirth = dob
+    studentPart.dob = dob
 
     // now process the classrooms - could has no classroom assigned
     student.classes.data.forEach((classroom) => {
       let classroomPart = {}
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
-      classroomPart.mis_id = classroom.mis_id // need to make unique list for upload
+      classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
       classroomPart.classroomName = classroom.name
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom
 
@@ -76,10 +81,12 @@ export function formatStudentClassrooms(
         let fnameKey = `teacher${n + 1} FirstName`
         let lnameKey = `teacher${n + 1} LastName`
         let emailKey = `teacher${n + 1} email`
+        let mis_id = `T${n + 1} mis_id`
         classroomPart[wondeId] = '-'
         classroomPart[fnameKey] = '-'
         classroomPart[lnameKey] = '-'
         classroomPart[emailKey] = '-'
+        classroomPart[mis_id] = '-'
       }
       // now populate teacher columns
       classroom.employees.data.forEach((teacher, index) => {
@@ -95,10 +102,12 @@ export function formatStudentClassrooms(
         let lnameKey = `teacher${index + 1} LastName`
         let emailKey = `teacher${index + 1} email`
         let wondeId = `T${index + 1} WondeId`
+        let mis_id = `T${index + 1} mis_id`
         classroomPart[fnameKey] = teacher.forename
         classroomPart[lnameKey] = teacher.surname
         classroomPart[emailKey] = email
         classroomPart[wondeId] = teacher.id
+        classroomPart[mis_id] = teacher.mis_id
       })
       studentClassroomsTmp.push({ ...studentPart, ...classroomPart })
     })

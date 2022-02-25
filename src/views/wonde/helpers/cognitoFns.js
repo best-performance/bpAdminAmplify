@@ -144,8 +144,7 @@ export async function deleteUser(username, userPoolId) {
       message: `Success deleting ${username}`,
     }
   } catch (err) {
-    console.error('error deleting user', params, err)
-    throw err
+    console.error('error deleting user', params, err.code)
   }
 }
 

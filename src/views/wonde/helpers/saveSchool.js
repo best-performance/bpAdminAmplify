@@ -62,12 +62,12 @@ export async function saveSchool(
       stateID: noState.id, // not in Wonde
       // town: selectedSchool.town, // not in EdC
       motto: `May the force be with the students of ${selectedSchool.schoolName}`, // not in Wonde
+      dummy: 'school',
       studentLoginEnabled: false, // not in Wonde
       __typename: 'School', // used hard coded as tableName may change with env
       createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
       updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
       // other optional EdC fields not loaded
-      // dummy:       String
       // ealdProgress:Boolean
       // logo:        S3Object
       // networkID:

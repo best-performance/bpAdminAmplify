@@ -49,6 +49,9 @@ const CLASSROOM_YEARLEVEL_TABLE = process.env.REACT_APP_CLASSROOM_YEARLEVEL_TABL
 // Not environment varible as this is not region-dependent
 const SCHOOL_WONDE_INDEX = 'byWondeID'
 
+// Constant used to create the teacher and student entries in cognito
+const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
+
 // some constants for good practice
 const EMPTY = 'EMPTY'
 const BATCH_SIZE = 25 // for batchWrite() operations
@@ -123,7 +126,7 @@ function NewSchool() {
 
   // This is for testing to delete all records form the Dynamo tables if they exist
   async function deleteAllTables() {
-    await deleteSchoolDataFromDynamoDB()
+    await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -136,32 +139,27 @@ function NewSchool() {
     console.log('states', statesLookup)
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
-    console.log(`USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
+    console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
     console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
-    console.log(`USER_POOL_ID2 ${process.env.REACT_APP_USER_POOL_ID2}`)
-    console.log(`USER_POOL_CLIENT_ID2 ${process.env.REACT_APP_USER_POOL_CLIENT_ID2}`)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
-    let response = await getCognitoUser(
-      'randomJunk@northpol.com',
-      process.env.REACT_APP_USER_POOL_ID2,
-    )
+    let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
     if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
     else {
       console.log(response)
     }
     // try to locate a known email
-    response = await getCognitoUser(
-      'testUser13@BPAdmin.com.au',
-      process.env.REACT_APP_USER_POOL_ID2,
-    )
-    if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
+    response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
     else {
       console.log(response) // should print the users details
     }
+
+    let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    console.log('result after adding the user', result)
   } // end of testFuntion()
 
   // Invokes function to get the list of available schools from Wonde
@@ -257,6 +255,8 @@ function NewSchool() {
     let uniqueClassroomsMap = new Map()
     let uniqueTeachersMap = new Map()
     let uniqueStudentsMap = new Map()
+    // This map is used to store the teachers emails and the cognito username. Later, based on the email, the userId will be updated properly.
+    let teacherCognitoUserNames = new Map()
 
     filteredStudentClassrooms.forEach((row) => {
       // Make a unique list of classrooms
@@ -265,7 +265,7 @@ function NewSchool() {
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
-          MISID: row.mis_id,
+          mis_id: row.Cmis_id,
         })
       }
       // Make a unique list of students
@@ -273,7 +273,9 @@ function NewSchool() {
         uniqueStudentsMap.set(row.SwondeId, {
           email: row.email,
           wondeId: row.SwondeId, // not in EdC
+          mis_id: row.Smis_id,
           firstName: row.firstName,
+          middleName: row.middleName,
           lastName: row.lastName,
           yearCode: row.yearCode,
           gender: row.gender,
@@ -286,6 +288,7 @@ function NewSchool() {
         let fnameKey = `teacher${n + 1} FirstName`
         let lnameKey = `teacher${n + 1} LastName`
         let emailKey = `teacher${n + 1} email`
+        let mis_id = `T${n + 1} mis_id`
         if (row[wondeId] !== '-') {
           // mostly 1 teacher
           if (!uniqueTeachersMap.get(row[wondeId])) {
@@ -294,6 +297,7 @@ function NewSchool() {
               firstName: row[fnameKey],
               lastName: row[lnameKey],
               email: row[emailKey],
+              mis_id: row[mis_id],
             })
           }
         }
@@ -327,12 +331,12 @@ function NewSchool() {
       // process each batch
       let index = 0 //index to uniqueClassroomsArray
       const schoolYear = parseInt(dayjs().format('YYYY'))
-      for (let i = 0; i < 1; i++) {
+      for (let i = 0; i < batchesCount; i++) {
         let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
         if (batchSize === 0) break // must have been an even no of batches
 
         let batchToWrite = []
-        for (let n = 0; n < 1; n++) {
+        for (let n = 0; n < batchSize; n++) {
           let id = v4()
           const className = uniqueClassroomsArray[index].className
           batchToWrite.push({
@@ -344,8 +348,8 @@ function NewSchool() {
                 className: className,
                 schoolYear: schoolYear,
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeID: `${schoolID}${uniqueClassroomsArray[index].wondeId}`, // not in EdC
-                MISID: uniqueClassroomsArray[index].MISID, // not in EdC
+                wondeID: uniqueClassroomsArray[index].wondeId, // not in EdC
+                MISID: uniqueClassroomsArray[index].mis_id, // not in EdC
                 __typename: 'Classroom',
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
@@ -373,7 +377,7 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classrooms
-    return
+
     // -----------------------------------------------------------------------
     // Now make a classroomTeacherArray for records to save in classroomTeachers
     // NB: Must be run AFTER classrooms are saved
@@ -471,6 +475,27 @@ function NewSchool() {
       return { result: false, msg: err.message } // abandon ship
     } // end save classrommYearLevel
 
+    // Save the teachers
+    // add to user
+    // add to Cognito *
+    // add to classroomTeacher *
+    try {
+      console.time('saved teachers cognito')
+
+      for (let i = 0; i < uniqueTeachersArray.length; i++) {
+        let teacher = uniqueTeachersArray[i]
+        let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+        if (result.username === FAILED) {
+          console.log(
+            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
+          )
+        } else {
+          teacherCognitoUserNames.set(teacher.email, result.username)
+        }
+      }
+      console.timeEnd('saved teachers cognito')
+    } catch (err) {}
+
     /**
      * Save the classrooms
      * For each classroom
@@ -510,24 +535,27 @@ function NewSchool() {
           if (!uniqueTeachersArray[index].email) {
             uniqueTeachersArray[index].email = `${id}@placeholder.com`
           }
+          let userId = teacherCognitoUserNames.get(uniqueTeachersArray[index].email)
+          // if there is no any userId returned by the cognito teacher map, then the record is not created in the user table
+          if (!userId) continue
           batchToWrite.push({
             PutRequest: {
               Item: {
-                userId: id, // this is the EdC id generated locally
+                userId, // this is the EdC id generated locally
                 firstName: uniqueTeachersArray[index].firstName,
                 lastName: uniqueTeachersArray[index].lastName,
                 email: uniqueTeachersArray[index].email,
                 userGroup: 'Users',
                 userType: 'Educator', // or could be "Student"
-                lastSignIn: '', // this will be a date
-                userSchoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeId: uniqueTeachersArray[index].wondeId, // not in EdC
-                mis_id: 'to be included',
                 enabled: false, // login enabled or not
+                userSchoolID: schoolID, // not in Wonde - generated above when saving the school
+                wondeID: uniqueTeachersArray[index].wondeId, // not in EdC
+                MISID: uniqueTeachersArray[index].mis_id,
                 dbType: 'user',
                 __typename: 'User',
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                // fields not added lastSignIn
               },
             },
           })
@@ -548,22 +576,6 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving teachers
-
-    // Save the teachers
-    // add to user
-    // add to Cognito *
-    // add to classroomTeacher *
-    try {
-      console.time('saved teachers cognito')
-      uniqueTeachersArray.forEach(async (teacher) => {
-        let username = await addNewCognitoUser(teacher.email, process.env.REACT_APP_USER_POOL_ID2)
-        if (username === FAILED)
-          console.log(
-            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
-          )
-      })
-      console.timeEnd('saved teachers cognito')
-    } catch (err) {}
 
     // Save the teachers
     // add to user
@@ -650,21 +662,35 @@ function NewSchool() {
           )
           //console.log('yearLevelRecord', yearLevelRecord)
           let id = v4()
+
+          // Converting the original wonde values set for gender,dob to the ones required by the student table in dynamo
+          let gender =
+            uniqueStudentsArray[index].gender === 'M'
+              ? 'Male'
+              : uniqueStudentsArray[index].gender === 'F'
+              ? 'Female'
+              : 'NOT STATED'
+          let dob = '1999-01-01'
+          if (dayjs(uniqueStudentsArray[index].dob).isValid())
+            dob = dayjs(uniqueStudentsArray[index].dob).format('YYYY-MM-DD')
+
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 firstName: uniqueStudentsArray[index].firstName,
                 lastName: uniqueStudentsArray[index].lastName,
-                middleName: '',
-                gender: uniqueStudentsArray[index].gender,
-                birthDate: uniqueStudentsArray[index].dob,
+                middleName: uniqueStudentsArray[index].middleName,
+                gender,
+                birthDate: dob,
                 yearLevelID: yearLevelRecord.id, // the lookup value
-                wondeId: uniqueStudentsArray[index].wondeId, // not in EdC
-                mis_id: 'to be included', // not in EdC
+                wondeID: uniqueStudentsArray[index].wondeId, // not in EdC
+                MISID: uniqueStudentsArray[index].mis_id, // not in EdC
                 __typename: 'Student', // used hard coded as tableName may change with env
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'middleName#lastName#birthDate': `${uniqueStudentsArray[index].middleName}#${uniqueStudentsArray[index].lastName}#${dob}`,
+                'lastName#birthDate': `${uniqueStudentsArray[index].lastName}#${dob}`,
                 // optional fields not populated
                 // photo
               },
@@ -766,15 +792,15 @@ function NewSchool() {
                 email: uniqueStudentsArrayWithEmail[index].email,
                 userGroup: 'Users',
                 userType: 'Student', // or could be "Educator"
-                lastSignIn: '', // this will be a date
                 userSchoolID: schoolID,
-                wondeId: uniqueStudentsArrayWithEmail[index].wondeId, // of the student
-                mis_id: 'to be included', // not in EdC
+                wondeID: uniqueStudentsArrayWithEmail[index].wondeId, // of the student
+                MISID: uniqueStudentsArrayWithEmail[index].mis_id, // not in EdC
                 enabled: false, // login enabled or not
                 dbType: 'user',
                 __typename: 'User',
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                // fields not added lastSignIn
               },
             },
           })
@@ -827,20 +853,31 @@ function NewSchool() {
           )
           //console.log("yearLevelRecord", yearLevelRecord);
           let id = v4()
+          let schoolYear = parseInt(dayjs().format('YYYY'))
+          let yearLevelID = yearLevelRecord.id
+          let firstName = uniqueStudentsArray[index].firstName
+          let lastName = uniqueStudentsArray[index].lastName
+          let studentID = uniqueStudentsArray[index].studentID
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 schoolID: schoolID,
-                studentID: uniqueStudentsArray[index].studentID,
-                schooolYear: dayjs().format('YYYY'),
-                yearLevelID: yearLevelRecord.id, // the lookup value
-                firstName: uniqueStudentsArray[index].firstName,
-                lastName: uniqueStudentsArray[index].lastName,
-                userId: '', // will be filled when student gets a login (its id not email!)
+                studentID,
+                schoolYear: schoolYear,
+                yearLevelID, // the lookup value
+                firstName: firstName,
+                lastName: lastName,
                 __typename: 'SchoolStudent',
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'schoolYear#firstName': `${schoolYear}#${firstName}`,
+                'schoolYear#lastName': `${schoolYear}#${lastName}`,
+                'schoolYear#studentID': `${schoolYear}#${studentID}`,
+                'schoolYear#yearLevelID': `${schoolYear}#${yearLevelID}`,
+                'schoolYear#yearLevelID#firstName': `${schoolYear}#${yearLevelID}#${firstName}`,
+                'schoolYear#yearLevelID#lastName': `${schoolYear}#${yearLevelID}#${lastName}`,
+                // fields not added: userId: '' - will be filled when student gets a login (its id not email!)
               },
             },
           })
@@ -1008,13 +1045,22 @@ function NewSchool() {
       </CRow>
       <div className="d-flex justify-content-center">
         {selectedSchool.schoolName !== 'none' ? (
-          <Button
-            className="btn btn-primary"
-            style={{ marginBottom: '10px' }}
-            onClick={getSchoolData}
-          >
-            {`Get data for ${selectedSchool.schoolName} from Wonde`}
-          </Button>
+          <>
+            <Button
+              className="btn btn-primary"
+              style={{ marginBottom: '10px' }}
+              onClick={getSchoolData}
+            >
+              {`Get data for ${selectedSchool.schoolName} from Wonde`}
+            </Button>
+            <Button
+              className="btn btn-primary"
+              style={{ marginBottom: '10px' }}
+              onClick={deleteAllTables}
+            >
+              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
+            </Button>
+          </>
         ) : null}
       </div>
       <div className="d-flex justify-content-center">
@@ -1026,14 +1072,6 @@ function NewSchool() {
               onClick={saveSchoolCSVtoDynamoDB}
             >
               {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
-            </Button>
-            <Button
-              className="btn btn-primary"
-              style={{ marginBottom: '10px' }}
-              onClick={deleteAllTables}
-              disabled={true}
-            >
-              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
             </Button>
           </>
         ) : null}
