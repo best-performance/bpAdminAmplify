@@ -4,7 +4,6 @@ import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
 import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
-import axios from 'axios'
 import dayjs from 'dayjs'
 import _ from 'lodash'
 import { Auth } from 'aws-amplify'
@@ -15,6 +14,7 @@ import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
 import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
 import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
+import { OptionsPopup } from './helpers/optionsPopup'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
 import { addNewCognitoUser, getCognitoUser } from './helpers/cognitoFns'
@@ -91,6 +91,27 @@ function NewSchool() {
   const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
+  // These variables control the CSV filtering
+  const [yearFilters, setYearFilters] = useState([
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '10',
+    '11',
+    '12',
+    'R',
+    'FY',
+    'K',
+  ])
+  const [kinterDayClasses, setKinterDayClasses] = useState([false]) // false = dont include Mon-AM, Mon-PM etc
+  const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
+
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
   useEffect(() => {
@@ -146,20 +167,20 @@ function NewSchool() {
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
-    let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
-    if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
-    else {
-      console.log(response)
-    }
+    // let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
+    // if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
+    // else {
+    //   console.log(response)
+    // }
     // try to locate a known email
-    response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-    if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
-    else {
-      console.log(response) // should print the users details
-    }
+    // response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    // if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
+    // else {
+    //   console.log(response) // should print the users details
+    // }
 
-    let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-    console.log('result after adding the user', result)
+    // let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    // console.log('result after adding the user', result)
   } // end of testFuntion()
 
   // Invokes function to get the list of available schools from Wonde
@@ -220,6 +241,9 @@ function NewSchool() {
       selectedSchool,
       setStudentClassrooms,
       setFilteredStudentClassrooms,
+      yearFilters,
+      kinterDayClasses,
+      kinterDayClassName,
     ) // this is for the uploader format
     setSchoolDataLoaded(true)
   }
@@ -1042,6 +1066,9 @@ function NewSchool() {
           <h6 className="text-center">{selectedSchool.schoolName}</h6>
         </CCol>
         <CCol></CCol>
+        <CRow>
+          <OptionsPopup visible={false}></OptionsPopup>
+        </CRow>
       </CRow>
       <div className="d-flex justify-content-center">
         {selectedSchool.schoolName !== 'none' ? (

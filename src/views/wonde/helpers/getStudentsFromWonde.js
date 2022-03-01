@@ -48,17 +48,21 @@ export async function getStudentsFromWonde(
         } else {
           noClassesCount++ // for debugging only
         }
-        let dob = 'XXXX-XX-XX'
-        if (student.date_of_birth && student.date_of_birth.date) {
-          dob = dayjs(student.date_of_birth.date).format('DD/MMM/YYYY')
-        }
+        // Date format now done in formatStudentClassrooms()
+        // let dob = 'XXXX-XX-XX'
+        // if (student.date_of_birth && student.date_of_birth.date) {
+        //   dob = dayjs(student.date_of_birth.date).format('DD/MMM/YYYY')
+        // }
         students.push({
           wondeStudentId: student.id,
           mis_id: student.mis_id,
           firstName: student.forename,
           lastName: student.surname,
           gender: student.gender ? student.gender : 'X',
-          dob: dob,
+          dob:
+            student.date_of_birth && student.date_of_birth.date
+              ? student.date_of_birth.date
+              : 'XX/XX/XXXX',
           year:
             student.year && student.year.data && student.year.data.code
               ? student.year.data.code
@@ -78,7 +82,8 @@ export async function getStudentsFromWonde(
   console.log('no of students', students.length)
   console.log('no of classrooms', classrooms.length)
   console.log('no of students with no classrooms', noClassesCount)
-  students = _.sortBy(students, (y) => parseInt(y.year))
+  //students = _.sortBy(students, [(y) => parseInt(y.year)])
+  students = _.sortBy(students, ['year', 'wondeStudentId'])
 
   setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
   setDisplayStudents(students)
