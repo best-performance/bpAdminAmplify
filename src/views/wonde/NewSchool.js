@@ -1067,7 +1067,7 @@ function NewSchool() {
         </CCol>
         <CCol></CCol>
         <CRow>
-          <OptionsPopup visible={false}></OptionsPopup>
+          <OptionsPopup></OptionsPopup>
         </CRow>
       </CRow>
       <div className="d-flex justify-content-center">
