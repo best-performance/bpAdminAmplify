@@ -285,4 +285,6 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
 
   console.log('Deleting SchoolRecords records (D10)')
   await deleteAll(schoolRecords, SCHOOL_TABLE, 'id')
+
+  console.log('Delete data for the school is finished')
 } // end of test function deleteSchoolDataFromDynamoDB()

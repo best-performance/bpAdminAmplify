@@ -20,9 +20,23 @@ export function formatStudentClassrooms(
     let studentPart = {}
     // first put defaults for gender and dob if they are missing ( often they are)
     // Converting the original wonde values set for gender,dob to the ones required by the CSV upload format
-    let gender = 'X'
-    if (student.gender && student.gender !== 'X')
-      gender = student.gender.charAt(0).toUpperCase() + student.gender.slice(1).toLowerCase()
+    let gender
+    switch (student.gender.toUpperCase()) {
+      case 'MALE':
+      case 'M':
+      case 'BOY':
+      case 'B':
+        gender = 'Male'
+        break
+      case 'FEMALE':
+      case 'F':
+      case 'GIRL':
+      case 'G':
+        gender = 'Female'
+        break
+      default:
+        gender = 'X'
+    }
 
     let dob = 'XXXX-XX-XX'
     if (dayjs(student.date_of_birth.date).isValid())
@@ -58,12 +72,18 @@ export function formatStudentClassrooms(
     if (yearCode === UNKNOWN) {
       let numStr = student.year.data.code.match(/\d+/) // match returns an array
       if (numStr) {
+        let upperYearLevel = process.env.REACT_APP_REGION === 'ap-southeast-2' ? 12 : 13
         let num = parseInt(numStr[0])
-        if (num > 0 && num <= 12) {
+        if (num > 0 && num <= upperYearLevel) {
           //yearCode = `Y${num.toString()}`
           yearCode = num.toString() // "5" not "Y5" is expected by the csv
+        } else if (num === 0) {
+          console.log('came here with the 0 condition ', numStr)
+          yearCode = process.env.REACT_APP_REGION === 'ap-southeast-2' ? 'FY' : 'R'
         } else {
-          console.log(`Year code out of range 1-12, found ${numStr}`)
+          console.log(
+            `Year code out of range 0-${upperYearLevel} for ${student.forename} ${student.surname} ${student.date_of_birth.date}, found ${numStr}`,
+          )
         }
       }
     }
@@ -72,7 +92,7 @@ export function formatStudentClassrooms(
     if (yearCode === UNKNOWN) {
       yearCode = 'U-' + student.year.data.code
       console.log(
-        `Unknown year code for student: ${student.forename}${student.surname} ${yearCode}`,
+        `Unknown year code for student: ${student.forename} ${student.surname} ${student.date_of_birth.date} has ${yearCode} for yearLevel `,
       )
     }
 

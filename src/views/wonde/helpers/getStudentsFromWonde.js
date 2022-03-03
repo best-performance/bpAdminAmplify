@@ -18,7 +18,7 @@ export async function getStudentsFromWonde(
   let classrooms = []
   let noClassesCount = 0 // debug message to flag students with no clasrooms
   try {
-    let URL = `${getURL()}/${wondeSchoolID}/students?include=classes.employees,year&per_page=200`
+    let URL = `${getURL()}/${wondeSchoolID}/students?include=classes.employees,classes.subject,year&per_page=200`
     let morePages = true
     while (morePages) {
       console.log(URL)

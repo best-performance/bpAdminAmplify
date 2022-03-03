@@ -70,13 +70,13 @@ function NewSchool() {
   const [wondeStudents, setWondeStudents] = useState([])
   const [wondeTeachers, setWondeTeachers] = useState([])
 
-  // Next four are for the steduent-teacher and classroom-teacher displays
+  // Next four are for the student-teacher and classroom-teacher displays
   const [displayStudents, setDisplayStudents] = useState([])
   const [displayTeachers, setDisplayTeachers] = useState([])
   const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
   const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
 
-  // This one is for the upload display (as per the standard upload spreadsheet)
+  // This one is for the CSV upload display (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
   const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
 
@@ -110,10 +110,12 @@ function NewSchool() {
     Y10: true,
     Y11: true,
     Y12: true,
+    Y13: true,
     K: true,
     R: true,
+    FY: true,
   })
-  const [kinterDayClasses, setKinterDayClasses] = useState([false]) // false = dont include Mon-AM, Mon-PM etc
+  const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
   const [coreSubjectOption, setCoreSubjectOption] = useState(true)
 
@@ -128,7 +130,13 @@ function NewSchool() {
 
     // apply the filters - but it won't work here
     setFilteredStudentClassrooms(
-      applyOptions(studentClassrooms, yearOptions, kinterDayClasses, kinterDayClassName),
+      applyOptions(
+        studentClassrooms,
+        yearOptions,
+        kinterDayClasses,
+        kinterDayClassName,
+        coreSubjectOption,
+      ),
     )
   }
 
@@ -254,8 +262,8 @@ function NewSchool() {
       setDisplayTeachers,
       setDisplayTeacherClassrooms,
     )
-    let { wondeClassrooms } = await getClassroomsFromWonde(selectedSchool.wondeID)
-    console.log(wondeClassrooms)
+    // let { wondeClassrooms } = await getClassroomsFromWonde(selectedSchool.wondeID)
+    // console.log(wondeClassrooms)
 
     setIsLoadingTeachers(false)
     formatStudentClassrooms(
@@ -484,7 +492,13 @@ function NewSchool() {
           // lookup the yearLevelID to save
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => uniqueClassroomsArray[index].yearCode === o.yearCode,
+            (o) => {
+              let yearCode = uniqueClassroomsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueClassroomsArray[index].yearCode)))
+                yearCode = `Y${uniqueClassroomsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
             // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
 
@@ -701,18 +715,21 @@ function NewSchool() {
           // lookup the yearLevelID to save
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+            (o) => {
+              let yearCode = uniqueStudentsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
+            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
+
           //console.log('yearLevelRecord', yearLevelRecord)
           let id = v4()
 
           // Converting the original wonde values set for gender,dob to the ones required by the student table in dynamo
-          let gender =
-            uniqueStudentsArray[index].gender === 'M'
-              ? 'Male'
-              : uniqueStudentsArray[index].gender === 'F'
-              ? 'Female'
-              : 'NOT STATED'
+          let gender = uniqueStudentsArray[index].gender
           let dob = '1999-01-01'
           if (dayjs(uniqueStudentsArray[index].dob).isValid())
             dob = dayjs(uniqueStudentsArray[index].dob).format('YYYY-MM-DD')
@@ -890,10 +907,19 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           // lookup the yearLevelID to save
+
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+            (o) => {
+              let yearCode = uniqueStudentsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
+            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
+
           //console.log("yearLevelRecord", yearLevelRecord);
           let id = v4()
           let schoolYear = parseInt(dayjs().format('YYYY'))
@@ -989,6 +1015,7 @@ function NewSchool() {
         }
       } // end array loop
       console.timeEnd('Saved classroomStudents')
+      console.log('The complete process has finished')
     } catch (err) {
       console.log(err)
     } // end saving classroomStudents
@@ -1088,6 +1115,7 @@ function NewSchool() {
               parentKindyOptions={kinterDayClasses}
               parentKindyClassName={kinterDayClassName}
               parentCoreSubjectOption={coreSubjectOption}
+              setParentCoreSubjectOption={setCoreSubjectOption}
               setOptionsPopupVisible={setOptionsPopupVisible}
               setParentYearOptions={setYearOptions}
               setParentKinterDayClassName={setKinterDayClassName}

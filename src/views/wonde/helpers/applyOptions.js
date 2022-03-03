@@ -3,10 +3,17 @@
 //    Only include years 1-12,FY and K by default or otherwise the contents of
 //    Add year level to the start of Classroom names if not already there
 //    Remove Mon-AM, Mon-PM and replace with "Mon-Fri" for FY students
-export function applyOptions(listToFilter, yearOptions, kinterDayClasses, kinterDayClassName) {
+export function applyOptions(
+  listToFilter,
+  yearOptions,
+  kinterDayClasses,
+  kinterDayClassName,
+  coreSubjectOption,
+) {
   // when we reach here the year levels are all good or UNKNOWN
   // The list is filtered by wondeStudentId
   console.log('listToFilter', listToFilter)
+  console.log('coreSubjectOption', coreSubjectOption)
   let filteredList = []
 
   // use this variable to eliminate duplicate classes for Kindy students
@@ -26,12 +33,39 @@ export function applyOptions(listToFilter, yearOptions, kinterDayClasses, kinter
           (currentStudentWondeId && currentStudentWondeId !== student.SwondeId)
         ) {
           currentStudentWondeId = student.SwondeId
-          student.classroomName = kinterDayClassName
-          filteredList.push(student)
+          let classroomName = kinterDayClassName
+          // Creating a new object to avoid changing the original classroom value of the student
+          filteredList.push({ ...student, classroomName })
         }
       } else {
         // add the row if not Kintergarten
-        filteredList.push(student)
+        if (coreSubjectOption) {
+          let classroomName = ''
+          if (student.classroomName.includes(' Te') || student.classroomName.includes('Techno')) {
+            classroomName = 'Technology'
+            filteredList.push({ ...student, classroomName })
+          } else if (
+            student.classroomName.includes(' Ma') ||
+            student.classroomName.includes('Math')
+          ) {
+            classroomName = 'Mathematics'
+            filteredList.push({ ...student, classroomName })
+          } else if (
+            student.classroomName.includes(' En') ||
+            student.classroomName.includes('English')
+          ) {
+            classroomName = 'English'
+            filteredList.push({ ...student, classroomName })
+          } else if (
+            student.classroomName.includes(' Sc') ||
+            student.classroomName.includes('Science')
+          ) {
+            classroomName = 'Science'
+            filteredList.push({ ...student, classroomName })
+          }
+        } else {
+          filteredList.push(student)
+        }
       }
     }
   })

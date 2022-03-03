@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Popup, Position, ToolbarItem } from 'devextreme-react/popup'
 import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
@@ -23,63 +23,80 @@ export function OptionsPopup({
   setParentKinterDayClasses,
   // eslint-disable-next-line react/prop-types
   setParentKinterDayClassName,
+  // eslint-disable-next-line react/prop-types
+  setParentCoreSubjectOption,
 }) {
   const [kindyOption, setKindyOption] = useState(parentKindyOptions)
   const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
-  const [bulkSwitch, setBulkSwitch] = useState(false)
   const [coreSubjectOption, setCoreSubjectOption] = useState(parentCoreSubjectOption)
   const [yearOptions, setYearOptions] = useState(parentYearOptions)
+  const [selectAllToggle, setSelectAllToggle] = useState(false)
+
+  useEffect(() => {
+    console.log('rendered', yearOptions)
+  }, [yearOptions])
+
   // this is fired if any year level option changes
   function yearOptionChanged(e) {
-    console.log(e.component._props.text, e.value)
-    let yearOptionsCopy = yearOptions
-    switch (e.component._props.text) {
-      case 'Year 1':
-        yearOptionsCopy.Y1 = e.value
-        break
-      case 'Year 2':
-        yearOptionsCopy.Y2 = e.value
-        break
-      case 'Year 3':
-        yearOptionsCopy.Y3 = e.value
-        break
-      case 'Year 4':
-        yearOptionsCopy.Y4 = e.value
-        break
-      case 'Year 5':
-        yearOptionsCopy.Y5 = e.value
-        break
-      case 'Year 6':
-        yearOptionsCopy.Y6 = e.value
-        break
-      case 'Year 7':
-        yearOptionsCopy.Y7 = e.value
-        break
-      case 'Year 8':
-        yearOptionsCopy.Y8 = e.value
-        break
-      case 'Year 9':
-        yearOptionsCopy.Y9 = e.value
-        break
-      case 'Year 10':
-        yearOptionsCopy.Y10 = e.value
-        break
-      case 'Year 11':
-        yearOptionsCopy.Y11 = e.value
-        break
-      case 'Year 12':
-        yearOptionsCopy.Y12 = e.value
-        break
-      case 'Kindy':
-        yearOptionsCopy.K = e.value
-        break
-      case 'Reception/Fy':
-        yearOptionsCopy.R = e.value
-        break
-      default:
-        break
+    if (e.event) {
+      console.log('event', e)
+      console.log(e.component._props.text, e.value)
+      let yearOptionsCopy = { ...yearOptions }
+      switch (e.component._props.text) {
+        case 'Year 1':
+          yearOptionsCopy.Y1 = e.value
+          break
+        case 'Year 2':
+          yearOptionsCopy.Y2 = e.value
+          break
+        case 'Year 3':
+          yearOptionsCopy.Y3 = e.value
+          break
+        case 'Year 4':
+          yearOptionsCopy.Y4 = e.value
+          break
+        case 'Year 5':
+          yearOptionsCopy.Y5 = e.value
+          break
+        case 'Year 6':
+          yearOptionsCopy.Y6 = e.value
+          break
+        case 'Year 7':
+          yearOptionsCopy.Y7 = e.value
+          break
+        case 'Year 8':
+          yearOptionsCopy.Y8 = e.value
+          break
+        case 'Year 9':
+          yearOptionsCopy.Y9 = e.value
+          break
+        case 'Year 10':
+          yearOptionsCopy.Y10 = e.value
+          break
+        case 'Year 11':
+          yearOptionsCopy.Y11 = e.value
+          break
+        case 'Year 12':
+          yearOptionsCopy.Y12 = e.value
+          break
+        case 'Year 13':
+          yearOptionsCopy.Y13 = e.value
+          break
+        case 'Kindy':
+          yearOptionsCopy.K = e.value
+          break
+        case 'Reception/FY':
+          if (process.env.REACT_APP_REGION === 'ap-southeast-2') {
+            yearOptionsCopy.FY = e.value
+          } else {
+            yearOptionsCopy.R = e.value
+          }
+          break
+        default:
+          break
+      }
+      setYearOptions(yearOptionsCopy)
     }
-    setYearOptions(yearOptionsCopy)
   }
 
   // this is fired when the opption to remove Kindy duplicates changes
@@ -104,6 +121,7 @@ export function OptionsPopup({
     setParentYearOptions(yearOptions)
     setParentKinterDayClassName(kindyClassname)
     setParentKinterDayClasses(kindyOption)
+    setParentCoreSubjectOption(coreSubjectOption)
     setOptionsPopupVisible(false)
   }
 
@@ -115,31 +133,39 @@ export function OptionsPopup({
 
   // this is fired when selectAll or deselectall is presses
   function selectAll(e) {
-    return // causes recursive update and crashes
+    // return // causes recursive update and crashes
     let tickboxVal
-    if (e.component._props.text === 'Select All') {
+    if (selectAllToggle) {
       tickboxVal = true
       console.log('selectAll')
+      setSelectAllToggle(false)
     } else {
       tickboxVal = false
       console.log('deselectAll')
+      setSelectAllToggle(true)
     }
-    setYearOptions({
-      Y1: tickboxVal,
-      Y2: tickboxVal,
-      Y3: tickboxVal,
-      Y4: tickboxVal,
-      Y5: tickboxVal,
-      Y6: tickboxVal,
-      Y7: tickboxVal,
-      Y8: tickboxVal,
-      Y9: tickboxVal,
-      Y10: tickboxVal,
-      Y11: tickboxVal,
-      Y12: tickboxVal,
-      K: tickboxVal,
-      R: tickboxVal,
-    })
+    let yearOptionsCopy = {}
+    yearOptionsCopy.Y1 = tickboxVal
+    yearOptionsCopy.Y2 = tickboxVal
+    yearOptionsCopy.Y3 = tickboxVal
+    yearOptionsCopy.Y4 = tickboxVal
+    yearOptionsCopy.Y5 = tickboxVal
+    yearOptionsCopy.Y6 = tickboxVal
+    yearOptionsCopy.Y7 = tickboxVal
+    yearOptionsCopy.Y8 = tickboxVal
+    yearOptionsCopy.Y9 = tickboxVal
+    yearOptionsCopy.Y10 = tickboxVal
+    yearOptionsCopy.Y11 = tickboxVal
+    yearOptionsCopy.Y12 = tickboxVal
+    yearOptionsCopy.Y13 = tickboxVal
+    yearOptionsCopy.K = tickboxVal
+    if (process.env.REACT_APP_REGION === 'ap-southeast-2') {
+      yearOptionsCopy.FY = tickboxVal
+    } else {
+      yearOptionsCopy.R = tickboxVal
+    }
+
+    setYearOptions(yearOptionsCopy)
   }
 
   return (
@@ -155,6 +181,7 @@ export function OptionsPopup({
       height={500}
     >
       <Position at="center" my="center" of={null} />
+
       <ToolbarItem
         widget="dxButton"
         toolbar="bottom"
@@ -179,110 +206,64 @@ export function OptionsPopup({
         <CRow>
           <CCol sm={4}>
             <div>
-              <CheckBox
-                defaultValue={yearOptions.Y1}
-                text="Year 1"
-                onValueChanged={yearOptionChanged}
-              />
+              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y3} text="Year 3" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y4} text="Year 4" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y5} text="Year 5" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y6} text="Year 6" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y7} text="Year 7" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y8} text="Year 8" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y9} text="Year 9" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y10} text="Year 10" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y11} text="Year 11" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y12} text="Year 12" onValueChanged={yearOptionChanged} />
+            </div>
+            {process.env.REACT_APP_REGION === 'eu-west-2' && (
+              <div>
+                <CheckBox
+                  value={yearOptions.Y13}
+                  text="Year 13"
+                  onValueChanged={yearOptionChanged}
+                />
+              </div>
+            )}
+            <div>
+              <CheckBox value={yearOptions.K} text="Kindy" onValueChanged={yearOptionChanged} />
             </div>
             <div>
               <CheckBox
-                defaultValue={yearOptions.Y2}
-                text="Year 2"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y3}
-                text="Year 3"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y4}
-                text="Year 4"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y5}
-                text="Year 5"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y6}
-                text="Year 6"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y7}
-                text="Year 7"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y8}
-                text="Year 8"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y9}
-                text="Year 9"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y10}
-                text="Year 10"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y11}
-                text="Year 11"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.Y12}
-                text="Year 12"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.K}
-                text="Kindy"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div>
-              <CheckBox
-                defaultValue={yearOptions.R}
+                value={
+                  process.env.REACT_APP_REGION === 'ap-southeast-2' ? yearOptions.FY : yearOptions.R
+                }
                 text="Reception/FY"
                 onValueChanged={yearOptionChanged}
               />
             </div>
             <div style={{ height: '20px' }}></div>
-            <div>
-              <CheckBox defaultValue={false} text="Select All" onValueChanged={selectAll} />
-            </div>
-            <div>
-              <CheckBox defaultValue={false} text="Deselect All" onValueChanged={selectAll} />
-            </div>
+            <Button onClick={selectAll}>{selectAllToggle ? 'Select All' : 'Deselect All'}</Button>
           </CCol>
           <CCol sm={8}>
             <div>

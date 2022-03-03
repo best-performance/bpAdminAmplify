@@ -6,7 +6,7 @@ const AUSTOKEN = 'Bearer 4ef8fc0053696f4202062ac598943fc1de66c606' // new as of 
 
 // FEATURE-TOGGLE
 export function getURL() {
-  return UKURL
+  // return UKURL
   switch (process.env.REACT_APP_REGION) {
     case 'ap-southeast-2':
       return AUSURL
@@ -18,7 +18,7 @@ export function getURL() {
 }
 // FEATURE-TOGGLE
 export function getToken() {
-  return UKTOKEN
+  // return UKTOKEN
   switch (process.env.REACT_APP_REGION) {
     case 'ap-southeast-2':
       return AUSTOKEN
