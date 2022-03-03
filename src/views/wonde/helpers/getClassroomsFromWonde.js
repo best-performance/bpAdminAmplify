@@ -34,5 +34,5 @@ export async function getClassroomsFromWonde(wondeSchoolID) {
     console.log('error reading Wonde teachers', error.message)
     return { result: false, msg: error.message }
   }
-  return { wondeCalssrooms: wondeClassrooms }
+  return { wondeClassrooms: wondeClassrooms }
 }

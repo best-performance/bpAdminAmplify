@@ -1,34 +1,34 @@
 import React, { useState } from 'react'
 import { Popup, Position, ToolbarItem } from 'devextreme-react/popup'
+import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
 
-export function OptionsPopup(
-  closePopup,
-  updateKindyOption,
-  updateKindyClassname,
-  updateYearOptions,
-) {
-  const [kindyOption, setKindyOption] = useState(true)
-  const [kindyClassname, setKindyClassname] = useState('K Mon-Fri')
-
-  const [yearOptions, setYearOptions] = useState({
-    Y1: false,
-    Y2: true,
-    Y3: true,
-    Y4: true,
-    Y5: true,
-    Y6: true,
-    Y7: true,
-    Y8: true,
-    Y9: true,
-    Y10: true,
-    Y11: true,
-    Y12: true,
-    K: true,
-    R: true,
-  })
+// eslint-disable-next-line react/prop-types
+export function OptionsPopup({
+  // eslint-disable-next-line react/prop-types
+  parentYearOptions,
+  // eslint-disable-next-line react/prop-types
+  parentKindyOptions,
+  // eslint-disable-next-line react/prop-types
+  parentKindyClassName,
+  // eslint-disable-next-line react/prop-types
+  parentCoreSubjectOption,
+  // eslint-disable-next-line react/prop-types
+  setOptionsPopupVisible,
+  // eslint-disable-next-line react/prop-types
+  setParentYearOptions,
+  // eslint-disable-next-line react/prop-types
+  setParentKinterDayClasses,
+  // eslint-disable-next-line react/prop-types
+  setParentKinterDayClassName,
+}) {
+  const [kindyOption, setKindyOption] = useState(parentKindyOptions)
+  const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
+  const [bulkSwitch, setBulkSwitch] = useState(false)
+  const [coreSubjectOption, setCoreSubjectOption] = useState(parentCoreSubjectOption)
+  const [yearOptions, setYearOptions] = useState(parentYearOptions)
   // this is fired if any year level option changes
   function yearOptionChanged(e) {
     console.log(e.component._props.text, e.value)
@@ -93,14 +93,53 @@ export function OptionsPopup(
     console.log()
   }
 
+  // this is fired when the opption to remove Kindy duplicates changes
+  function coreSubjectOptionChanged(e) {
+    setCoreSubjectOption(e.value)
+    console.log(e.value)
+  }
   // this is fired when done and we want to apply the filters
   function applyFilters() {
     console.log('apply filters')
+    setParentYearOptions(yearOptions)
+    setParentKinterDayClassName(kindyClassname)
+    setParentKinterDayClasses(kindyOption)
+    setOptionsPopupVisible(false)
   }
 
   // this is fired when done and we want to apply the filters
   function cancel() {
     console.log('cancel')
+    setOptionsPopupVisible(false)
+  }
+
+  // this is fired when selectAll or deselectall is presses
+  function selectAll(e) {
+    return // causes recursive update and crashes
+    let tickboxVal
+    if (e.component._props.text === 'Select All') {
+      tickboxVal = true
+      console.log('selectAll')
+    } else {
+      tickboxVal = false
+      console.log('deselectAll')
+    }
+    setYearOptions({
+      Y1: tickboxVal,
+      Y2: tickboxVal,
+      Y3: tickboxVal,
+      Y4: tickboxVal,
+      Y5: tickboxVal,
+      Y6: tickboxVal,
+      Y7: tickboxVal,
+      Y8: tickboxVal,
+      Y9: tickboxVal,
+      Y10: tickboxVal,
+      Y11: tickboxVal,
+      Y12: tickboxVal,
+      K: tickboxVal,
+      R: tickboxVal,
+    })
   }
 
   return (
@@ -113,14 +152,14 @@ export function OptionsPopup(
       title="Upload Filter Options"
       container=".dx-viewport"
       width={500}
-      height={450}
+      height={500}
     >
       <Position at="center" my="center" of={null} />
       <ToolbarItem
         widget="dxButton"
         toolbar="bottom"
         location="before"
-        options={{ text: 'Apply Filters', onClick: applyFilters }}
+        options={{ text: 'Accept', onClick: applyFilters }}
       />
       <ToolbarItem
         widget="dxButton"
@@ -237,6 +276,13 @@ export function OptionsPopup(
                 onValueChanged={yearOptionChanged}
               />
             </div>
+            <div style={{ height: '20px' }}></div>
+            <div>
+              <CheckBox defaultValue={false} text="Select All" onValueChanged={selectAll} />
+            </div>
+            <div>
+              <CheckBox defaultValue={false} text="Deselect All" onValueChanged={selectAll} />
+            </div>
           </CCol>
           <CCol sm={8}>
             <div>
@@ -254,6 +300,14 @@ export function OptionsPopup(
                 label="Kindy classname to use"
                 height="50px"
                 hint="edit to change the name of kindy classroom"
+              />
+            </div>
+            <div style={{ height: '15px' }}></div>
+            <div>
+              <CheckBox
+                defaultValue={coreSubjectOption}
+                text="Core subject classrooms only"
+                onValueChanged={coreSubjectOptionChanged}
               />
             </div>
           </CCol>

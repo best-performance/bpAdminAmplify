@@ -11,14 +11,9 @@ export function formatStudentClassrooms(
   wondeTeachers,
   selectedSchool,
   setStudentClassrooms,
-  setFilteredStudentClassrooms,
-  yearFilters,
-  kinterDayClasses,
-  kinterDayClassName,
 ) {
   console.log('Wonde Students', wondeStudents)
   console.log('wondeTeachers', wondeTeachers)
-  console.log('yearFilters', yearFilters)
 
   let studentClassroomsTmp = []
   wondeStudents.forEach((student, index) => {
@@ -142,43 +137,4 @@ export function formatStudentClassrooms(
   })
   let studentClassroomsTmpSorted = _.sortBy(studentClassroomsTmp, ['yearCode', 'wondeStudentId'])
   setStudentClassrooms(studentClassroomsTmpSorted) // for display in "upload Format" tab
-  setFilteredStudentClassrooms(
-    applyFilters(studentClassroomsTmpSorted, yearFilters, kinterDayClasses, kinterDayClassName),
-  ) // for dsplay in "upload Format filtered" tab
 } // end of formatStudentClassrooms()
-
-// This filters the studentclassroom list to remove unwanted records
-// Filter Rules:
-//    Only include years 1-12,FY and K by default or otherwise the contents of
-//    Add year level to the start of Classroom names if not already there
-//    Remove Mon-AM, Mon-PM and replace with "Mon-Fri" for FY students
-function applyFilters(listToFilter, yearFilters, kinterDayClasses, kinterDayClassName) {
-  // when we reach here the year levels are all good or UNKNOWN
-  // The list is filtered by wondeStudentId
-  let filteredList = []
-
-  // use this variable to eliminate duplicate classes for Kindy students
-  let currentStudentWondeId = null
-
-  listToFilter.forEach((student) => {
-    // must be one of the selected years
-    if (yearFilters.find((yearCode) => yearCode === student.yearCode)) {
-      // remove duplicate Kindy classes based on Mon-AM ect
-      // for now we remove all duplicate classrooms
-      if (student.yearCode === 'K') {
-        if (
-          !currentStudentWondeId ||
-          (currentStudentWondeId && currentStudentWondeId !== student.SwondeId)
-        ) {
-          currentStudentWondeId = student.SwondeId
-          student.classroomName = kinterDayClassName
-          filteredList.push(student)
-        }
-      } else {
-        filteredList.push(student)
-      }
-    }
-  })
-
-  return filteredList
-} // end function applyFilters()

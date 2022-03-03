@@ -5,7 +5,7 @@ import Button from 'devextreme-react/button'
 import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
-import _ from 'lodash'
+//import _ from 'lodash'
 import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
@@ -13,7 +13,9 @@ import { v4 } from 'uuid'
 import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
 import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
+import { getClassroomsFromWonde } from './helpers/getClassroomsFromWonde'
 import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
+import { applyOptions } from './helpers/applyOptions' // for filtering the CSV data
 import { OptionsPopup } from './helpers/optionsPopup'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
@@ -91,26 +93,44 @@ function NewSchool() {
   const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
+  // this controls the options popup
+  const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
+
   // These variables control the CSV filtering
-  const [yearFilters, setYearFilters] = useState([
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '10',
-    '11',
-    '12',
-    'R',
-    'FY',
-    'K',
-  ])
+  const [yearOptions, setYearOptions] = useState({
+    Y1: true,
+    Y2: true,
+    Y3: true,
+    Y4: true,
+    Y5: true,
+    Y6: true,
+    Y7: true,
+    Y8: true,
+    Y9: true,
+    Y10: true,
+    Y11: true,
+    Y12: true,
+    K: true,
+    R: true,
+  })
   const [kinterDayClasses, setKinterDayClasses] = useState([false]) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
+  const [coreSubjectOption, setCoreSubjectOption] = useState(true)
+
+  function getFilterOptions() {
+    console.log('get filter options')
+    setOptionsPopupVisible(true)
+  }
+
+  function applyFilterOptions() {
+    console.log('apply filter options')
+    console.log(yearOptions)
+
+    // apply the filters - but it won't work here
+    setFilteredStudentClassrooms(
+      applyOptions(studentClassrooms, yearOptions, kinterDayClasses, kinterDayClassName),
+    )
+  }
 
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
@@ -234,16 +254,15 @@ function NewSchool() {
       setDisplayTeachers,
       setDisplayTeacherClassrooms,
     )
+    let { wondeClassrooms } = await getClassroomsFromWonde(selectedSchool.wondeID)
+    console.log(wondeClassrooms)
+
     setIsLoadingTeachers(false)
     formatStudentClassrooms(
       wondeStudentsTemp,
       wondeTeachersTemp,
       selectedSchool,
       setStudentClassrooms,
-      setFilteredStudentClassrooms,
-      yearFilters,
-      kinterDayClasses,
-      kinterDayClassName,
     ) // this is for the uploader format
     setSchoolDataLoaded(true)
   }
@@ -1024,14 +1043,10 @@ function NewSchool() {
         <h4 className="text-center">Wonde Integration - New School Uptake</h4>
       </CRow>
       <div className="d-flex justify-content-center">
-        <Button
-          className="btn btn-primary"
-          style={{ marginBottom: '10px' }}
-          onClick={getAllSchools}
-        >
+        <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>
           List All Available Wonde Schools
         </Button>
-        <Button className="btn btn-primary" style={{ marginBottom: '10px' }} onClick={testFunction}>
+        <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
           run testFunction()
         </Button>
       </div>
@@ -1067,22 +1082,43 @@ function NewSchool() {
         </CCol>
         <CCol></CCol>
         <CRow>
-          <OptionsPopup></OptionsPopup>
+          {optionsPopupVisible ? (
+            <OptionsPopup
+              parentYearOptions={yearOptions}
+              parentKindyOptions={kinterDayClasses}
+              parentKindyClassName={kinterDayClassName}
+              parentCoreSubjectOption={coreSubjectOption}
+              setOptionsPopupVisible={setOptionsPopupVisible}
+              setParentYearOptions={setYearOptions}
+              setParentKinterDayClassName={setKinterDayClassName}
+              setParentKinterDayClasses={setKinterDayClasses}
+            ></OptionsPopup>
+          ) : null}
         </CRow>
       </CRow>
       <div className="d-flex justify-content-center">
         {selectedSchool.schoolName !== 'none' ? (
           <>
-            <Button
-              className="btn btn-primary"
-              style={{ marginBottom: '10px' }}
-              onClick={getSchoolData}
-            >
+            <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={getSchoolData}>
               {`Get data for ${selectedSchool.schoolName} from Wonde`}
             </Button>
             <Button
-              className="btn btn-primary"
               style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
+              onClick={getFilterOptions}
+            >
+              {`set Filter Options`}
+            </Button>
+            <Button
+              style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
+              onClick={applyFilterOptions}
+            >
+              {`Apply Filter Options`}
+            </Button>
+            <Button
+              style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
               onClick={deleteAllTables}
             >
               {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
@@ -1094,8 +1130,8 @@ function NewSchool() {
         {schoolDataLoaded ? (
           <>
             <Button
-              className="btn btn-primary"
               style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
               onClick={saveSchoolCSVtoDynamoDB}
             >
               {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
