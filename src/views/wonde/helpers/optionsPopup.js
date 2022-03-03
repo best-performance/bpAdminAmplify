@@ -4,6 +4,7 @@ import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
+import { isAUSRegion, isUKRegion } from './featureToggles'
 
 // eslint-disable-next-line react/prop-types
 export function OptionsPopup({
@@ -86,7 +87,7 @@ export function OptionsPopup({
           yearOptionsCopy.K = e.value
           break
         case 'Reception/FY':
-          if (process.env.REACT_APP_REGION === 'ap-southeast-2') {
+          if (isAUSRegion()) {
             yearOptionsCopy.FY = e.value
           } else {
             yearOptionsCopy.R = e.value
@@ -159,7 +160,7 @@ export function OptionsPopup({
     yearOptionsCopy.Y12 = tickboxVal
     yearOptionsCopy.Y13 = tickboxVal
     yearOptionsCopy.K = tickboxVal
-    if (process.env.REACT_APP_REGION === 'ap-southeast-2') {
+    if (isAUSRegion()) {
       yearOptionsCopy.FY = tickboxVal
     } else {
       yearOptionsCopy.R = tickboxVal
@@ -241,7 +242,7 @@ export function OptionsPopup({
             <div>
               <CheckBox value={yearOptions.Y12} text="Year 12" onValueChanged={yearOptionChanged} />
             </div>
-            {process.env.REACT_APP_REGION === 'eu-west-2' && (
+            {isUKRegion() && (
               <div>
                 <CheckBox
                   value={yearOptions.Y13}
@@ -255,9 +256,7 @@ export function OptionsPopup({
             </div>
             <div>
               <CheckBox
-                value={
-                  process.env.REACT_APP_REGION === 'ap-southeast-2' ? yearOptions.FY : yearOptions.R
-                }
+                value={isAUSRegion() ? yearOptions.FY : yearOptions.R}
                 text="Reception/FY"
                 onValueChanged={yearOptionChanged}
               />

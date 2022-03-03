@@ -1,4 +1,4 @@
-import { getToken, getURL } from './wondeUrlToken'
+import { getToken, getURL } from './featureToggles'
 import axios from 'axios'
 
 // local function to find/guess a class's learning Area (relocated from the lambda)

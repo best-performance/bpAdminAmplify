@@ -15,23 +15,9 @@ import { cilMenu } from '@coreui/icons'
 
 import { logoNegative } from 'src/assets/brand/logo-negative'
 
-const region = process.env.REACT_APP_REGION
+import { getRegionName } from 'src/views/wonde/helpers/featureToggles'
 
-// get the region name for display purposes FEATURE-TOGGLE
-function getRegionName() {
-  switch (region) {
-    case 'ap-southeast-2':
-      return `Sydney, Australia (${region})`
-
-    case 'eu-west-2':
-      return `London, England ${region}`
-
-    default:
-      return `Sydney, Australia (${region})`
-  }
-}
-
-const AppHeader = () => {
+function AppHeader() {
   const { loggedIn } = useContext(loggedInContext)
   const dispatch = useDispatch()
   const sidebarShow = useSelector((state) => state.sidebarShow)

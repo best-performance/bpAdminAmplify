@@ -1,4 +1,4 @@
-import { getToken, getURL } from './wondeUrlToken'
+import { getToken, getURL } from './featureToggles'
 import axios from 'axios'
 import dayjs from 'dayjs'
 import _ from 'lodash'

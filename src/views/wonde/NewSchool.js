@@ -21,7 +21,7 @@ import { saveSchool } from './helpers/saveSchool' // save it if it does not alre
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
 import { addNewCognitoUser, getCognitoUser } from './helpers/cognitoFns'
 import { batchWrite } from './helpers/batchWrite'
-import { getToken, getURL } from './helpers/wondeUrlToken'
+import { getToken, getURL } from './helpers/featureToggles'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml

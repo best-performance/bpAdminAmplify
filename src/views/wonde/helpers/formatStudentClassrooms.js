@@ -1,6 +1,7 @@
 import dayjs from 'dayjs'
 import _ from 'lodash'
-import { getYearCodeForYear0 } from './getYearCodeForYear0'
+import { getYearCodeForYear0 } from './featureToggles'
+import { isAUSRegion } from './featureToggles'
 const UNKNOWN = 'unknown'
 
 // This displays data in the same format (csv like) as we would use in the manual uploader
@@ -72,14 +73,14 @@ export function formatStudentClassrooms(
     if (yearCode === UNKNOWN) {
       let numStr = student.year.data.code.match(/\d+/) // match returns an array
       if (numStr) {
-        let upperYearLevel = process.env.REACT_APP_REGION === 'ap-southeast-2' ? 12 : 13
+        let upperYearLevel = isAUSRegion() ? 12 : 13
         let num = parseInt(numStr[0])
         if (num > 0 && num <= upperYearLevel) {
           //yearCode = `Y${num.toString()}`
           yearCode = num.toString() // "5" not "Y5" is expected by the csv
         } else if (num === 0) {
           console.log('came here with the 0 condition ', numStr)
-          yearCode = process.env.REACT_APP_REGION === 'ap-southeast-2' ? 'FY' : 'R'
+          yearCode = isAUSRegion() ? 'FY' : 'R'
         } else {
           console.log(
             `Year code out of range 0-${upperYearLevel} for ${student.forename} ${student.surname} ${student.date_of_birth.date}, found ${numStr}`,
