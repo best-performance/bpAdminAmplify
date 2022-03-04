@@ -1,9 +1,7 @@
-import React, { useState } from 'react'
-import { CContainer, CCol, CRow } from '@coreui/react'
-import axios from 'axios'
-import Button from 'devextreme-react/button'
+import React from 'react'
+import { CContainer, CRow } from '@coreui/react'
 
-
+function LandingPage() {
   return (
     <>
       <CContainer>
