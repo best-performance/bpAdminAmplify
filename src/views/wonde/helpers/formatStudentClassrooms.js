@@ -113,9 +113,16 @@ export function formatStudentClassrooms(
     // now process the classrooms - could has no classroom assigned
     student.classes.data.forEach((classroom) => {
       let classroomPart = {}
+      let subjectName = ''
+      if (classroom.subject) {
+        subjectName = classroom.subject.data.name
+      }
+
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
       classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
-      classroomPart.classroomName = classroom.name
+      classroomPart.classroomName = `${classroom.name} ${subjectName}` // Claire's court specific column
+      classroomPart.subject = subjectName // Claire's court specific column
+
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom
 
       // First make dummy columns for the teachers (up to 5 teachers)
@@ -153,9 +160,28 @@ export function formatStudentClassrooms(
         classroomPart[wondeId] = teacher.id
         classroomPart[mis_id] = teacher.mis_id
       })
-      studentClassroomsTmp.push({ ...studentPart, ...classroomPart })
+      studentClassroomsTmp.push({
+        ...studentPart,
+        ...classroomPart,
+        numericYearLevel: getNumericYearLevel(studentPart.yearCode),
+      })
     })
   })
-  let studentClassroomsTmpSorted = _.sortBy(studentClassroomsTmp, ['yearCode', 'wondeStudentId'])
+  let studentClassroomsTmpSorted = _.sortBy(studentClassroomsTmp, [
+    'numericYearLevel',
+    'wondeStudentId',
+  ])
   setStudentClassrooms(studentClassroomsTmpSorted) // for display in "upload Format" tab
 } // end of formatStudentClassrooms()
+
+function getNumericYearLevel(yearCode) {
+  switch (yearCode) {
+    case 'K':
+      return -1
+    case 'FY':
+    case 'R':
+      return 0
+    default:
+      return parseInt(yearCode)
+  }
+}

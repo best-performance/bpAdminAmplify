@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
+import { DataGrid, MasterDetail, Selection, SearchPanel, Column } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
 //import _ from 'lodash'
@@ -92,6 +92,8 @@ function NewSchool() {
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
+
+  const [showAllColumns, setShowAllColumns] = useState(false)
 
   // this controls the options popup
   const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
@@ -1186,6 +1188,29 @@ function NewSchool() {
                     dataSource={studentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Column caption="First Name" dataField="firstName" />
+                    <Column caption="Middle Name" dataField="middleName" />
+                    <Column caption="Last Name" dataField="lastName" />
+                    <Column caption="Year Code" dataField="yearCode" />
+                    <Column caption="Gender" dataField="gender" />
+                    <Column caption="DOB" dataField="dob" />
+                    <Column caption="Classroom Name" dataField="classroomName" />
+                    <Column caption="Subject" dataField="subject" />
+                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
+                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
+                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
+                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
+                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
+                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
+                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
+                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
+                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
+                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
+                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
+                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
+                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
+                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
+                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
                   </DataGrid>
                 )}
               </CRow>
@@ -1207,6 +1232,29 @@ function NewSchool() {
                     dataSource={filteredStudentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Column caption="First Name" dataField="firstName" />
+                    <Column caption="Middle Name" dataField="middleName" />
+                    <Column caption="Last Name" dataField="lastName" />
+                    <Column caption="Year Code" dataField="yearCode" />
+                    <Column caption="Gender" dataField="gender" />
+                    <Column caption="DOB" dataField="dob" />
+                    <Column caption="Classroom Name" dataField="classroomName" />
+                    <Column caption="Subject" dataField="subject" />
+                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
+                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
+                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
+                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
+                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
+                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
+                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
+                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
+                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
+                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
+                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
+                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
+                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
+                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
+                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
                   </DataGrid>
                 )}
               </CRow>

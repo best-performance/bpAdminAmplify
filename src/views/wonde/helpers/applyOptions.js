@@ -21,50 +21,45 @@ export function applyOptions(
 
   listToFilter.forEach((student) => {
     let yearCode = student.yearCode
+    let studentYear = parseInt(student.yearCode)
     // have to put a Y in front of numeric keys
-    if (!isNaN(parseInt(student.yearCode))) yearCode = `Y${student.yearCode}`
+    if (!isNaN(studentYear)) yearCode = `Y${student.yearCode}`
     // must be one of the selected years
     if (yearOptions[yearCode]) {
       // remove duplicate Kindy classes based on Mon-AM ect
       // for now we remove all duplicate classrooms
-      if (kinterDayClasses && student.yearCode === 'K') {
+      if (
+        (kinterDayClasses && ['K', 'FY', 'R'].lastIndexOf(student.student.yearCode) > -1) ||
+        (studentYear >= 1 && studentYear <= 6)
+      ) {
         if (
           !currentStudentWondeId ||
           (currentStudentWondeId && currentStudentWondeId !== student.SwondeId)
         ) {
-          currentStudentWondeId = student.SwondeId
-          let classroomName = kinterDayClassName
-          // Creating a new object to avoid changing the original classroom value of the student
-          filteredList.push({ ...student, classroomName })
-        }
-      } else {
-        // add the row if not Kintergarten
-        if (coreSubjectOption) {
-          let classroomName = ''
-          if (student.classroomName.includes(' Te') || student.classroomName.includes('Techno')) {
-            classroomName = 'Technology'
-            filteredList.push({ ...student, classroomName })
-          } else if (
-            student.classroomName.includes(' Ma') ||
-            student.classroomName.includes('Math')
-          ) {
-            classroomName = 'Mathematics'
-            filteredList.push({ ...student, classroomName })
-          } else if (
-            student.classroomName.includes(' En') ||
-            student.classroomName.includes('English')
-          ) {
-            classroomName = 'English'
-            filteredList.push({ ...student, classroomName })
-          } else if (
-            student.classroomName.includes(' Sc') ||
-            student.classroomName.includes('Science')
-          ) {
-            classroomName = 'Science'
-            filteredList.push({ ...student, classroomName })
+          if (['English', 'Mathematics'].lastIndexOf(student.subject) > -1) {
+            currentStudentWondeId = student.SwondeId
+            let classroomName = student.classroomName.substring(
+              0,
+              student.classroomName.indexOf(' '),
+            )
+            // Creating a new object to avoid changing the original classroom value of the student
+            filteredList.push({ ...student, classroomName, subject: 'PRIMARY' })
           }
-        } else {
-          filteredList.push(student)
+        }
+      }
+
+      if (studentYear > 6 && studentYear <= 13) {
+        if (coreSubjectOption) {
+          if (student.classroomName.includes('Mathematics')) {
+            // classroomName = 'Mathematics'
+            filteredList.push(student)
+          } else if (student.classroomName.includes('English')) {
+            // classroomName = 'English'
+            filteredList.push(student)
+          } else if (student.classroomName.includes('Science')) {
+            // classroomName = 'Science'
+            filteredList.push(student)
+          }
         }
       }
     }

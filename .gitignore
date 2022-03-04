@@ -15,8 +15,9 @@ package-lock.json
 .DS_Store
 .idea
 .env.local
-.env.UK.local
-.env.AUS.local
+.env.dev.UK.local
+.env.prod.UK.local
+.env.dev.AUS.local
 .env.development.local
 .env.test.local
 .env.production.local
