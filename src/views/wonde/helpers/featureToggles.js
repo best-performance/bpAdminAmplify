@@ -10,7 +10,7 @@ const AUSTOKEN = 'Bearer 4ef8fc0053696f4202062ac598943fc1de66c606' // new as of 
 
 // FEATURE-TOGGLE
 export function getURL() {
-  return UKURL
+  // return UKURL
   switch (process.env.REACT_APP_REGION) {
     case 'ap-southeast-2':
       return AUSURL
@@ -22,7 +22,7 @@ export function getURL() {
 }
 // FEATURE-TOGGLE
 export function getToken() {
-  return UKTOKEN
+  // return UKTOKEN
   switch (process.env.REACT_APP_REGION) {
     case 'ap-southeast-2':
       return AUSTOKEN
@@ -52,6 +52,11 @@ export function isAUSRegion() {
 export function isUKRegion() {
   if (process.env.REACT_APP_REGION === 'eu-west-2') return true
   return false
+}
+
+// This returns the region code
+export function getRegion() {
+  return process.env.REACT_APP_REGION
 }
 
 // get the region name for display purposes FEATURE-TOGGLE

@@ -2,13 +2,14 @@ import React from 'react'
 import { useEffect } from 'react'
 import { Auth } from 'aws-amplify'
 import AWS, { CognitoIdentityServiceProvider } from 'aws-sdk'
+import { getRegion, getRegionName } from 'src/views/wonde/helpers/featureToggles'
 
 function ManageUsers() {
   useEffect(() => {
     Auth.currentCredentials().then(async (credentials) => {
       AWS.config.update({
         credentials: credentials,
-        region: 'ap-southeast-2',
+        region: getRegion(),
       })
 
       const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()

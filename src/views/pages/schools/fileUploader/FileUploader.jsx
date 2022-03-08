@@ -6,6 +6,7 @@ import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
+import { getRegion, getRegionName } from 'src/views/wonde/helpers/featureToggles'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()
@@ -25,7 +26,7 @@ const FileUploader = () => {
   useEffect(() => {
     Storage.configure({
       bucket: 'bpadmin-sandbox-au',
-      region: 'ap-southeast-2',
+      region: getRegion(),
       identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
     })
     listCurrentfiles()

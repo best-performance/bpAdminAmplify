@@ -21,7 +21,7 @@ import { saveSchool } from './helpers/saveSchool' // save it if it does not alre
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
 import { addNewCognitoUser, getCognitoUser } from './helpers/cognitoFns'
 import { batchWrite } from './helpers/batchWrite'
-import { getToken, getURL } from './helpers/featureToggles'
+import { getRegion, getRegionName, getToken, getURL } from './helpers/featureToggles'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -158,7 +158,7 @@ function NewSchool() {
 
       AWS.config.update({
         credentials: credentials,
-        region: 'ap-southeast-2',
+        region: getRegion(),
       })
       const docClient = new AWS.DynamoDB.DocumentClient()
       let response
@@ -299,6 +299,7 @@ function NewSchool() {
       console.log('School saved', schoolID)
     } catch (err) {
       console.log('error saving school', err)
+      return
     }
 
     // From here we assume [FilteredStudentClassrooms] contains filtered data
