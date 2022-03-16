@@ -1,8 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { CSidebar, CSidebarNav, CSidebarToggler, CContainer, CCol, CRow } from '@coreui/react'
-import flagOz from './australia.png' //
-import flagUk from './uk.png' //
 import { AppSidebarNav } from './AppSidebarNav'
 import SimpleBar from 'simplebar-react'
 import 'simplebar/dist/simplebar.min.css'
@@ -10,22 +8,7 @@ import 'simplebar/dist/simplebar.min.css'
 import navigation from '../_nav'
 import loggedInContext from 'src/loggedInContext'
 import _ from 'lodash'
-
-const region = process.env.REACT_APP_REGION
-
-// display a flag to represent the region of deployment FEATURE-TOGGLE
-function getFlag() {
-  switch (region) {
-    case 'ap-southeast-2':
-      return flagOz
-
-    case 'eu-west-2':
-      return flagUk
-
-    default:
-      return flagOz
-  }
-}
+import { getRegionFlag } from 'src/views/wonde/helpers/featureToggles'
 
 const AppSidebar = () => {
   const dispatch = useDispatch()
@@ -34,17 +17,32 @@ const AppSidebar = () => {
   const { loggedIn } = useContext(loggedInContext)
 
   const [navItems, setNavItems] = useState([])
-
   useEffect(() => {
     const items = _.chain(navigation)
       .filter((item) => {
-        if (!item.visibleWithoutLogin && !loggedIn.username) {
+        if (item.visiblewithoutlogin === 'false' && !loggedIn.username) {
           return false
         }
-        if (item.visibleWithoutLogin && loggedIn.username) {
+        if (item.visiblewithoutlogin === 'true' && loggedIn.username) {
+          return false
+        }
+
+        if (item.name === 'Login' && loggedIn.username) {
+          return false
+        }
+        if (
+          item.school &&
+          item.school !== 'all' &&
+          'Best Performance School'.toUpperCase() !==
+            (loggedIn.schoolName ? loggedIn.schoolName.toUpperCase() : '')
+        ) {
           return false
         }
         return true
+      })
+      .map((item) => {
+        delete item.visibleWithoutLogin
+        return item
       })
       .value()
     setNavItems(items)
@@ -62,7 +60,7 @@ const AppSidebar = () => {
       <CContainer fluid>
         <CRow>
           <CCol style={{ textAlign: 'center' }}>
-            <img src={getFlag()} alt="" width="100" height="70"></img>
+            <img src={getRegionFlag()} alt="" width="100" height="70"></img>
           </CCol>
         </CRow>
       </CContainer>

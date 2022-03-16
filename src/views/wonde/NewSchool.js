@@ -2,11 +2,17 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import { DataGrid, MasterDetail, Selection, SearchPanel } from 'devextreme-react/data-grid'
+import {
+  DataGrid,
+  MasterDetail,
+  Selection,
+  SearchPanel,
+  Column,
+  Export,
+} from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
-import axios from 'axios'
 import dayjs from 'dayjs'
-import _ from 'lodash'
+//import _ from 'lodash'
 import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
@@ -15,11 +21,13 @@ import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
 import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
 import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
+import { applyOptions } from './helpers/applyOptions' // for filtering the CSV data
+import { OptionsPopup } from './helpers/optionsPopup'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser, getCognitoUser } from './helpers/cognitoFns'
+import { addNewCognitoUser } from './helpers/cognitoFns'
 import { batchWrite } from './helpers/batchWrite'
-import { getToken, getURL } from './helpers/wondeUrlToken'
+import { getRegion, getToken, getURL } from './helpers/featureToggles'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -27,26 +35,30 @@ import { getToken, getURL } from './helpers/wondeUrlToken'
 // This first runs the env-cmd that loads the environment variables prior to the main start script
 
 //Lookup tables
-const COUNTRY_TABLE = 'Country'
-const YEARLEVEL_TABLE = 'YearLevel'
-//const STATE_TABLE = 'State'
-//const LEARNINGAREA_TABLE = 'LearningArea'
+const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
+const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
+const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
+//const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
 
 // Tables to store school data
 // We need to generalise this for regional table names
 // Maybe use a dynamo query to list the available table names?
-const SCHOOL_TABLE = 'Schools'
-const STUDENT_TABLE = 'Student'
-const USER_TABLE = 'User'
-const SCHOOL_STUDENT_TABLE = 'SchoolStudent'
-const CLASSROOM_TABLE = 'Classroom'
-const CLASSROOM_TEACHER_TABLE = 'ClassroomTeacher'
-const CLASSROOM_STUDENT_TABLE = 'ClassroomStudent'
-const CLASSROOM_YEARLEVEL_TABLE = 'ClassroomYearLevel'
-//const CLASSROOM_LEARNING_AREA_TABLE = 'ClassroomLearningArea'
-//const STUDENT_DATA_TABLE = 'StudentData'
+const SCHOOL_TABLE = process.env.REACT_APP_SCHOOL_TABLE
+const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
+const USER_TABLE = process.env.REACT_APP_USER_TABLE
+const SCHOOL_STUDENT_TABLE = process.env.REACT_APP_SCHOOL_STUDENT_TABLE
+const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
+const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
+const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
+const CLASSROOM_YEARLEVEL_TABLE = process.env.REACT_APP_CLASSROOM_YEARLEVEL_TABLE
+//const CLASSROOM_LEARNINGAREA_TABLE = process.env.REACT_APP_CLASSROOM_LEARNINGAREA_TABLE
+//const STUDENT_DATA_TABLE = process.env.REACT_APP_STUDENT_DATA_TABLE
 
-const SCHOOL_GSI_INDEX = 'wondeIDIndex'
+// Not environment varible as this is not region-dependent
+const SCHOOL_WONDE_INDEX = 'byWondeID'
+
+// Constant used to create the teacher and student entries in cognito
+const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
 
 // some constants for good practice
 const EMPTY = 'EMPTY'
@@ -64,13 +76,13 @@ function NewSchool() {
   const [wondeStudents, setWondeStudents] = useState([])
   const [wondeTeachers, setWondeTeachers] = useState([])
 
-  // Next four are for the steduent-teacher and classroom-teacher displays
+  // Next four are for the student-teacher and classroom-teacher displays
   const [displayStudents, setDisplayStudents] = useState([])
   const [displayTeachers, setDisplayTeachers] = useState([])
   const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
   const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
 
-  // This one is for the upload display (as per the standard upload spreadsheet)
+  // This one is for the CSV upload display (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
   const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
 
@@ -84,8 +96,55 @@ function NewSchool() {
   // to locate respective item ids
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
-  // const [statesLookup, setStatesLookup] = useState([])
+  const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
+
+  // this controls the options popup
+  const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
+
+  // These variables control the CSV filtering
+  const [yearOptions, setYearOptions] = useState({
+    Y1: true,
+    Y2: true,
+    Y3: true,
+    Y4: true,
+    Y5: true,
+    Y6: true,
+    Y7: true,
+    Y8: true,
+    Y9: true,
+    Y10: true,
+    Y11: true,
+    Y12: true,
+    Y13: true,
+    K: true,
+    R: true,
+    FY: true,
+  })
+  const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
+  const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
+  const [coreSubjectOption, setCoreSubjectOption] = useState(true)
+
+  function getFilterOptions() {
+    console.log('get filter options')
+    setOptionsPopupVisible(true)
+  }
+
+  function applyFilterOptions() {
+    console.log('apply filter options')
+    console.log(yearOptions)
+
+    // apply the filters - but it won't work here
+    setFilteredStudentClassrooms(
+      applyOptions(
+        studentClassrooms,
+        yearOptions,
+        kinterDayClasses,
+        kinterDayClassName,
+        coreSubjectOption,
+      ),
+    )
+  }
 
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
@@ -103,7 +162,7 @@ function NewSchool() {
 
       AWS.config.update({
         credentials: credentials,
-        region: 'ap-southeast-2',
+        region: getRegion(),
       })
       const docClient = new AWS.DynamoDB.DocumentClient()
       let response
@@ -111,8 +170,8 @@ function NewSchool() {
       setCountriesLookup(response.Items)
       response = await docClient.scan({ TableName: YEARLEVEL_TABLE }).promise()
       setYearLevelsLoookup(response.Items)
-      // response = await docClient.scan({ TableName: STATE_TABLE }).promise()
-      // setStatesLookup(response.Items)
+      response = await docClient.scan({ TableName: STATE_TABLE }).promise()
+      setStatesLookup(response.Items)
       // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
       // setLearningAreasLookup(response.Items)
     }
@@ -120,9 +179,9 @@ function NewSchool() {
     console.log('Loaded lookup tables from dynamoDB in UseEffect()')
   }, [])
 
-  // This is for testing to delete all records form the Dynamo tables if they exist
+  // This is for testing to delete all records form the Dynamo tables if th  ey exist
   async function deleteAllTables() {
-    await deleteSchoolDataFromDynamoDB()
+    await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -131,34 +190,31 @@ function NewSchool() {
   async function testFunction() {
     console.log('testFuntion() invoked')
     console.log('yearLevels', yearLevelsLookup)
+    console.log('countries', countriesLookup)
+    console.log('states', statesLookup)
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
-    console.log(`USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
+    console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
-    console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
+    // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
-    console.log(`USER_POOL_ID2 ${process.env.REACT_APP_USER_POOL_ID2}`)
-    console.log(`USER_POOL_CLIENT_ID2 ${process.env.REACT_APP_USER_POOL_CLIENT_ID2}`)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
-    let response = await getCognitoUser(
-      'randomJunk@northpol.com',
-      process.env.REACT_APP_USER_POOL_ID2,
-    )
-    if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
-    else {
-      console.log(response)
-    }
+    // let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
+    // if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
+    // else {
+    //   console.log(response)
+    // }
     // try to locate a known email
-    response = await getCognitoUser(
-      'testUser13@BPAdmin.com.au',
-      process.env.REACT_APP_USER_POOL_ID2,
-    )
-    if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
-    else {
-      console.log(response) // should print the users details
-    }
+    // response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    // if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
+    // else {
+    //   console.log(response) // should print the users details
+    // }
+
+    // let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+    // console.log('result after adding the user', result)
   } // end of testFuntion()
 
   // Invokes function to get the list of available schools from Wonde
@@ -212,13 +268,15 @@ function NewSchool() {
       setDisplayTeachers,
       setDisplayTeacherClassrooms,
     )
+    // let { wondeClassrooms } = await getClassroomsFromWonde(selectedSchool.wondeID)
+    // console.log(wondeClassrooms)
+
     setIsLoadingTeachers(false)
     formatStudentClassrooms(
       wondeStudentsTemp,
       wondeTeachersTemp,
       selectedSchool,
       setStudentClassrooms,
-      setFilteredStudentClassrooms,
     ) // this is for the uploader format
     setSchoolDataLoaded(true)
   }
@@ -235,12 +293,18 @@ function NewSchool() {
      */
     let schoolID // the EC id of the saved School
     try {
-      schoolID = await saveSchool(selectedSchool, countriesLookup, SCHOOL_TABLE, SCHOOL_GSI_INDEX)
+      schoolID = await saveSchool(
+        selectedSchool,
+        countriesLookup,
+        statesLookup,
+        SCHOOL_TABLE,
+        SCHOOL_WONDE_INDEX,
+      )
       console.log('School saved', schoolID)
     } catch (err) {
       console.log('error saving school', err)
+      return
     }
-
     // From here we assume [FilteredStudentClassrooms] contains filtered data
     // It has an artifical email address firstnamelastname@schoolname poked in
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
@@ -248,6 +312,8 @@ function NewSchool() {
     let uniqueClassroomsMap = new Map()
     let uniqueTeachersMap = new Map()
     let uniqueStudentsMap = new Map()
+    // This map is used to store the teachers emails and the cognito username. Later, based on the email, the userId will be updated properly.
+    let teacherCognitoUserNames = new Map()
 
     filteredStudentClassrooms.forEach((row) => {
       // Make a unique list of classrooms
@@ -256,6 +322,7 @@ function NewSchool() {
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
+          mis_id: row.Cmis_id,
         })
       }
       // Make a unique list of students
@@ -263,7 +330,9 @@ function NewSchool() {
         uniqueStudentsMap.set(row.SwondeId, {
           email: row.email,
           wondeId: row.SwondeId, // not in EdC
+          mis_id: row.Smis_id,
           firstName: row.firstName,
+          middleName: row.middleName,
           lastName: row.lastName,
           yearCode: row.yearCode,
           gender: row.gender,
@@ -276,6 +345,7 @@ function NewSchool() {
         let fnameKey = `teacher${n + 1} FirstName`
         let lnameKey = `teacher${n + 1} LastName`
         let emailKey = `teacher${n + 1} email`
+        let mis_id = `T${n + 1} mis_id`
         if (row[wondeId] !== '-') {
           // mostly 1 teacher
           if (!uniqueTeachersMap.get(row[wondeId])) {
@@ -284,6 +354,7 @@ function NewSchool() {
               firstName: row[fnameKey],
               lastName: row[lnameKey],
               email: row[emailKey],
+              mis_id: row[mis_id],
             })
           }
         }
@@ -295,7 +366,7 @@ function NewSchool() {
     const uniqueTeachersArray = Array.from(uniqueTeachersMap.values())
     const uniqueStudentsArray = Array.from(uniqueStudentsMap.values())
 
-    // console.dir(uniqueClassroomsArray)
+    console.dir(uniqueClassroomsArray)
     // console.dir(uniqueTeachersArray)
     // console.dir(uniqueStudentsArray)
 
@@ -306,6 +377,7 @@ function NewSchool() {
           add to classroomYearLevel
 	        add to classroomLearningArea
      */
+
     try {
       console.time('Saved Classrooms') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
@@ -315,6 +387,7 @@ function NewSchool() {
 
       // process each batch
       let index = 0 //index to uniqueClassroomsArray
+      const schoolYear = parseInt(dayjs().format('YYYY'))
       for (let i = 0; i < batchesCount; i++) {
         let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
         if (batchSize === 0) break // must have been an even no of batches
@@ -322,20 +395,23 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           let id = v4()
+          const className = uniqueClassroomsArray[index].className
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 classType: 'Classroom',
                 // focusGroupType: null, // its not a focus group
-                className: uniqueClassroomsArray[index].className,
-                schoolYear: dayjs().format('YYYY'),
+                className: className,
+                schoolYear: schoolYear,
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeId: uniqueClassroomsArray[index].wondeId, // not in EdC
-                mis_id: 'to be included', // not in EdC
+                wondeID: uniqueClassroomsArray[index].wondeId, // not in EdC
+                MISID: uniqueClassroomsArray[index].mis_id, // not in EdC
                 __typename: 'Classroom',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'classType#schoolYear': `Classroom#${schoolYear}`,
+                'schoolYear#className': `${schoolYear}#${className}`,
                 // other optional fields not uploaded
                 //    focusGroupType
               },
@@ -422,7 +498,13 @@ function NewSchool() {
           // lookup the yearLevelID to save
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => uniqueClassroomsArray[index].yearCode === o.yearCode,
+            (o) => {
+              let yearCode = uniqueClassroomsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueClassroomsArray[index].yearCode)))
+                yearCode = `Y${uniqueClassroomsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
             // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
 
@@ -435,8 +517,8 @@ function NewSchool() {
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
                 yearLevelID: yearLevelRecord.id,
                 __typename: 'ClassroomYearLevel',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -455,6 +537,27 @@ function NewSchool() {
       console.log(err)
       return { result: false, msg: err.message } // abandon ship
     } // end save classrommYearLevel
+
+    // Save the teachers
+    // add to user
+    // add to Cognito *
+    // add to classroomTeacher *
+    try {
+      console.time('saved teachers cognito')
+
+      for (let i = 0; i < uniqueTeachersArray.length; i++) {
+        let teacher = uniqueTeachersArray[i]
+        let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+        if (result.username === FAILED) {
+          console.log(
+            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
+          )
+        } else {
+          teacherCognitoUserNames.set(teacher.email, result.username)
+        }
+      }
+      console.timeEnd('saved teachers cognito')
+    } catch (err) {}
 
     /**
      * Save the classrooms
@@ -495,24 +598,27 @@ function NewSchool() {
           if (!uniqueTeachersArray[index].email) {
             uniqueTeachersArray[index].email = `${id}@placeholder.com`
           }
+          let userId = teacherCognitoUserNames.get(uniqueTeachersArray[index].email)
+          // if there is no any userId returned by the cognito teacher map, then the record is not created in the user table
+          if (!userId) continue
           batchToWrite.push({
             PutRequest: {
               Item: {
-                userId: id, // this is the EdC id generated locally
+                userId, // this is the EdC id generated locally
                 firstName: uniqueTeachersArray[index].firstName,
                 lastName: uniqueTeachersArray[index].lastName,
                 email: uniqueTeachersArray[index].email,
                 userGroup: 'Users',
                 userType: 'Educator', // or could be "Student"
-                lastSignIn: '', // this will be a date
-                userSchoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeId: uniqueTeachersArray[index].wondeId, // not in EdC
-                mis_id: 'to be included',
                 enabled: false, // login enabled or not
+                userSchoolID: schoolID, // not in Wonde - generated above when saving the school
+                wondeID: uniqueTeachersArray[index].wondeId, // not in EdC
+                MISID: uniqueTeachersArray[index].mis_id,
                 dbType: 'user',
                 __typename: 'User',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                // fields not added lastSignIn
               },
             },
           })
@@ -533,22 +639,6 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving teachers
-
-    // Save the teachers
-    // add to user
-    // add to Cognito *
-    // add to classroomTeacher *
-    try {
-      console.time('saved teachers cognito')
-      uniqueTeachersArray.forEach(async (teacher) => {
-        let username = await addNewCognitoUser(teacher.email, process.env.REACT_APP_USER_POOL_ID2)
-        if (username === FAILED)
-          console.log(
-            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
-          )
-      })
-      console.timeEnd('saved teachers cognito')
-    } catch (err) {}
 
     // Save the teachers
     // add to user
@@ -581,8 +671,8 @@ function NewSchool() {
                 classroomID: classroomTeachersArray[index].classroomID,
                 email: classroomTeachersArray[index].email,
                 __typename: 'ClassroomTeacher',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -631,25 +721,42 @@ function NewSchool() {
           // lookup the yearLevelID to save
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+            (o) => {
+              let yearCode = uniqueStudentsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
+            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
+
           //console.log('yearLevelRecord', yearLevelRecord)
           let id = v4()
+
+          // Converting the original wonde values set for gender,dob to the ones required by the student table in dynamo
+          let gender = uniqueStudentsArray[index].gender
+          let dob = '1999-01-01'
+          if (dayjs(uniqueStudentsArray[index].dob).isValid())
+            dob = dayjs(uniqueStudentsArray[index].dob).format('YYYY-MM-DD')
+
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 firstName: uniqueStudentsArray[index].firstName,
                 lastName: uniqueStudentsArray[index].lastName,
-                middleName: '',
-                gender: uniqueStudentsArray[index].gender,
-                birthDate: uniqueStudentsArray[index].dob,
+                middleName: uniqueStudentsArray[index].middleName,
+                gender,
+                birthDate: dob,
                 yearLevelID: yearLevelRecord.id, // the lookup value
-                wondeId: uniqueStudentsArray[index].wondeId, // not in EdC
-                mis_id: 'to be included', // not in EdC
+                wondeID: uniqueStudentsArray[index].wondeId, // not in EdC
+                MISID: uniqueStudentsArray[index].mis_id, // not in EdC
                 __typename: 'Student', // used hard coded as tableName may change with env
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'middleName#lastName#birthDate': `${uniqueStudentsArray[index].middleName}#${uniqueStudentsArray[index].lastName}#${dob}`,
+                'lastName#birthDate': `${uniqueStudentsArray[index].lastName}#${dob}`,
                 // optional fields not populated
                 // photo
               },
@@ -751,15 +858,15 @@ function NewSchool() {
                 email: uniqueStudentsArrayWithEmail[index].email,
                 userGroup: 'Users',
                 userType: 'Student', // or could be "Educator"
-                lastSignIn: '', // this will be a date
                 userSchoolID: schoolID,
-                wondeId: uniqueStudentsArrayWithEmail[index].wondeId, // of the student
-                mis_id: 'to be included', // not in EdC
+                wondeID: uniqueStudentsArrayWithEmail[index].wondeId, // of the student
+                MISID: uniqueStudentsArrayWithEmail[index].mis_id, // not in EdC
                 enabled: false, // login enabled or not
                 dbType: 'user',
                 __typename: 'User',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                // fields not added lastSignIn
               },
             },
           })
@@ -806,26 +913,46 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           // lookup the yearLevelID to save
+
           let yearLevelRecord = yearLevelsLookup.find(
             // eslint-disable-next-line no-loop-func
-            (o) => o.yearCode === uniqueStudentsArray[index].yearCode,
+            (o) => {
+              let yearCode = uniqueStudentsArray[index].yearCode
+              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
+              return yearCode === o.yearCode
+            },
+
+            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
           )
+
           //console.log("yearLevelRecord", yearLevelRecord);
           let id = v4()
+          let schoolYear = parseInt(dayjs().format('YYYY'))
+          let yearLevelID = yearLevelRecord.id
+          let firstName = uniqueStudentsArray[index].firstName
+          let lastName = uniqueStudentsArray[index].lastName
+          let studentID = uniqueStudentsArray[index].studentID
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: id, // this is the EdC id generated locally
                 schoolID: schoolID,
-                studentID: uniqueStudentsArray[index].studentID,
-                schooolYear: dayjs().format('YYYY'),
-                yearLevelID: yearLevelRecord.id, // the lookup value
-                firstName: uniqueStudentsArray[index].firstName,
-                lastName: uniqueStudentsArray[index].lastName,
-                userId: '', // will be filled when student gets a login (its id not email!)
+                studentID,
+                schoolYear: schoolYear,
+                yearLevelID, // the lookup value
+                firstName: firstName,
+                lastName: lastName,
                 __typename: 'SchoolStudent',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                'schoolYear#firstName': `${schoolYear}#${firstName}`,
+                'schoolYear#lastName': `${schoolYear}#${lastName}`,
+                'schoolYear#studentID': `${schoolYear}#${studentID}`,
+                'schoolYear#yearLevelID': `${schoolYear}#${yearLevelID}`,
+                'schoolYear#yearLevelID#firstName': `${schoolYear}#${yearLevelID}#${firstName}`,
+                'schoolYear#yearLevelID#lastName': `${schoolYear}#${yearLevelID}#${lastName}`,
+                // fields not added: userId: '' - will be filled when student gets a login (its id not email!)
               },
             },
           })
@@ -878,8 +1005,8 @@ function NewSchool() {
                 classroomID: classroomStudentsArray[index].classroomID,
                 studentID: classroomStudentsArray[index].studentID,
                 __typename: 'ClassroomStudent',
-                createtAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
-                updatedAt: dayjs().format('YYYY-MM-DD HH-mm-sss'),
+                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
               },
             },
           })
@@ -894,6 +1021,7 @@ function NewSchool() {
         }
       } // end array loop
       console.timeEnd('Saved classroomStudents')
+      console.log('The complete process has finished')
     } catch (err) {
       console.log(err)
     } // end saving classroomStudents
@@ -948,14 +1076,10 @@ function NewSchool() {
         <h4 className="text-center">Wonde Integration - New School Uptake</h4>
       </CRow>
       <div className="d-flex justify-content-center">
-        <Button
-          className="btn btn-primary"
-          style={{ marginBottom: '10px' }}
-          onClick={getAllSchools}
-        >
+        <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>
           List All Available Wonde Schools
         </Button>
-        <Button className="btn btn-primary" style={{ marginBottom: '10px' }} onClick={testFunction}>
+        <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
           run testFunction()
         </Button>
       </div>
@@ -990,34 +1114,61 @@ function NewSchool() {
           <h6 className="text-center">{selectedSchool.schoolName}</h6>
         </CCol>
         <CCol></CCol>
+        <CRow>
+          {optionsPopupVisible ? (
+            <OptionsPopup
+              parentYearOptions={yearOptions}
+              parentKindyOptions={kinterDayClasses}
+              parentKindyClassName={kinterDayClassName}
+              parentCoreSubjectOption={coreSubjectOption}
+              setParentCoreSubjectOption={setCoreSubjectOption}
+              setOptionsPopupVisible={setOptionsPopupVisible}
+              setParentYearOptions={setYearOptions}
+              setParentKinterDayClassName={setKinterDayClassName}
+              setParentKinterDayClasses={setKinterDayClasses}
+            ></OptionsPopup>
+          ) : null}
+        </CRow>
       </CRow>
       <div className="d-flex justify-content-center">
         {selectedSchool.schoolName !== 'none' ? (
-          <Button
-            className="btn btn-primary"
-            style={{ marginBottom: '10px' }}
-            onClick={getSchoolData}
-          >
-            {`Get data for ${selectedSchool.schoolName} from Wonde`}
-          </Button>
+          <>
+            <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={getSchoolData}>
+              {`Get data for ${selectedSchool.schoolName} from Wonde`}
+            </Button>
+            <Button
+              style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
+              onClick={getFilterOptions}
+            >
+              {`set Filter Options`}
+            </Button>
+            <Button
+              style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
+              onClick={applyFilterOptions}
+            >
+              {`Apply Filter Options`}
+            </Button>
+            <Button
+              style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
+              onClick={deleteAllTables}
+            >
+              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
+            </Button>
+          </>
         ) : null}
       </div>
       <div className="d-flex justify-content-center">
         {schoolDataLoaded ? (
           <>
             <Button
-              className="btn btn-primary"
               style={{ marginBottom: '10px' }}
+              stylingMode="outlined"
               onClick={saveSchoolCSVtoDynamoDB}
             >
               {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
-            </Button>
-            <Button
-              className="btn btn-primary"
-              style={{ marginBottom: '10px' }}
-              onClick={deleteAllTables}
-            >
-              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
             </Button>
           </>
         ) : null}
@@ -1041,6 +1192,30 @@ function NewSchool() {
                     dataSource={studentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Export enabled={true} allowExportSelectedData={true} />
+                    <Column caption="First Name" dataField="firstName" />
+                    <Column caption="Middle Name" dataField="middleName" />
+                    <Column caption="Last Name" dataField="lastName" />
+                    <Column caption="Year Code" dataField="yearCode" />
+                    <Column caption="Gender" dataField="gender" />
+                    <Column caption="DOB" dataField="dob" />
+                    <Column caption="Classroom Name" dataField="classroomName" />
+                    <Column caption="Subject" dataField="subject" />
+                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
+                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
+                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
+                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
+                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
+                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
+                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
+                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
+                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
+                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
+                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
+                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
+                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
+                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
+                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
                   </DataGrid>
                 )}
               </CRow>
@@ -1062,6 +1237,30 @@ function NewSchool() {
                     dataSource={filteredStudentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Export enabled={true} allowExportSelectedData={true} />
+                    <Column caption="First Name" dataField="firstName" />
+                    <Column caption="Middle Name" dataField="middleName" />
+                    <Column caption="Last Name" dataField="lastName" />
+                    <Column caption="Year Code" dataField="yearCode" />
+                    <Column caption="Gender" dataField="gender" />
+                    <Column caption="DOB" dataField="dob" />
+                    <Column caption="Classroom Name" dataField="classroomName" />
+                    <Column caption="Subject" dataField="subject" />
+                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
+                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
+                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
+                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
+                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
+                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
+                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
+                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
+                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
+                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
+                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
+                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
+                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
+                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
+                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
                   </DataGrid>
                 )}
               </CRow>

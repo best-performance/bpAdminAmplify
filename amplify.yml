@@ -4,9 +4,25 @@ frontend:
     preBuild:
       commands:
         - echo "REACT_APP_REGION=$REGION" >> .env
-        - echo "REACT_APP_ENDPOINT=$ENDPOINT" >> .env
-        - echo "REACT_APP_USER_POOL_ID=$USER_POOL_ID" >> .env
         - echo "REACT_APP_USER_POOL_CLIENT_ID=$USER_POOL_CLIENT_ID" >> .env
+        - echo "REACT_APP_USER_POOL_ID=$USER_POOL_ID" >> .env
+        - echo "REACT_APP_EDCOMPANION_USER_POOL_CLIENT_ID=$EDCOMPANION_USER_POOL_CLIENT_ID" >> .env
+        - echo "REACT_APP_EDCOMPANION_USER_POOL_CLIENT_WEB_ID=$EDCOMPANION_USER_POOL_CLIENT_WEB_ID" >> .env
+        - echo "REACT_APP_EDCOMPANION_USER_POOL_ID=$EDCOMPANION_USER_POOL_ID" >> .env
+        - echo "REACT_APP_SCHOOL_STUDENT_TABLE=$SCHOOL_STUDENT_TABLE" >> .env
+        - echo "REACT_APP_SCHOOL_TABLE=$SCHOOL_TABLE" >> .env
+        - echo "REACT_APP_STATE_TABLE=$STATE_TABLE" >> .env
+        - echo "REACT_APP_STUDENT_DATA_TABLE=$STUDENT_DATA_TABLE" >> .env
+        - echo "REACT_APP_STUDENT_TABLE=$STUDENT_TABLE" >> .env
+        - echo "REACT_APP_USER_TABLE=$USER_TABLE" >> .env
+        - echo "REACT_APP_YEARLEVEL_TABLE=$YEARLEVEL_TABLE" >> .env
+        - echo "REACT_APP_CLASSROOM_LEARNINGAREA_TABLE=$CLASSROOM_LEARNINGAREA_TABLE" >> .env
+        - echo "REACT_APP_CLASSROOM_STUDENT_TABLE=$CLASSROOM_STUDENT_TABLE" >> .env
+        - echo "REACT_APP_CLASSROOM_TABLE=$CLASSROOM_TABLE" >> .env
+        - echo "REACT_APP_CLASSROOM_TEACHER_TABLE=$CLASSROOM_TEACHER_TABLE" >> .env
+        - echo "REACT_APP_CLASSROOM_YEARLEVEL_TABLE=$CLASSROOM_YEARLEVEL_TABLE" >> .env
+        - echo "REACT_APP_COUNTRY_TABLE=$COUNTRY_TABLE" >> .env
+        - echo "REACT_APP_LEARNINGAREA_TABLE=$LEARNINGAREA_TABLE" >> .env
         - yarn install --immutable --immutable-cache --check-cache
     build:
       commands:
@@ -14,7 +30,7 @@ frontend:
   artifacts:
     baseDirectory: build
     files:
-      - '**/*'
+      - '=$=$/=$'
   cache:
     paths:
-      - node_modules/**/*
+      - node_modules/=$=$/=$

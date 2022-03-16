@@ -21,7 +21,7 @@ export async function batchWrite(arrayOfItems, tableName) {
   //    },
   // }
 
-  if (arrayOfItems.length === 0) return { result: true, msg: 'no records' }
+  if (arrayOfItems.length === 0) return { result: true, msg: 'no records ' }
 
   // construct the params object
   let params = {

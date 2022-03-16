@@ -20,7 +20,7 @@ export const AppSidebarNav = ({ items }) => {
       setLoggedIn({
         username: false,
       })
-      history.push('/LandingPage')
+      history.push('/')
     } catch (err) {
       console.log('Logging out error', err)
     }

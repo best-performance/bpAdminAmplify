@@ -6,30 +6,38 @@ import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
+import { getRegion } from 'src/views/wonde/helpers/featureToggles'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()
   const [isSelected, setIsSelected] = useState(false)
   const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [schoolFiles, setSchoolFiles] = useState([])
-
   const { loggedIn } = useContext(loggedInContext)
 
+  useEffect(() => {
+    Storage.configure({
+      bucket: process.env.REACT_APP_UPLOADS_BUCKET,
+      region: getRegion(),
+      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
+    })
+    listCurrentfiles()
+    return () => {
+      setSelectedFile(null) // This worked for me
+      setIsSelected(false)
+      setIsUploadingFile(false)
+      setSchoolFiles([])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   async function listCurrentfiles() {
-    let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`)
+    let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
     setSchoolFiles(
       listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
     )
   }
 
-  useEffect(() => {
-    Storage.configure({
-      bucket: 'bpadmin-sandbox-au',
-      region: 'ap-southeast-2',
-      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
-    })
-    listCurrentfiles()
-  }, [])
   const changeHandler = (event) => {
     setSelectedFile(event.target.files[0])
     setIsSelected(true)
@@ -37,7 +45,7 @@ const FileUploader = () => {
 
   const uploadFileToS3 = async () => {
     setIsUploadingFile(true)
-    if (selectedFile) {
+    if (selectedFile && loggedIn.schoolName) {
       let extension = selectedFile.name.split('.').pop()
       if (['csv', 'xls', 'xlsx'].lastIndexOf(extension) > -1) {
         let currentFolders = await Storage.list('')
@@ -49,10 +57,11 @@ const FileUploader = () => {
         })
 
         if (!schoolFolder) {
-          await Storage.put(`${loggedIn.schoolName}/`, null, {})
+          await Storage.put(`${loggedIn.schoolName}/`, null, { level: 'protected' })
         }
 
         Storage.put(`${loggedIn.schoolName}/${selectedFile.name}`, selectedFile, {
+          level: 'protected',
           contentType: selectedFile.type,
         })
           .then((result) => {
@@ -67,6 +76,8 @@ const FileUploader = () => {
       } else {
         notify('Only spreadsheets with the format CSV, XLS, XLSX are accepted', 'error', 3000)
       }
+    } else if (!loggedIn.schoolName) {
+      notify("You don't have a school assigned, please contact the admin", 'error', 5000)
     } else {
       notify('You have not selected any file to upload', 'error', 3000)
     }
