@@ -80,7 +80,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
 
     let response = []
     let accumulated = []
-    let ExclusiveStartKey
+    // let ExclusiveStartKey
     do {
       try {
         response = await docClient.query(queryParams).promise()
@@ -88,7 +88,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
         console.log(`error getting the data from the table ${tableName}`, err)
       }
 
-      ExclusiveStartKey = response.LastEvaluatedKey
+      // ExclusiveStartKey = response.LastEvaluatedKey
       accumulated = [...accumulated, ...response.Items]
     } while (response.LastEvaluatedKey)
     return accumulated

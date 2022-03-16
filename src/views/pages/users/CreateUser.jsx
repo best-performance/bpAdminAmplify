@@ -26,7 +26,7 @@ const Login = () => {
     }
 
     try {
-      let result = await Auth.signUp({
+      await Auth.signUp({
         username,
         password: `${username}P${new Date().getFullYear()}!`,
         attributes: {
@@ -70,7 +70,7 @@ const Login = () => {
             <CCardGroup>
               <CCard>
                 <CCardBody>
-                  <form onSubmit={handleUserCreation}>
+                  <form>
                     <div className="dx-fieldset">
                       <div className="dx-fieldset-header">User info</div>
 
@@ -153,7 +153,12 @@ const Login = () => {
                         id="summary"
                         style={{ marginTop: '15px', marginBottom: '15px' }}
                       ></ValidationSummary>
-                      <Button id="button" text="Register" type="success" useSubmitBehavior={true} />
+                      <Button
+                        id="button"
+                        text="Register"
+                        type="success"
+                        onClick={handleUserCreation}
+                      />
                       <Button
                         id="button"
                         text="Reset Form"

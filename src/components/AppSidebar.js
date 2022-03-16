@@ -17,17 +17,32 @@ const AppSidebar = () => {
   const { loggedIn } = useContext(loggedInContext)
 
   const [navItems, setNavItems] = useState([])
-
   useEffect(() => {
     const items = _.chain(navigation)
       .filter((item) => {
-        if (!item.visibleWithoutLogin && !loggedIn.username) {
+        if (item.visiblewithoutlogin === 'false' && !loggedIn.username) {
           return false
         }
-        if (item.visibleWithoutLogin && loggedIn.username) {
+        if (item.visiblewithoutlogin === 'true' && loggedIn.username) {
+          return false
+        }
+
+        if (item.name === 'Login' && loggedIn.username) {
+          return false
+        }
+        if (
+          item.school &&
+          item.school !== 'all' &&
+          'Best Performance School'.toUpperCase() !==
+            (loggedIn.schoolName ? loggedIn.schoolName.toUpperCase() : '')
+        ) {
           return false
         }
         return true
+      })
+      .map((item) => {
+        delete item.visibleWithoutLogin
+        return item
       })
       .value()
     setNavItems(items)

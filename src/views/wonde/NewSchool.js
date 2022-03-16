@@ -2,7 +2,14 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import { DataGrid, MasterDetail, Selection, SearchPanel, Column } from 'devextreme-react/data-grid'
+import {
+  DataGrid,
+  MasterDetail,
+  Selection,
+  SearchPanel,
+  Column,
+  Export,
+} from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
 //import _ from 'lodash'
@@ -13,15 +20,14 @@ import { v4 } from 'uuid'
 import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
 import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
-import { getClassroomsFromWonde } from './helpers/getClassroomsFromWonde'
 import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
 import { applyOptions } from './helpers/applyOptions' // for filtering the CSV data
 import { OptionsPopup } from './helpers/optionsPopup'
 import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser, getCognitoUser } from './helpers/cognitoFns'
+import { addNewCognitoUser } from './helpers/cognitoFns'
 import { batchWrite } from './helpers/batchWrite'
-import { getRegion, getRegionName, getToken, getURL } from './helpers/featureToggles'
+import { getRegion, getToken, getURL } from './helpers/featureToggles'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -92,8 +98,6 @@ function NewSchool() {
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
-
-  const [showAllColumns, setShowAllColumns] = useState(false)
 
   // this controls the options popup
   const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
@@ -175,7 +179,7 @@ function NewSchool() {
     console.log('Loaded lookup tables from dynamoDB in UseEffect()')
   }, [])
 
-  // This is for testing to delete all records form the Dynamo tables if they exist
+  // This is for testing to delete all records form the Dynamo tables if th  ey exist
   async function deleteAllTables() {
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
   }
@@ -192,7 +196,7 @@ function NewSchool() {
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
     console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
-    console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
+    // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
 
     // try to locate a non-existant email
@@ -301,7 +305,6 @@ function NewSchool() {
       console.log('error saving school', err)
       return
     }
-
     // From here we assume [FilteredStudentClassrooms] contains filtered data
     // It has an artifical email address firstnamelastname@schoolname poked in
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
@@ -1189,6 +1192,7 @@ function NewSchool() {
                     dataSource={studentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Export enabled={true} allowExportSelectedData={true} />
                     <Column caption="First Name" dataField="firstName" />
                     <Column caption="Middle Name" dataField="middleName" />
                     <Column caption="Last Name" dataField="lastName" />
@@ -1233,6 +1237,7 @@ function NewSchool() {
                     dataSource={filteredStudentClassrooms}
                   >
                     <SearchPanel visible={true} />
+                    <Export enabled={true} allowExportSelectedData={true} />
                     <Column caption="First Name" dataField="firstName" />
                     <Column caption="Middle Name" dataField="middleName" />
                     <Column caption="Last Name" dataField="lastName" />

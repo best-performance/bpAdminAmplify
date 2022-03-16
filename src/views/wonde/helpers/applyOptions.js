@@ -18,7 +18,6 @@ export function applyOptions(
 
   // use this variable to eliminate duplicate classes for Kindy students
   let currentStudentWondeId = null
-
   listToFilter.forEach((student) => {
     let yearCode = student.yearCode
     let studentYear = parseInt(student.yearCode)
@@ -38,10 +37,7 @@ export function applyOptions(
         ) {
           if (['English', 'Mathematics'].lastIndexOf(student.subject) > -1) {
             currentStudentWondeId = student.SwondeId
-            let classroomName = student.classroomName.substring(
-              0,
-              student.classroomName.indexOf(' '),
-            )
+            let classroomName = `${student.classroomName.charAt(0)} ${student['teacher1 LastName']}`
             // Creating a new object to avoid changing the original classroom value of the student
             filteredList.push({ ...student, classroomName, subject: 'PRIMARY' })
           }

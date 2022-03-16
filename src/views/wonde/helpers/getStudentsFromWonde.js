@@ -1,6 +1,5 @@
 import { getToken, getURL } from './featureToggles'
 import axios from 'axios'
-import dayjs from 'dayjs'
 import _ from 'lodash'
 
 // gets the students list from one school - with classrooms and teachers

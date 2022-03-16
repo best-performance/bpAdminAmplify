@@ -17,6 +17,7 @@ import CIcon from '@coreui/icons-react'
 import { cilLockLocked, cilUser } from '@coreui/icons'
 import { Auth } from 'aws-amplify'
 import { useHistory } from 'react-router-dom'
+import notify from 'devextreme/ui/notify'
 
 const Login = () => {
   const [userName, setUserName] = useState('')
@@ -29,18 +30,29 @@ const Login = () => {
 
   async function handleLogin() {
     try {
-      console.log(`username: ${userName}, password ${password}`)
-      let user = await Auth.signIn(userName, password)
-      //const attributes = await Auth.userAttributes(user)
-      console.log('signIn user', user)
-      setLoggedIn({
-        username: user.username,
-        email: user.attributes.email,
-        schoolName: user.attributes['custom:schoolName'],
-      })
-      history.push('/LandingPage')
+      if (userName && password) {
+        console.log(`username: ${userName}, password ${password}`)
+        let user = await Auth.signIn(userName, password)
+        //const attributes = await Auth.userAttributes(user)
+        console.log('signIn user', user)
+        setLoggedIn({
+          username: user.username,
+          email: user.attributes.email,
+          schoolName: user.attributes['custom:schoolName'],
+        })
+        history.push('/LandingPage')
+      } else {
+        notify('👋 Please enter username and password to login', 'error', 3000)
+      }
     } catch (err) {
       console.log(err)
+      if (err && err.message) notify(err.message, 'error', 3000)
+    }
+  }
+
+  function handleKeyPress(target) {
+    if (target.code === 'Enter') {
+      handleLogin()
     }
   }
 
@@ -65,7 +77,7 @@ const Login = () => {
             <CCardGroup>
               <CCard className="p-4">
                 <CCardBody>
-                  <CForm>
+                  <CForm onSubmit={handleLogin} onKeyDown={handleKeyPress}>
                     <h5>Login to BPAdmin</h5>
                     <p className="text-medium-emphasis">Sign In to your account</p>
                     <CInputGroup className="mb-3">

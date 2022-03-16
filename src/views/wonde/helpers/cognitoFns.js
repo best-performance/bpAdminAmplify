@@ -99,7 +99,7 @@ export async function addUserToGroup(username, groupname, userPoolId) {
   }
 
   try {
-    const result = await cognitoIdentityServiceProvider.adminAddUserToGroup(params).promise()
+    await cognitoIdentityServiceProvider.adminAddUserToGroup(params).promise()
     return {
       message: `Success adding ${username} to ${groupname}`,
     }
@@ -120,7 +120,7 @@ export async function setUserPassword(username, password, temp = false, userPool
   }
 
   try {
-    const result = await cognitoIdentityServiceProvider.adminSetUserPassword(params).promise()
+    await cognitoIdentityServiceProvider.adminSetUserPassword(params).promise()
     return {
       message: `Success setting password for ${username}`,
     }
@@ -139,7 +139,7 @@ export async function deleteUser(username, userPoolId) {
   }
 
   try {
-    const result = await cognitoIdentityServiceProvider.adminDeleteUser(params).promise()
+    await cognitoIdentityServiceProvider.adminDeleteUser(params).promise()
     return {
       message: `Success deleting ${username}`,
     }
@@ -188,7 +188,7 @@ export async function confirmUserSignUp(username, userPoolId) {
   }
 }
 
-async function disableUser(username, userPoolId) {
+export async function disableUser(username, userPoolId) {
   await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
   const params = {
