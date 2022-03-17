@@ -16,6 +16,7 @@ package-lock.json
 .idea
 .env.local
 .env.dev.UK.local
+.env.UK.local
 .env.prod.UK.local
 .env.dev.AUS.local
 .env.development.local

@@ -10,7 +10,7 @@ export function applyOptions(
   kinterDayClassName,
   coreSubjectOption,
 ) {
-  // when we reach here the year levels are all good or UNKNOWN
+  // when we reach here the year levels are all good or UNKNOWN ((Remove later))
   // The list is filtered by wondeStudentId
   console.log('listToFilter', listToFilter)
   console.log('coreSubjectOption', coreSubjectOption)
