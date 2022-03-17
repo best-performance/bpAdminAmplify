@@ -29,45 +29,44 @@ const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 
 function App() {
   // changed to a functional component to enable use of hooks (bc)
-  const [loggedIn, setLoggedIn] = useState({ username: false }) // when logged in this will have a value like "brendan"
-  console.log('in App', loggedIn)
-
-  useEffect(() => {
-    const reviewAuthenticatedUser = async () => {
-      const userAuth = await Auth.currentAuthenticatedUser()
-      console.log('data', userAuth)
-      if (userAuth) {
-        setLoggedIn({
-          username: userAuth.username,
-          email: userAuth.attributes.email,
-          schoolName: userAuth.attributes['custom:schoolName'],
-        })
-      }
-    }
-    reviewAuthenticatedUser()
-  }, [])
-
-  return (
-    <loggedInContext.Provider value={{ loggedIn, setLoggedIn }}>
-      <HashRouter>
-        <React.Suspense fallback={loading}>
-          <Switch>
-            {/* <Route exact path="/login" name="Login Page" render={(props) => <Login {...props} />} /> */}
-            {/* Uncomment if you want a Register form
-              <Route
-              exact
-              path="/register"
-              name="Register Page"
-              render={(props) => <Register {...props} />}
-            /> */}
-            <Route exact path="/404" name="Page 404" render={(props) => <Page404 {...props} />} />
-            <Route exact path="/500" name="Page 500" render={(props) => <Page500 {...props} />} />
-            <Route path="/" name="Home" render={(props) => <DefaultLayout {...props} />} />
-          </Switch>
-        </React.Suspense>
-      </HashRouter>
-    </loggedInContext.Provider>
-  )
+  // const [loggedIn, setLoggedIn] = useState({ username: false }) // when logged in this will have a value like "brendan"
+  // console.log('in App', loggedIn)
+  // useEffect(() => {
+  //   const reviewAuthenticatedUser = async () => {
+  //     const userAuth = await Auth.currentAuthenticatedUser()
+  //     console.log('data', userAuth)
+  //     if (userAuth) {
+  //       setLoggedIn({
+  //         username: userAuth.username,
+  //         email: userAuth.attributes.email,
+  //         schoolName: userAuth.attributes['custom:schoolName'],
+  //       })
+  //     }
+  //   }
+  //   reviewAuthenticatedUser()
+  // }, [])
+  // return (
+  //   <loggedInContext.Provider value={{ loggedIn, setLoggedIn }}>
+  //     <HashRouter>
+  //       <React.Suspense fallback={loading}>
+  //         <Switch>
+  //           {/* <Route exact path="/login" name="Login Page" render={(props) => <Login {...props} />} /> */}
+  //           {/* Uncomment if you want a Register form
+  //             <Route
+  //             exact
+  //             path="/register"
+  //             name="Register Page"
+  //             render={(props) => <Register {...props} />}
+  //           /> */}
+  //           <Route exact path="/404" name="Page 404" render={(props) => <Page404 {...props} />} />
+  //           <Route exact path="/500" name="Page 500" render={(props) => <Page500 {...props} />} />
+  //           <Route path="/" name="Home" render={(props) => <DefaultLayout {...props} />} />
+  //         </Switch>
+  //       </React.Suspense>
+  //     </HashRouter>
+  //   </loggedInContext.Provider>
+  // )
+  return <div>Hello World</div>
 }
 
 export default App
