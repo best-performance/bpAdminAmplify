@@ -30,14 +30,14 @@ const AppSidebar = () => {
         if (item.name === 'Login' && loggedIn.username) {
           return false
         }
-        // if (
-        //   item.school &&
-        //   item.school !== 'all' &&
-        //   'Best Performance School'.toUpperCase() !==
-        //     (loggedIn.schoolName ? loggedIn.schoolName.toUpperCase() : '')
-        // ) {
-        //   return false
-        // }
+        if (
+          item.school &&
+          item.school !== 'all' &&
+          'Best Performance School'.toUpperCase() !==
+            (loggedIn.schoolName ? loggedIn.schoolName.toUpperCase() : '')
+        ) {
+          return false
+        }
         return true
       })
       .map((item) => {
