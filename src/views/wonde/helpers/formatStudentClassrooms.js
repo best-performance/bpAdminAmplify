@@ -120,8 +120,8 @@ export function formatStudentClassrooms(
 
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
       classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
-      classroomPart.classroomName = `${classroom.name} ${subjectName}` // Claire's court specific column
-      classroomPart.subject = subjectName // Claire's court specific column
+      classroomPart.classroomName = `${classroom.name} ${subjectName}` // Claire's Court specific column
+      classroomPart.subject = subjectName // Claire's Court specific column
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom

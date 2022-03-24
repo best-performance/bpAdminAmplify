@@ -179,7 +179,7 @@ function NewSchool() {
     console.log('Loaded lookup tables from dynamoDB in UseEffect()')
   }, [])
 
-  // This is for testing to delete all records form the Dynamo tables if th  ey exist
+  // This is for testing to delete all records from the Dynamo tables if they exist
   async function deleteAllTables() {
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
   }
@@ -288,7 +288,7 @@ function NewSchool() {
     console.log('Saving School to DynamoDB')
 
     /**
-     * Save the selected school to School table if not already saves
+     * Save the selected school to School table if not already saved
      * returns the EC schoolID of the saved school
      */
     let schoolID // the EC id of the saved School
@@ -361,7 +361,7 @@ function NewSchool() {
       }
     })
 
-    // make th emaps into arrays for simpler processing
+    // make the maps into arrays for simpler processing
     const uniqueClassroomsArray = Array.from(uniqueClassroomsMap.values())
     const uniqueTeachersArray = Array.from(uniqueTeachersMap.values())
     const uniqueStudentsArray = Array.from(uniqueStudentsMap.values())
@@ -476,7 +476,7 @@ function NewSchool() {
      * For each classroom
           add to classrooms
           add to classroomYearLevel *
-	        add to classroomLearningArea
+	        add to classroomLearningArea (Not Done)
      */
     // Classrooms saves - next save classroomYearLevels
     console.log('saving ClassroomYearLevels')
@@ -538,10 +538,12 @@ function NewSchool() {
       return { result: false, msg: err.message } // abandon ship
     } // end save classrommYearLevel
 
-    // Save the teachers
-    // add to user
-    // add to Cognito *
-    // add to classroomTeacher *
+    /**
+     * Save the teachers
+     *   add to Cognito *
+     *   add to user
+     *   add to classroomTeacher *
+     */
     try {
       console.time('saved teachers cognito')
 
@@ -559,19 +561,9 @@ function NewSchool() {
       console.timeEnd('saved teachers cognito')
     } catch (err) {}
 
-    /**
-     * Save the classrooms
-     * For each classroom
-          add to classrooms
-          add to classroomYearLevel 
-	        add to classroomLearningArea * ( currently no way to guess learningArea)
-     */
-    // NOTE: add classroomLearningArea NOT DONE
-
     // Save the teachers
-    // add to user *
     // add to Cognito
-    // add to schoolTeacher
+    // add to user *
     // add to classroomTeacher
 
     // This saves the teachers in table User

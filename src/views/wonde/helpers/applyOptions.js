@@ -25,7 +25,7 @@ export function applyOptions(
     if (!isNaN(studentYear)) yearCode = `Y${student.yearCode}`
     // must be one of the selected years
     if (yearOptions[yearCode]) {
-      // remove duplicate Kindy classes based on Mon-AM ect
+      // remove duplicate Kindy classes based on Mon-AM etc
       // for now we remove all duplicate classrooms
       if (
         (kinterDayClasses && ['K', 'FY', 'R'].lastIndexOf(student.student.yearCode) > -1) ||
@@ -35,6 +35,8 @@ export function applyOptions(
           !currentStudentWondeId ||
           (currentStudentWondeId && currentStudentWondeId !== student.SwondeId)
         ) {
+          // TODO - I think this subject check is specific to Claire's Court
+          // and wont work for normal primary schools - confer with Diego
           if (['English', 'Mathematics'].lastIndexOf(student.subject) > -1) {
             currentStudentWondeId = student.SwondeId
             let classroomName = `${student.classroomName.charAt(0)} ${student['teacher1 LastName']}`

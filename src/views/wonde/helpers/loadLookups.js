@@ -140,7 +140,7 @@ export async function populateLookups() {
   }
   /** ---------------------------------------------------------------------- */
   async function populateLearningArea() {
-    // first lets check if the table is already polulated
+    // first lets check if the table is already populated
     try {
       const params = {
         TableName: LEARNINGAREA_TABLE,
