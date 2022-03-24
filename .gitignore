@@ -18,6 +18,7 @@ amplify-copy.yml
 .env.local
 .env.dev.UK.local
 .env.UK.local
+.env.AU.local
 .env.prod.UK.local
 .env.dev.AUS.local
 .env.development.local
