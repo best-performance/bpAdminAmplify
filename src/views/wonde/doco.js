@@ -1,6 +1,7 @@
 /**
  * This file is documentation only
  * It outlines the process of uploading a school as implemented in NewSchool
+ * The document is most definitely evolving - so beware of changes (BC)
  *
  * The componeent is called <NewSchool>
  *
@@ -9,7 +10,7 @@
  * Country, State, YearLevel and LearningArea
  *
  * It has a function getAllAchools() which is executed by UI Button
- * It retrieves the list of schools for teh region from Wonde
+ * It retrieves the list of schools for the region from Wonde
  *
  * It has a function selectSchool that uses a useCallback() to remember which
  * school is curretly slected by the User

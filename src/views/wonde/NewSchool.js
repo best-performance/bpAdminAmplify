@@ -17,17 +17,17 @@ import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
 // Helper functions
-import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
-import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
-import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
-import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
-import { applyOptions } from './helpers/applyOptions' // for filtering the CSV data
-import { OptionsPopup } from './helpers/optionsPopup'
-import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
-import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser } from './helpers/cognitoFns'
-import { batchWrite } from './helpers/batchWrite'
-import { getRegion, getToken, getURL } from './helpers/featureToggles'
+import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
+import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
+import { getTeachersFromWonde } from './NewSchoolHelpers/getTeachersFromWonde'
+import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
+import { applyOptions } from './NewSchoolHelpers/applyOptions' // for filtering the CSV data
+import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
+import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
+import { deleteSchoolDataFromDynamoDB } from './NewSchoolHelpers/deleteSchoolDataFromDynamoDB'
+import { addNewCognitoUser } from './NewSchoolHelpers/cognitoFns'
+import { batchWrite } from './NewSchoolHelpers/batchWrite'
+import { getRegion, getToken, getURL } from './NewSchoolHelpers/featureToggles'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -1065,7 +1065,9 @@ function NewSchool() {
   return (
     <CContainer>
       <CRow>
-        <h4 className="text-center">Wonde Integration - New School Uptake</h4>
+        <div style={{ textAlign: 'center', fontSize: '30px' }}>
+          <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>
+        </div>
       </CRow>
       <div className="d-flex justify-content-center">
         <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>
