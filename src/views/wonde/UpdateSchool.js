@@ -9,7 +9,9 @@ import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 // Helper functions
 import { getUploadedSchools } from './UpdateSchoolHelpers/getUploadedSchools'
-import { getRegion } from './NewSchoolHelpers/featureToggles'
+import { getRegion } from './CommonHelpers/featureToggles'
+import getChangedStudents from './UpdateSchoolHelpers/getChangedStudents'
+import processStudent from './UpdateSchoolHelpers/processStudent'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -42,6 +44,10 @@ const SCHOOL_WONDE_INDEX = 'byWondeID'
 // Constant used to create the teacher and student entries in cognito
 const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
 
+// a fixed afterDate for test purposes
+//TODO: calculate this date from last update
+const afterDate = '2022-03-16 00:00:00' // formatted as per Wonde examples
+
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function UpdateSchool() {
   const { loggedIn } = useContext(loggedInContext)
@@ -49,9 +55,8 @@ function UpdateSchool() {
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
   const [schools, setSchools] = useState([])
 
-  // These 2 save the raw data as loaded from Wonde
-  const [wondeStudents, setWondeStudents] = useState([])
-  const [wondeTeachers, setWondeTeachers] = useState([])
+  // To display the changed students (new students or details changed)
+  const [changedStudents, setChangedStudents] = useState([])
 
   // This one is for the CSV upload display (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
@@ -127,7 +132,7 @@ function UpdateSchool() {
     setSelectedSchool({ schoolName: 'none' })
     setSchoolDataLoaded(false)
 
-    // locate all teh Wonde schools in EdC
+    // locate all the Wonde schools in EdC
     let schools = await getUploadedSchools()
     if (schools) {
       setSchools(schools)
@@ -146,9 +151,27 @@ function UpdateSchool() {
     setSchoolDataLoaded(false)
   }, [])
 
-  // wrapper funtion triggered by "Get Wonde updates for ..." button to read all school data
+  // Triggered by "Get Wonde updates for ..." button to read all school data
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
+
+    // find the changed students as per Wonde
+    let updatedStudents = await getChangedStudents(selectedSchool, afterDate)
+    //console.log(updatedStudents) // as reported by Wonde
+
+    // check each student to see what exactly has changed ( ie details, year,classrooms etc)
+    let changedStudents = []
+    let promises = updatedStudents.map(async (student) => {
+      let changedStudent = await processStudent(student)
+      if (changedStudent.length > 0) {
+        changedStudent.forEach((row) => {
+          changedStudents.push(row)
+        })
+      }
+    })
+    await Promise.all(promises)
+    console.log('changedStudents', changedStudents)
+    setChangedStudents(changedStudents)
 
     setSchoolDataLoaded(true)
   }
@@ -253,33 +276,16 @@ function UpdateSchool() {
                     hoverStateEnabled={true}
                     allowColumnReordering={true}
                     columnAutoWidth={true}
-                    dataSource={studentClassrooms}
+                    dataSource={changedStudents}
                   >
                     <SearchPanel visible={true} />
                     <Export enabled={true} allowExportSelectedData={true} />
-                    <Column caption="First Name" dataField="firstName" />
-                    <Column caption="Middle Name" dataField="middleName" />
-                    <Column caption="Last Name" dataField="lastName" />
-                    <Column caption="Year Code" dataField="yearCode" />
-                    <Column caption="Gender" dataField="gender" />
+                    <Column caption="FIRST NAME" dataField="firstName" />
+                    <Column caption="LAST NAME" dataField="lastName" />
+                    <Column caption="GENDER" dataField="gender" />
                     <Column caption="DOB" dataField="dob" />
-                    <Column caption="Classroom Name" dataField="classroomName" />
-                    <Column caption="Subject" dataField="subject" />
-                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
-                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
-                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
-                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
-                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
-                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
-                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
-                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
-                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
-                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
-                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
-                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
-                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
-                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
-                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
+                    <Column caption="CHANGE" dataField="change" />
+                    <Column caption="SOURCE" dataField="source" />
                   </DataGrid>
                 )}
               </CRow>

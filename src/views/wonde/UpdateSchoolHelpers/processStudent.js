@@ -1,34 +1,42 @@
 const dayjs = require('dayjs')
+const AWS = require('aws-sdk')
+const { updateAWSCredentials } = require('../CommonHelpers/updateAWSCredentials')
 
 // TODO: Put all table names in a separate file
-const STUDENTCLASSROOM_TABLE = 'ClassroomStudent-xuuhgbt2kzebrpxdv67rr5pmze-develop'
-const STUDENTCLASSROOM_INDEX = 'byStudent'
+const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
+const SCHOOL_STUDENT_TABLE = process.env.REACT_APP_SCHOOL_STUDENT_TABLE
+const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
+const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
+const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
 
-async function processStudent(student, docClient, studentTable, studentWondeIndex) {
-  // first find if the student already exists
-  let DBStudent = await findStudent(student, docClient, studentTable, studentWondeIndex)
+const STUDENT_WONDE_INDEX = 'byWondeID'
+const CLASSROOM_STUDENT_INDEX = 'byStudent'
+
+async function processStudent(student) {
+  // get ready for AWS service calls
+  updateAWSCredentials() // uses the Cognito Identify pool role
+  let docClient = new AWS.DynamoDB.DocumentClient()
+
+  // first find if the student already exists in the Student table (dynamoDB)
+  let DBStudent = await findStudent(student, docClient)
 
   if (DBStudent.Count > 0) {
     // then student exists in the DB
-    console.log(`${student.forename} ${student.surname} is existing student`)
-    if (studentDetailsChanged(student, DBStudent.Items[0])) {
-      console.log('-Update of student record needed')
-    } else {
-      console.log('-No student details changed')
-    }
-    console.log('-read ClassroomStudent table and update as needed')
-    let DSClassChanges = await findClassChanges(
-      DBStudent.Items[0].id, // the students EdC ID
-      docClient,
-      student,
-    )
+    //console.log(`${student.forename} ${student.surname} is existing student`)
+    return findStudentDetailChanges(student, DBStudent.Items[0])
   } else {
     // then student is not in the DB
-    console.log(`${student.forename} ${student.surname} is a "NEW" student`)
-    console.log('-add a record to Student table')
-    console.log('-add a record to SchoolStudentTable')
-    console.log('-add to ClassroomStudent for every classroom assignment')
-    console.log('-add a Cognito record')
+    console.log(`${student.forename} ${student.surname} is a new student`)
+    return [
+      {
+        firstName: student.forename,
+        lastName: student.surname,
+        gender: getGender(student.gender),
+        dob: dayjs(student.date_of_birth.date).format('YYYY-MM-DD'),
+        change: '"NEW"',
+        source: 'Wonde',
+      },
+    ]
   }
 } // end process student
 
@@ -38,8 +46,8 @@ async function processStudent(student, docClient, studentTable, studentWondeInde
 // find changes in clasroom assignments
 async function findClassChanges(DBStudentID, docClient, student) {
   const queryParams = {
-    TableName: STUDENTCLASSROOM_TABLE,
-    IndexName: STUDENTCLASSROOM_INDEX,
+    TableName: CLASSROOM_STUDENT_TABLE,
+    IndexName: CLASSROOM_STUDENT_INDEX,
     KeyConditionExpression: '#studentID = :studentID',
     ExpressionAttributeNames: {
       '#studentID': 'studentID',
@@ -64,10 +72,10 @@ async function findClassChanges(DBStudentID, docClient, student) {
 } //  end findClassChanges()
 
 // check if Wonde student already exists in the EdC Student table
-async function findStudent(student, docClient, studentTable, studentWondeIndex) {
+async function findStudent(student, docClient) {
   const queryParams = {
-    TableName: studentTable,
-    IndexName: studentWondeIndex,
+    TableName: STUDENT_TABLE,
+    IndexName: STUDENT_WONDE_INDEX,
     KeyConditionExpression: '#wondeID = :wondeID',
     ExpressionAttributeNames: {
       '#wondeID': 'wondeID',
@@ -86,23 +94,44 @@ async function findStudent(student, docClient, studentTable, studentWondeIndex) 
 } // end findStudent()
 
 // Check if any student details have been updated in Wonde
-function studentDetailsChanged(wondeStudent, DBStudent) {
+function findStudentDetailChanges(wondeStudent, DBStudent) {
+  let changes = false
+  let changeReason = ''
+  let returnArray = []
   if (
     (wondeStudent.forename + wondeStudent.surname).toUpperCase() !==
     (DBStudent.firstName + DBStudent.lastName).toUpperCase()
   ) {
-    console.log('Student name changed')
-    return true
+    changes = true
+    changeReason += 'Name '
   }
   if (getGender(wondeStudent.gender) !== getGender(DBStudent.gender)) {
-    console.log('Student gender changed')
-    return true
+    changes = true
+    changeReason += 'Gender '
   }
   if (dayjs(wondeStudent.date_of_birth.date).diff(dayjs(DBStudent.birthDate, 'day')) > 0) {
-    console.log('Student dob changed')
-    return true
+    changes = true
+    changeReason += 'DoB'
   }
-  return false
+  if (changes) {
+    returnArray.push({
+      firstName: wondeStudent.forename,
+      lastName: wondeStudent.surname,
+      gender: getGender(wondeStudent.gender),
+      dob: dayjs(wondeStudent.date_of_birth.date).format('YYYY-MM-DD'),
+      change: changeReason,
+      source: 'Wonde',
+    })
+    returnArray.push({
+      firstName: DBStudent.firstName,
+      lastName: DBStudent.lastName,
+      gender: getGender(DBStudent.gender),
+      dob: dayjs(DBStudent.birthDate).format('YYYY-MM-DD'),
+      change: changeReason,
+      source: 'DynamoDB',
+    })
+  }
+  return returnArray
 } // end studentDetailsChanged()
 
 // Convert possible gender representations to "Male"|"Female"

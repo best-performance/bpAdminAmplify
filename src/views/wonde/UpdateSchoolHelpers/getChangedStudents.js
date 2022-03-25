@@ -1,9 +1,13 @@
-// get the students that have been updated ince "aferDate"
+// get the students that have been updated since "aferDate"
 const axios = require('axios')
-async function getChangedStudents(url, token, currentSchool, afterDate) {
+const { getToken, getURL } = require('../CommonHelpers/featureToggles')
+
+async function getChangedStudents(school, afterDate) {
   let students = []
   try {
-    let URL = `${url}/${currentSchool.schoolID}/students?updated_after=${afterDate}&include=year,classes&per_page=200`
+    let URL = `${getURL()}/${
+      school.wondeID
+    }/students?updated_after=${afterDate}&include=year,classes&per_page=200`
     let morePages = true
     while (morePages) {
       console.log(URL)
@@ -11,7 +15,7 @@ async function getChangedStudents(url, token, currentSchool, afterDate) {
         method: 'get',
         url: URL,
         headers: {
-          Authorization: token,
+          Authorization: getToken(),
         },
       })
       // eslint-disable-next-line no-loop-func
@@ -27,6 +31,7 @@ async function getChangedStudents(url, token, currentSchool, afterDate) {
     }
   } catch (error) {
     console.log(error)
+    return []
   }
 
   return students

@@ -2,7 +2,7 @@ import React from 'react'
 import { useEffect } from 'react'
 import { Auth } from 'aws-amplify'
 import AWS, { CognitoIdentityServiceProvider } from 'aws-sdk'
-import { getRegion } from 'src/views/wonde/NewSchoolHelpers/featureToggles'
+import { getRegion } from 'src/views/wonde/CommonHelpers/featureToggles'
 
 function ManageUsers() {
   useEffect(() => {

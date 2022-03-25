@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import _ from 'lodash'
-import { getYearCodeForYear0 } from './featureToggles'
-import { isAUSRegion } from './featureToggles'
+import { getYearCodeForYear0 } from '../CommonHelpers/featureToggles'
+import { isAUSRegion } from '../CommonHelpers/featureToggles'
 const UNKNOWN = 'unknown'
 
 // This displays data in the same format (csv like) as we would use in the manual uploader

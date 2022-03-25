@@ -6,7 +6,7 @@ import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
-import { getRegion } from 'src/views/wonde/NewSchoolHelpers/featureToggles'
+import { getRegion } from 'src/views/wonde/CommonHelpers/featureToggles'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()

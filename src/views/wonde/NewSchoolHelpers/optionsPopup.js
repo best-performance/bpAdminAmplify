@@ -4,7 +4,7 @@ import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
-import { isAUSRegion, isUKRegion } from './featureToggles'
+import { isAUSRegion, isUKRegion } from '../CommonHelpers/featureToggles'
 
 // eslint-disable-next-line react/prop-types
 export function OptionsPopup({
