@@ -7,8 +7,9 @@ import * as serviceWorker from './serviceWorker'
 import { Provider } from 'react-redux'
 import store from './store'
 
-import Amplify from 'aws-amplify'
+import { Amplify } from 'aws-amplify'
 import awsconfig from './aws-config' // this is where we store the links to the APIs and Cognito
+
 //aws-config takes the place of "aws-exports" that Amplify CLI would generate
 Amplify.configure(awsconfig)
 

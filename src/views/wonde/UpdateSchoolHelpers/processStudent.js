@@ -1,5 +1,6 @@
 const dayjs = require('dayjs')
 const AWS = require('aws-sdk')
+const { API, graphqlOperation } = require('aws-amplify')
 const { updateAWSCredentials } = require('../CommonHelpers/updateAWSCredentials')
 
 // TODO: Put all table names in a separate file
@@ -12,9 +13,33 @@ const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
 const STUDENT_WONDE_INDEX = 'byWondeID'
 const CLASSROOM_STUDENT_INDEX = 'byStudent'
 
+// This is for a test Appsync call
+const listStates = `
+   query  {
+    listStates {
+      items {
+        name
+        stateCode
+      }
+    }
+  }`
+
 async function processStudent(student) {
   // get ready for AWS service calls
   updateAWSCredentials() // uses the Cognito Identify pool role
+
+  // do a test Appsync call (so far showing unauthorised)
+  try {
+    const stateData = await API.graphql({
+      query: listStates,
+      authMode: 'AMAZON_COGNITO_USER_POOLS',
+    })
+    console.log('states', stateData)
+  } catch (err) {
+    console.log(err)
+  }
+
+  // using the DocumentClient API
   let docClient = new AWS.DynamoDB.DocumentClient()
 
   // first find if the student already exists in the Student table (dynamoDB)
@@ -29,6 +54,7 @@ async function processStudent(student) {
     console.log(`${student.forename} ${student.surname} is a new student`)
     return [
       {
+        id: student.id,
         firstName: student.forename,
         lastName: student.surname,
         gender: getGender(student.gender),
@@ -115,6 +141,7 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
   }
   if (changes) {
     returnArray.push({
+      id: wondeStudent.id,
       firstName: wondeStudent.forename,
       lastName: wondeStudent.surname,
       gender: getGender(wondeStudent.gender),
@@ -123,6 +150,7 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
       source: 'Wonde',
     })
     returnArray.push({
+      id: DBStudent.id,
       firstName: DBStudent.firstName,
       lastName: DBStudent.lastName,
       gender: getGender(DBStudent.gender),

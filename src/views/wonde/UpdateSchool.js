@@ -155,6 +155,8 @@ function UpdateSchool() {
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
+    console.log(process.env)
+
     // find the changed students as per Wonde
     let updatedStudents = await getChangedStudents(selectedSchool, afterDate)
     //console.log(updatedStudents) // as reported by Wonde
@@ -286,6 +288,7 @@ function UpdateSchool() {
                     <Column caption="DOB" dataField="dob" />
                     <Column caption="CHANGE" dataField="change" />
                     <Column caption="SOURCE" dataField="source" />
+                    <Column caption="ID" dataField="id" />
                   </DataGrid>
                 )}
               </CRow>
