@@ -1,7 +1,7 @@
 const dayjs = require('dayjs')
 const AWS = require('aws-sdk')
-const { API, graphqlOperation } = require('aws-amplify')
 const { updateAWSCredentials } = require('../CommonHelpers/updateAWSCredentials')
+const { getGender } = require('../CommonHelpers/getGender')
 
 // TODO: Put all table names in a separate file
 const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
@@ -13,31 +13,9 @@ const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
 const STUDENT_WONDE_INDEX = 'byWondeID'
 const CLASSROOM_STUDENT_INDEX = 'byStudent'
 
-// This is for a test Appsync call
-const listStates = `
-   query  {
-    listStates {
-      items {
-        name
-        stateCode
-      }
-    }
-  }`
-
-async function processStudent(student) {
+export default async function processStudent(student) {
   // get ready for AWS service calls
   updateAWSCredentials() // uses the Cognito Identify pool role
-
-  // do a test Appsync call (so far showing unauthorised)
-  try {
-    const stateData = await API.graphql({
-      query: listStates,
-      authMode: 'AMAZON_COGNITO_USER_POOLS',
-    })
-    console.log('states', stateData)
-  } catch (err) {
-    console.log(err)
-  }
 
   // using the DocumentClient API
   let docClient = new AWS.DynamoDB.DocumentClient()
@@ -161,23 +139,3 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
   }
   return returnArray
 } // end studentDetailsChanged()
-
-// Convert possible gender representations to "Male"|"Female"
-function getGender(genderName) {
-  switch (genderName.toUpperCase()) {
-    case 'MALE':
-    case 'M':
-    case 'BOY':
-    case 'B':
-      return 'Male'
-    case 'FEMALE':
-    case 'F':
-    case 'GIRL':
-    case 'G':
-      return 'Female'
-    default:
-      return 'X'
-  }
-} // end getGender()
-
-export default processStudent

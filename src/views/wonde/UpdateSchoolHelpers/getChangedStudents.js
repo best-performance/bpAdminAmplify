@@ -1,8 +1,36 @@
-// get the students that have been updated since "aferDate"
+// get the students from that have been updated since "aferDate"
 const axios = require('axios')
 const { getToken, getURL } = require('../CommonHelpers/featureToggles')
 
 async function getChangedStudents(school, afterDate) {
+  // test of naked read of one student we know has changed
+  let URL = `${getURL()}/${school.wondeID}/students/B889709018/?include=year,classes&per_page=200`
+  console.log(URL)
+
+  let response = await axios({
+    method: 'get',
+    url: URL,
+    headers: {
+      Authorization: getToken(),
+    },
+  })
+  console.log('naked read of student B889709018 no data filter', response)
+
+  URL = `${getURL()}/${
+    school.wondeID
+  }/students/B889709018/?updated_after=${afterDate}&include=year,classes&per_page=200`
+  console.log(URL)
+
+  response = await axios({
+    method: 'get',
+    url: URL,
+    headers: {
+      Authorization: getToken(),
+    },
+  })
+
+  console.log('naked read of student B889709018 with date Filter', response)
+
   let students = []
   try {
     let URL = `${getURL()}/${
@@ -20,6 +48,7 @@ async function getChangedStudents(school, afterDate) {
       })
       // eslint-disable-next-line no-loop-func
       response.data.data.forEach((student) => {
+        if (student.id === 'B889709018') console.log('student B889709018 from wonde', student)
         students.push(student)
       })
       // check if all pages are read

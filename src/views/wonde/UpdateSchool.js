@@ -12,37 +12,13 @@ import { getUploadedSchools } from './UpdateSchoolHelpers/getUploadedSchools'
 import { getRegion } from './CommonHelpers/featureToggles'
 import getChangedStudents from './UpdateSchoolHelpers/getChangedStudents'
 import processStudent from './UpdateSchoolHelpers/processStudent'
+import processStudentClassroom from './UpdateSchoolHelpers/processStudentClassroom'
+import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
 // For local starts, the amplify.yml script is not activated, so instead we use "> npm run start:local"
 // This first runs the env-cmd that loads the environment variables prior to the main start script
-
-//Lookup tables
-const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
-const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
-const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
-//const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
-
-// Tables to store school data
-// We need to generalise this for regional table names
-// Maybe use a dynamo query to list the available table names?
-const SCHOOL_TABLE = process.env.REACT_APP_SCHOOL_TABLE
-const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
-const USER_TABLE = process.env.REACT_APP_USER_TABLE
-const SCHOOL_STUDENT_TABLE = process.env.REACT_APP_SCHOOL_STUDENT_TABLE
-const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
-const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
-const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
-const CLASSROOM_YEARLEVEL_TABLE = process.env.REACT_APP_CLASSROOM_YEARLEVEL_TABLE
-//const CLASSROOM_LEARNINGAREA_TABLE = process.env.REACT_APP_CLASSROOM_LEARNINGAREA_TABLE
-//const STUDENT_DATA_TABLE = process.env.REACT_APP_STUDENT_DATA_TABLE
-
-// Not environment varible as this is not region-dependent
-const SCHOOL_WONDE_INDEX = 'byWondeID'
-
-// Constant used to create the teacher and student entries in cognito
-const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
 
 // a fixed afterDate for test purposes
 //TODO: calculate this date from last update
@@ -68,65 +44,17 @@ function UpdateSchool() {
   const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
 
-  // lookup Tables - these are used by the uploader
-  // to locate respective item ids
-  const [countriesLookup, setCountriesLookup] = useState([])
-  const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
-  const [statesLookup, setStatesLookup] = useState([])
-  // const [learningAreasLookup, setLearningAreasLookup] = useState([])
-
-  // This useEffect() reads and saves the contents of 4 lookups
-  // It needs to run just once
-  useEffect(() => {
-    // we assume for now that the lookups are already populated in sandbox account
-
-    const getLookupData = async () => {
-      let credentials
-      try {
-        credentials = await Auth.currentCredentials()
-      } catch (err) {
-        console.log(err)
-        return
-      }
-
-      AWS.config.update({
-        credentials: credentials,
-        region: getRegion(),
-      })
-      const docClient = new AWS.DynamoDB.DocumentClient()
-      let response
-      response = await docClient.scan({ TableName: COUNTRY_TABLE }).promise()
-      setCountriesLookup(response.Items)
-      response = await docClient.scan({ TableName: YEARLEVEL_TABLE }).promise()
-      setYearLevelsLoookup(response.Items)
-      response = await docClient.scan({ TableName: STATE_TABLE }).promise()
-      setStatesLookup(response.Items)
-      // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
-      // setLearningAreasLookup(response.Items)
-    }
-    getLookupData()
-    console.log('Loaded lookup tables from dynamoDB in UseEffect()')
-  }, [])
-
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
   // There is  UI button that will run the function
   // Any sort of test function here is acceptable
   async function testFunction() {
     console.log('testFuntion() invoked')
-    console.log('yearLevels', yearLevelsLookup)
-    console.log('countries', countriesLookup)
-    console.log('states', statesLookup)
-    console.log('environment variables available')
-    console.log(`REGION ${process.env.REACT_APP_REGION}`) //
-    console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
-    console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
-    // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
-    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
+    console.log(process.env)
   } // end of testFuntion()
 
-  // Invokes function to get the list of available schools from Wonde
-  // first clears all state
+  // Get the list of available schools from Wonde
   async function getAllSchools() {
+    // clear state
     setIsLoadingSchools(true)
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
@@ -142,7 +70,7 @@ function UpdateSchool() {
     }
   }
 
-  // this is executed if we select a school from the list of schools
+  // Executed if we select a school from the list of schools
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
       setSelectedSchool(school)
@@ -155,13 +83,22 @@ function UpdateSchool() {
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
-    console.log(process.env)
+    // find the changed students as per Wonde, then filter them remove unwanted classes
+    let updatedStudentsRaw = await getChangedStudents(selectedSchool, afterDate)
+    console.log('No of updated students reported by Wonde', updatedStudentsRaw.length)
+    let updatedStudents = applyOptionsSchoolSpecific(
+      updatedStudentsRaw,
+      null, // yearOptions known by the school specific routine
+      null, // kinterDayClasses known by the school specific routine
+      null, // kinterDayClassName known by the school specific routine
+      null, // coreSubjectOption known by the school specific routine
+      selectedSchool,
+      'Update', // filtering is different if looking for updates
+    )
 
-    // find the changed students as per Wonde
-    let updatedStudents = await getChangedStudents(selectedSchool, afterDate)
-    //console.log(updatedStudents) // as reported by Wonde
-
-    // check each student to see what exactly has changed ( ie details, year,classrooms etc)
+    // check each student to look for changes of details like DoB, etc
+    // If new student the, the new student details are returned
+    // If existing student with changes, the existing and new student details are returned
     let changedStudents = []
     let promises = updatedStudents.map(async (student) => {
       let changedStudent = await processStudent(student)
@@ -172,8 +109,20 @@ function UpdateSchool() {
       }
     })
     await Promise.all(promises)
-    console.log('changedStudents', changedStudents)
+    console.log('ChangedStudents for display', changedStudents)
     setChangedStudents(changedStudents)
+
+    // check each student to look for changes of classrooms
+    // If new student the, the new students classrooms are returned
+    // If existing student with changes, the existing and new student classrooms are returned
+
+    console.log('processing classroom changes')
+    promises = updatedStudents.map(async (student) => {
+      console.log('classroom for processing', student)
+      let changedClassroom = await processStudentClassroom(student)
+      //console.log('Changed Classroom', changedClassroom) // empty for now
+    })
+    await Promise.all(promises)
 
     setSchoolDataLoaded(true)
   }

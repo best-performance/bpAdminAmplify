@@ -1,7 +1,8 @@
 import dayjs from 'dayjs'
 import _ from 'lodash'
-import { getYearCodeForYear0 } from '../CommonHelpers/featureToggles'
-import { isAUSRegion } from '../CommonHelpers/featureToggles'
+import { makeYearCode } from '../CommonHelpers/makeYearCode'
+import { getGender } from '../CommonHelpers/getGender'
+
 const UNKNOWN = 'unknown'
 
 // This displays data in the same format (csv like) as we would use in the manual uploader
@@ -13,83 +14,23 @@ export function formatStudentClassrooms(
   selectedSchool,
   setStudentClassrooms,
 ) {
-  console.log('Wonde Students', wondeStudents)
-  console.log('wondeTeachers', wondeTeachers)
+  console.log('Wonde Student[0]', wondeStudents[0])
+  console.log('wondeTeachers[0]', wondeTeachers[0])
 
   let studentClassroomsTmp = []
-  wondeStudents.forEach((student, index) => {
+  wondeStudents.forEach((student) => {
     let studentPart = {}
     // first put defaults for gender and dob if they are missing ( often they are)
     // Converting the original wonde values set for gender,dob to the ones required by the CSV upload format
-    let gender
-    switch (student.gender.toUpperCase()) {
-      case 'MALE':
-      case 'M':
-      case 'BOY':
-      case 'B':
-        gender = 'Male'
-        break
-      case 'FEMALE':
-      case 'F':
-      case 'GIRL':
-      case 'G':
-        gender = 'Female'
-        break
-      default:
-        gender = 'X'
-    }
+    let gender = getGender(student.gender)
 
-    let dob = 'XXXX-XX-XX'
+    let dob
     if (dayjs(student.date_of_birth.date).isValid())
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
+    else dob = '01/01/1999' // dummy placeholder
 
-    // look for N codes meaning Nursery and output edC code "K"
-    // look for R codes meaning Reception and output EdC code "FY"
-    // If non of above try to extract the year level as a number
-
-    let yearCode = UNKNOWN // a dummy value
-    // check for known FY or K strings
-    switch (student.year.data.code) {
-      case 'Year R': // St Andrew and St Francis CofE Primary School, Our Lady Star of the Sea Catholic Primary School,English Martyrs' Catholic Primary School
-      case 'R': // St Monica's Catholic Primary School, St Mark's Primary School
-      case 'Girls Reception': // Claires Court Schools
-      case 'Boys Reception': // Claires Court Schools
-        yearCode = getYearCodeForYear0()
-        break
-      case 'N1': // St Monica's Catholic Primary School
-      case 'N2': // St Mark's Primary School
-      case 'Nursery': // St Andrew and St Francis CofE Primary School
-      case 'Year N': // Parkside Community Primary School
-      case 'Year N1': // Parkside Community Primary School,  Our Lady Star of the Sea Catholic Primary School
-      case 'Year N2': // St Andrew and St Francis CofE Primary School
-        yearCode = 'K'
-        break
-      default: {
-        break
-      }
-    }
-
-    // if we did not find an FY or K code then look for a numeric year level
-    if (yearCode === UNKNOWN) {
-      let numStr = student.year.data.code.match(/\d+/) // match returns an array
-      if (numStr) {
-        let upperYearLevel = isAUSRegion() ? 12 : 13
-        let num = parseInt(numStr[0])
-        if (num > 0 && num <= upperYearLevel) {
-          //yearCode = `Y${num.toString()}`
-          yearCode = num.toString() // "5" not "Y5" is expected by the csv
-        } else if (num === 0) {
-          console.log('came here with the 0 condition ', numStr)
-          yearCode = isAUSRegion() ? 'FY' : 'R'
-        } else {
-          console.log(
-            `Year code out of range 0-${upperYearLevel} for ${student.forename} ${student.surname} ${student.date_of_birth.date}, found ${numStr}`,
-          )
-        }
-      }
-    }
-
-    // the year code is unrecognisable
+    // Try to construct a yearCode from all the possibilities entered by schools
+    let yearCode = makeYearCode(student)
     if (yearCode === UNKNOWN) {
       yearCode = 'U-' + student.year.data.code
       console.log(
@@ -110,18 +51,16 @@ export function formatStudentClassrooms(
     studentPart.gender = gender
     studentPart.dob = dob
 
+    //
     // now process the classrooms - could has no classroom assigned
     student.classes.data.forEach((classroom) => {
       let classroomPart = {}
-      let subjectName = ''
-      if (classroom.subject) {
-        subjectName = classroom.subject.data.name
-      }
-
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
       classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
-      classroomPart.classroomName = `${classroom.name} ${subjectName}` // Claire's Court specific column
-      classroomPart.subject = subjectName // Claire's Court specific column
+      classroomPart.classroomName = classroom.name
+      // subject can be an object in the raw data, but we convert to a string in the filtered data
+      // and both of these cases pass here - hence the test.
+      classroomPart.subject = typeof classroom.subject === 'string' ? classroom.subject : ''
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom
@@ -145,9 +84,9 @@ export function formatStudentClassrooms(
         // find the email address from wondeTeachersTemp
         let email = 'placeholder'
         let teacherID = teacher.id
-        let teacherRec = wondeTeachers.find((teacher) => teacher.id === teacherID)
-        if (teacherRec) {
-          email = teacherRec.contact_details.data.emails.email
+        let teacherRecord = wondeTeachers.find((teacher) => teacher.id === teacherID)
+        if (teacherRecord) {
+          email = teacherRecord.contact_details.data.emails.email
         }
         // Note: Keys generated dynamically using the array notation[]
         let fnameKey = `teacher${index + 1} FirstName`
@@ -172,6 +111,7 @@ export function formatStudentClassrooms(
     'numericYearLevel',
     'wondeStudentId',
   ])
+  console.log('CSV formatted data', studentClassroomsTmpSorted[0])
   setStudentClassrooms(studentClassroomsTmpSorted) // for display in "upload Format" tab
 } // end of formatStudentClassrooms()
 

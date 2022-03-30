@@ -1,9 +1,9 @@
 /**
  * This file is documentation only
  * It outlines the process of uploading a school as implemented in NewSchool
- * The document is most definitely evolving - so beware of changes (BC)
+ * it also looks ahead to later incremental updates and periodic resyncing
  *
- * The componeent is called <NewSchool>
+ * The upload/uptake component is called <NewSchool>
  *
  * It has a useEffect() executed once to read the lookup tables to retrieve
  * the EdC/Elastik IDs for
@@ -24,7 +24,7 @@
  *        ..../students?include=classes.employees,classes.subject,year
  *        If no gender then "X" is used
  *        If no DoB then "XX/XX/XXXX" is used
- *        If no year is used then "no year is entered"
+ *        If no year is used then "no year" is entered
  *     getTeachersFromWonde() This reads all teachers from Wonde and saves them
  *        in [WondeTeachers] as raw data. Each teacher object has the data returned by
  *        ..../employees/?has_class=true&include=contact_details,classes
@@ -42,7 +42,9 @@
  *  The [studentClassrooms] object will contain classes that are not needed in EdC/Elastik
  *  The UI provides a popup screen to allow the user to define the filtering needed.
  *
- *  There is a function called ApplyFilterOptions() acvated by a UI Button of the same name
+ *  There is a function called ApplyFilterOptions() activated by a UI Button of the same name.
+ *  Old approach
+ * -------------
  *  This in turn calls applyOptions() which does the filtering and returns the filtered list
  *  ApplyFilterOptions() then stores results in [filteredStudentClassrooms]
  *  [filteredStudentClassrooms] is displayed in the second tab of the display
@@ -51,6 +53,16 @@
  *     remove duplicate classes for primary schools based on Mon-AM etc
  *     Note: Check above code in ApplyOptions() with Diego
  *     remove all secondary classes that are not core subjects
+ * New approach
+ * ------------
+ *  Apply the filter options on the original raw data from Wonde (saved in [WondeStudents]).
+ *  The filtering will do some of these actions depending on UI options chosen"
+ *  1. Remove classes eg those that are not core
+ *  2. Amalgamate classes eg thos like AM,PM etc in FY
+ *  3. Remove years eg the school only want years 3-5 loaded
+ *  After filtering we then apply formatStudentClassrooms() to make it scv format.
+ *  The main reason for filtering the raw data is that filtering on update or resync data will need
+ *  to be done on raw data, therefore making the code reusable.
  *
  *  There is a function called save saveSchoolCSVtoDynamoDB() which is executed by a UI Button
  *  This deos the following:
