@@ -1,15 +1,16 @@
 /**
  * This file is documentation only
  * It outlines the process of uploading a school as implemented in NewSchool
+ * it also looks ahead to later incremental updates and periodic resyncing
  *
- * The componeent is called <NewSchool>
+ * <NewSchool> is teh component
  *
  * It has a useEffect() executed once to read the lookup tables to retrieve
  * the EdC/Elastik IDs for
  * Country, State, YearLevel and LearningArea
  *
  * It has a function getAllAchools() which is executed by UI Button
- * It retrieves the list of schools for teh region from Wonde
+ * It retrieves the list of schools for the region from Wonde
  *
  * It has a function selectSchool that uses a useCallback() to remember which
  * school is curretly slected by the User
@@ -23,7 +24,7 @@
  *        ..../students?include=classes.employees,classes.subject,year
  *        If no gender then "X" is used
  *        If no DoB then "XX/XX/XXXX" is used
- *        If no year is used then "no year is entered"
+ *        If no year is used then "no year" is entered
  *     getTeachersFromWonde() This reads all teachers from Wonde and saves them
  *        in [WondeTeachers] as raw data. Each teacher object has the data returned by
  *        ..../employees/?has_class=true&include=contact_details,classes
@@ -41,7 +42,9 @@
  *  The [studentClassrooms] object will contain classes that are not needed in EdC/Elastik
  *  The UI provides a popup screen to allow the user to define the filtering needed.
  *
- *  There is a function called ApplyFilterOptions() acvated by a UI Button of the same name
+ *  There is a function called ApplyFilterOptions() activated by a UI Button of the same name.
+ *  Old approach
+ * -------------
  *  This in turn calls applyOptions() which does the filtering and returns the filtered list
  *  ApplyFilterOptions() then stores results in [filteredStudentClassrooms]
  *  [filteredStudentClassrooms] is displayed in the second tab of the display
@@ -50,9 +53,19 @@
  *     remove duplicate classes for primary schools based on Mon-AM etc
  *     Note: Check above code in ApplyOptions() with Diego
  *     remove all secondary classes that are not core subjects
+ * New approach (now implemented)
+ * ------------
+ *  Apply the filter options on the original raw data from Wonde (saved in [WondeStudents]).
+ *  The filtering will do as below depending on UI options chosen"
+ *  1. Remove classes eg those that are not core
+ *  2. Amalgamate classes eg those like AM,PM etc in FY
+ *  3. Remove years eg the school only want years 3-5 loaded
+ *  After filtering we then apply formatStudentClassrooms() to make it scv format.
+ *  The main reason for filtering the raw data is that filtering on update or resync data will need
+ *  to be done on raw data, therefore making the code reusable.
  *
  *  There is a function called save saveSchoolCSVtoDynamoDB() which is executed by a UI Button
- *  This deos the following:
+ *  This does the following:
  *     saveSchool() saves the school record in tbale School
  *     makes a unique list of classrooms [uniqueClassroomsMap] from [filteredStudentClassrooms]
  *     makes a unique list of students [uniqueStudentsMap] from [filteredStudentClassrooms]
@@ -62,7 +75,9 @@
  *   Convert unique maps to arrays [uniqueClassroomsArray], [uniqueTeachersArray], [uniqueStudentsArray]
  *
  *   Save classrooms, teachers, students
- *   Note is all above we have to manually add id,GSI data,typeName,createdAt and updatedAt
+ *   Note in all above we have to manually add fields:
+ *      id, GSI fields as needed, typeName, createdAt and updatedAt
+ *   to all records to emulate what Appsync would have done
  *
  *   For each classroom
  *       add to table classrooms

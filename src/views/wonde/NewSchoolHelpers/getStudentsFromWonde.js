@@ -1,4 +1,4 @@
-import { getToken, getURL } from './featureToggles'
+import { getToken, getURL } from '../CommonHelpers/featureToggles'
 import axios from 'axios'
 import _ from 'lodash'
 
@@ -8,9 +8,9 @@ import _ from 'lodash'
 // at least during development
 export async function getStudentsFromWonde(
   wondeSchoolID,
-  setWondeStudents, // sets the useState() variable
-  setDisplayStudents, // sets the useState() variable
-  setDisplayStudentClassrooms, // sets the useState() variable
+  setWondeStudents, // useState() set for wondeStudents
+  setDisplayStudents, //  useState() set for displayStudents
+  setDisplayStudentClassrooms, //  useState() set for displayStudentClassrooms
 ) {
   let wondeStudentsTemp = [] // the data as received from Wonde
   let students = []
@@ -47,11 +47,6 @@ export async function getStudentsFromWonde(
         } else {
           noClassesCount++ // for debugging only
         }
-        // Date format now done in formatStudentClassrooms()
-        // let dob = 'XXXX-XX-XX'
-        // if (student.date_of_birth && student.date_of_birth.date) {
-        //   dob = dayjs(student.date_of_birth.date).format('DD/MMM/YYYY')
-        // }
         students.push({
           wondeStudentId: student.id,
           mis_id: student.mis_id,
@@ -61,7 +56,7 @@ export async function getStudentsFromWonde(
           dob:
             student.date_of_birth && student.date_of_birth.date
               ? student.date_of_birth.date
-              : 'XX/XX/XXXX',
+              : '01/01/1999', // a placeholder dummy date
           year:
             student.year && student.year.data && student.year.data.code
               ? student.year.data.code
@@ -81,7 +76,6 @@ export async function getStudentsFromWonde(
   console.log('no of students', students.length)
   console.log('no of classrooms', classrooms.length)
   console.log('no of students with no classrooms', noClassesCount)
-  //students = _.sortBy(students, [(y) => parseInt(y.year)])
   students = _.sortBy(students, ['year', 'wondeStudentId'])
 
   setWondeStudents(wondeStudentsTemp) // save the raw response in case needed

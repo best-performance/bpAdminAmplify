@@ -25,6 +25,7 @@ frontend:
         - echo "REACT_APP_CLASSROOM_YEARLEVEL_TABLE=$CLASSROOM_YEARLEVEL_TABLE" >> .env
         - echo "REACT_APP_COUNTRY_TABLE=$COUNTRY_TABLE" >> .env
         - echo "REACT_APP_LEARNINGAREA_TABLE=$LEARNINGAREA_TABLE" >> .env
+        - echo "REACT_APP_APPSYNC_API=$APPSYNC_API" >> .env
         - yarn install --immutable --immutable-cache --check-cache
     build:
       commands:

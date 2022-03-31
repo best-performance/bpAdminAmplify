@@ -1,4 +1,4 @@
-import { updateAWSCredentials } from './updateAWSCredentials'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials'
 import AWS from 'aws-sdk'
 export async function batchWrite(arrayOfItems, tableName) {
   await updateAWSCredentials()

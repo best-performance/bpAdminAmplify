@@ -8,7 +8,7 @@ import 'simplebar/dist/simplebar.min.css'
 import navigation from '../_nav'
 import loggedInContext from 'src/loggedInContext'
 import _ from 'lodash'
-import { getRegionFlag } from 'src/views/wonde/helpers/featureToggles'
+import { getRegionFlag } from 'src/views/wonde/CommonHelpers/featureToggles'
 
 const AppSidebar = () => {
   const dispatch = useDispatch()

@@ -1,7 +1,7 @@
 // All this code was copied from the EdCompanion project - with local edits as needed
 
 import { CognitoIdentityServiceProvider } from 'aws-sdk'
-import { updateAWSCredentials } from './updateAWSCredentials.js'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 
 // Frank's original code had a global CognitoIdentityServiceProvider object
 // but thats not suitable for React, so create a new one in each function

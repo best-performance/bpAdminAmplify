@@ -1,7 +1,7 @@
 import { v4 } from 'uuid'
 import dayjs from 'dayjs'
 import AWS from 'aws-sdk'
-import { updateAWSCredentials } from './updateAWSCredentials.js'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 /** ----------------------------------------------------------------------- */
 export async function saveSchool(
   selectedSchool,
