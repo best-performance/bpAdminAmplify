@@ -2,20 +2,21 @@ import dayjs from 'dayjs'
 import _ from 'lodash'
 import { makeYearCode } from '../CommonHelpers/makeYearCode'
 import { getGender } from '../CommonHelpers/getGender'
+import { getNumericYearLevel } from '../CommonHelpers/getNumericYearLevel'
 
 const UNKNOWN = 'unknown'
 
-// This displays data in the same format (csv like) as we would use in the manual uploader
-// was an afterthought - so overall processing looks convoluted
-// wondeStudents, wondeTeachers are both raw data as read from Wonde
+// This formats either raw or filtered Wonde data into CSV format
+// matching the original csv upload files
 export function formatStudentClassrooms(
   wondeStudents,
   wondeTeachers,
   selectedSchool,
-  setStudentClassrooms,
+  setResultStateVariable, // Either setStudentClassrooms | setFilteredStudentCalssrooms
 ) {
   console.log('Wonde Student[0]', wondeStudents[0])
-  console.log('wondeTeachers[0]', wondeTeachers[0])
+  if (wondeTeachers) console.log('wondeTeachers[0]', wondeTeachers[0])
+  else console.log('no teachers supplied to formatStudentClassrooms')
 
   let studentClassroomsTmp = []
   wondeStudents.forEach((student) => {
@@ -32,10 +33,7 @@ export function formatStudentClassrooms(
     // Try to construct a yearCode from all the possibilities entered by schools
     let yearCode = makeYearCode(student)
     if (yearCode === UNKNOWN) {
-      yearCode = 'U-' + student.year.data.code
-      console.log(
-        `Unknown year code for student: ${student.forename} ${student.surname} ${student.date_of_birth.date} has ${yearCode} for yearLevel `,
-      )
+      yearCode = 'U-' + student.year.data.code // Note: makeYearCode() already console.logs it
     }
 
     // compose an email address - could be duplicate but we only check at point of
@@ -51,8 +49,7 @@ export function formatStudentClassrooms(
     studentPart.gender = gender
     studentPart.dob = dob
 
-    //
-    // now process the classrooms - could has no classroom assigned
+    // now process the classrooms - may be none
     student.classes.data.forEach((classroom) => {
       let classroomPart = {}
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
@@ -60,6 +57,7 @@ export function formatStudentClassrooms(
       classroomPart.classroomName = classroom.name
       // subject can be an object in the raw data, but we convert to a string in the filtered data
       // and both of these cases pass here - hence the test.
+      // ALSO: "subject" is not part of the csv format, but used to get classroomLearningArea
       classroomPart.subject = typeof classroom.subject === 'string' ? classroom.subject : ''
       classroomPart.classroomId = classroom.id
 
@@ -81,12 +79,16 @@ export function formatStudentClassrooms(
       }
       // now populate teacher columns
       classroom.employees.data.forEach((teacher, index) => {
-        // find the email address from wondeTeachersTemp
         let email = 'placeholder'
         let teacherID = teacher.id
-        let teacherRecord = wondeTeachers.find((teacher) => teacher.id === teacherID)
-        if (teacherRecord) {
-          email = teacherRecord.contact_details.data.emails.email
+
+        // teachers email is in the teachers object array
+        // but may not be supplied when doing updates
+        if (wondeTeachers) {
+          let teacherRecord = wondeTeachers.find((teacher) => teacher.id === teacherID)
+          if (teacherRecord) {
+            email = teacherRecord.contact_details.data.emails.email
+          }
         }
         // Note: Keys generated dynamically using the array notation[]
         let fnameKey = `teacher${index + 1} FirstName`
@@ -112,17 +114,5 @@ export function formatStudentClassrooms(
     'wondeStudentId',
   ])
   console.log('CSV formatted data', studentClassroomsTmpSorted[0])
-  setStudentClassrooms(studentClassroomsTmpSorted) // for display in "upload Format" tab
+  setResultStateVariable(studentClassroomsTmpSorted) // for display in "upload Format" tab
 } // end of formatStudentClassrooms()
-
-function getNumericYearLevel(yearCode) {
-  switch (yearCode) {
-    case 'K':
-      return -1
-    case 'FY':
-    case 'R':
-      return 0
-    default:
-      return parseInt(yearCode)
-  }
-}

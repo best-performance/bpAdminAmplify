@@ -14,6 +14,7 @@ import getChangedStudents from './UpdateSchoolHelpers/getChangedStudents'
 import processStudent from './UpdateSchoolHelpers/processStudent'
 import processStudentClassroom from './UpdateSchoolHelpers/processStudentClassroom'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific'
+import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -35,7 +36,7 @@ function UpdateSchool() {
   const [changedStudents, setChangedStudents] = useState([])
 
   // This one is for the CSV upload display (as per the standard upload spreadsheet)
-  const [studentClassrooms, setStudentClassrooms] = useState([])
+  const [formattedStudentClassrooms, setFormattedStudentClassrooms] = useState([])
   const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
 
   // some loading indicators
@@ -45,8 +46,7 @@ function UpdateSchool() {
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
-  // There is  UI button that will run the function
-  // Any sort of test function here is acceptable
+  // There is  UI button that will run whatever test is needed
   async function testFunction() {
     console.log('testFuntion() invoked')
     console.log(process.env)
@@ -83,24 +83,28 @@ function UpdateSchool() {
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
-    // find the changed students as per Wonde, then filter them remove unwanted classes
-    let updatedStudentsRaw = await getChangedStudents(selectedSchool, afterDate)
-    console.log('No of updated students reported by Wonde', updatedStudentsRaw.length)
-    let updatedStudents = applyOptionsSchoolSpecific(
-      updatedStudentsRaw,
+    // find the changed students from Wonde
+    let unfilteredUpdates = await getChangedStudents(selectedSchool, afterDate)
+    console.log('No of updated students reported by Wonde', unfilteredUpdates.length)
+
+    // filter out unwanted classrooms and years (school specific)
+    let filteredUpdates = applyOptionsSchoolSpecific(
+      unfilteredUpdates,
       null, // yearOptions known by the school specific routine
       null, // kinterDayClasses known by the school specific routine
       null, // kinterDayClassName known by the school specific routine
       null, // coreSubjectOption known by the school specific routine
       selectedSchool,
-      'Update', // filtering is different if looking for updates
     )
+
+    // Apply the CSV format for display
+    formatStudentClassrooms(filteredUpdates, null, selectedSchool, setFormattedStudentClassrooms)
 
     // check each student to look for changes of details like DoB, etc
     // If new student the, the new student details are returned
     // If existing student with changes, the existing and new student details are returned
     let changedStudents = []
-    let promises = updatedStudents.map(async (student) => {
+    let promises = filteredUpdates.map(async (student) => {
       let changedStudent = await processStudent(student)
       if (changedStudent.length > 0) {
         changedStudent.forEach((row) => {
@@ -111,18 +115,6 @@ function UpdateSchool() {
     await Promise.all(promises)
     console.log('ChangedStudents for display', changedStudents)
     setChangedStudents(changedStudents)
-
-    // check each student to look for changes of classrooms
-    // If new student the, the new students classrooms are returned
-    // If existing student with changes, the existing and new student classrooms are returned
-
-    console.log('processing classroom changes')
-    promises = updatedStudents.map(async (student) => {
-      console.log('classroom for processing', student)
-      let changedClassroom = await processStudentClassroom(student)
-      //console.log('Changed Classroom', changedClassroom) // empty for now
-    })
-    await Promise.all(promises)
 
     setSchoolDataLoaded(true)
   }
@@ -243,7 +235,7 @@ function UpdateSchool() {
               </CRow>
             </CContainer>
           </Item>
-          <Item title="teacher updates">
+          <Item title="students in CSV format">
             <CContainer>
               <CRow>
                 {isLoadingStudents ? (
@@ -256,7 +248,7 @@ function UpdateSchool() {
                     hoverStateEnabled={true}
                     allowColumnReordering={true}
                     columnAutoWidth={true}
-                    dataSource={filteredStudentClassrooms}
+                    dataSource={formattedStudentClassrooms}
                   >
                     <SearchPanel visible={true} />
                     <Export enabled={true} allowExportSelectedData={true} />

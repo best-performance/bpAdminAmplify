@@ -82,7 +82,7 @@ export function applyOptions_wonde_ANZ(
             filteredClasses.push(classroom)
           }
         } else {
-          // we accept all classrooms (not likely)
+          // Accept all classrooms (not likely)
           filteredClasses.push(classroom)
         }
       })

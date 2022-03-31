@@ -3,7 +3,7 @@
  * It outlines the process of uploading a school as implemented in NewSchool
  * it also looks ahead to later incremental updates and periodic resyncing
  *
- * The upload/uptake component is called <NewSchool>
+ * <NewSchool> is teh component
  *
  * It has a useEffect() executed once to read the lookup tables to retrieve
  * the EdC/Elastik IDs for
@@ -53,19 +53,19 @@
  *     remove duplicate classes for primary schools based on Mon-AM etc
  *     Note: Check above code in ApplyOptions() with Diego
  *     remove all secondary classes that are not core subjects
- * New approach
+ * New approach (now implemented)
  * ------------
  *  Apply the filter options on the original raw data from Wonde (saved in [WondeStudents]).
- *  The filtering will do some of these actions depending on UI options chosen"
+ *  The filtering will do as below depending on UI options chosen"
  *  1. Remove classes eg those that are not core
- *  2. Amalgamate classes eg thos like AM,PM etc in FY
+ *  2. Amalgamate classes eg those like AM,PM etc in FY
  *  3. Remove years eg the school only want years 3-5 loaded
  *  After filtering we then apply formatStudentClassrooms() to make it scv format.
  *  The main reason for filtering the raw data is that filtering on update or resync data will need
  *  to be done on raw data, therefore making the code reusable.
  *
  *  There is a function called save saveSchoolCSVtoDynamoDB() which is executed by a UI Button
- *  This deos the following:
+ *  This does the following:
  *     saveSchool() saves the school record in tbale School
  *     makes a unique list of classrooms [uniqueClassroomsMap] from [filteredStudentClassrooms]
  *     makes a unique list of students [uniqueStudentsMap] from [filteredStudentClassrooms]
@@ -75,7 +75,9 @@
  *   Convert unique maps to arrays [uniqueClassroomsArray], [uniqueTeachersArray], [uniqueStudentsArray]
  *
  *   Save classrooms, teachers, students
- *   Note is all above we have to manually add id,GSI data,typeName,createdAt and updatedAt
+ *   Note in all above we have to manually add fields:
+ *      id, GSI fields as needed, typeName, createdAt and updatedAt
+ *   to all records to emulate what Appsync would have done
  *
  *   For each classroom
  *       add to table classrooms

@@ -3,7 +3,7 @@ const axios = require('axios')
 const { getToken, getURL } = require('../CommonHelpers/featureToggles')
 
 async function getChangedStudents(school, afterDate) {
-  // test of naked read of one student we know has changed
+  // First 2 queries are TEST ONLY
   let URL = `${getURL()}/${school.wondeID}/students/B889709018/?include=year,classes&per_page=200`
   console.log(URL)
 
@@ -30,12 +30,14 @@ async function getChangedStudents(school, afterDate) {
   })
 
   console.log('naked read of student B889709018 with date Filter', response)
-
+  // End of TEST queries
+  // let URL = `${getURL()}/${wondeSchoolID}/students?include=classes.employees,classes.subject,year&per_page=200`
+  // was `${getURL()}/${school.wondeID}/students?updated_after=${afterDate}&include=year,classes&per_page=200`
   let students = []
   try {
     let URL = `${getURL()}/${
       school.wondeID
-    }/students?updated_after=${afterDate}&include=year,classes&per_page=200`
+    }/students?updated_after=${afterDate}&include=classes.employees,classes.subject,year&per_page=200`
     let morePages = true
     while (morePages) {
       console.log(URL)

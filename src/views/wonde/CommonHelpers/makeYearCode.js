@@ -36,7 +36,7 @@ export function makeYearCode(student) {
         //yearCode = `Y${num.toString()}`
         yearCode = num.toString() // "5" not "Y5" is expected by the csv
       } else if (num === 0) {
-        console.log('came here with the 0 condition ', numStr)
+        // we presume year 0 is Foundation Year (AU) or Reception (UK)
         yearCode = isAUSRegion() ? 'FY' : 'R'
       } else {
         console.log(
