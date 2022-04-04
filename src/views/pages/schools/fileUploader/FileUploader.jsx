@@ -6,7 +6,6 @@ import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
-import { getRegion } from 'src/views/wonde/CommonHelpers/featureToggles'
 
 import { updateAWSCredentials } from '../../../wonde/CommonHelpers/updateAWSCredentials'
 
@@ -22,7 +21,7 @@ const FileUploader = () => {
       await updateAWSCredentials()
       Storage.configure({
         bucket: process.env.REACT_APP_UPLOADS_BUCKET,
-        region: getRegion(),
+        region: 'eu-west-2', // there is only one bucket and its in the UK
         identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
       })
       listCurrentfiles()

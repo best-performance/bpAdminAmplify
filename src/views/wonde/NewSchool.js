@@ -29,8 +29,6 @@ import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
 
-import getChangedStudents from './UpdateSchoolHelpers/getChangedStudents'
-
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
 // For local starts, the amplify.yml script is not activated, so instead we use "> npm run start:local"
@@ -272,11 +270,6 @@ function NewSchool() {
     )
     setIsLoadingStudents(false)
     setIsLoadingTeachers(true)
-
-    // run this here to check the results returned
-    console.log('===========================running this from new school...')
-    await getChangedStudents(selectedSchool, '2022-03-16 00:00:00')
-    console.log('===========================end running from new school ')
 
     // get the teachers
     let { wondeTeachersTemp } = await getTeachersFromWonde(

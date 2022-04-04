@@ -1,5 +1,3 @@
-import _ from 'lodash'
-
 // Options for Christ_Church_Grammer
 // This filters the studentclassroom list to remove unwanted records
 // Filter Rules:
@@ -58,9 +56,8 @@ export function applyOptions_Christ_Church_Grammer(
 
   let filteredList = []
 
-  // The data to be filtered is the raw student->classroom->teacher data read from Wonde
-  let wondeS2 = _.cloneDeep(wondeStudents)
-  wondeS2.forEach((student) => {
+  // The data to be filtered is a clone of the raw student->classroom->teacher data read from Wonde
+  wondeStudents.forEach((student) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
 
