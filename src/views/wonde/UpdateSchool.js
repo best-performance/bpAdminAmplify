@@ -2,7 +2,14 @@ import React, { useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
+import {
+  DataGrid,
+  MasterDetail,
+  Selection,
+  SearchPanel,
+  Column,
+  Export,
+} from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 
 // Helper functions
@@ -35,12 +42,11 @@ function UpdateSchool() {
 
   // This one is for the CSV upload display (as per the standard upload spreadsheet)
   const [formattedStudentClassrooms, setFormattedStudentClassrooms] = useState([])
-  const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
 
   // some loading indicators
   const [isLoadingSchools, setIsLoadingSchools] = useState(false)
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
-  const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
+
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -77,10 +83,11 @@ function UpdateSchool() {
     setSchoolDataLoaded(false)
   }, [])
 
-  // Triggered by "Get Wonde updates for ..." button to read all school data
+  // Triggered by "Get Student/Classroom updates ..." button to read all school data
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
+    setIsLoadingStudents(true)
     let unfilteredUpdates = await getChangedStudents(selectedSchool, '2022-03-16 00:00:00')
 
     console.log('No of updated students reported by Wonde', unfilteredUpdates.length)
@@ -103,6 +110,7 @@ function UpdateSchool() {
     // If its a new student then, the new student details are returned
     // If its an existing student with changes, the existing and new student details are returned
     let changedStudents = []
+    let changedClassesArray = []
     let promises = filteredUpdates.map(async (student) => {
       let { changedStudent, changedClasses } = await processStudent(student)
       if (changedStudent.length > 0) {
@@ -110,10 +118,18 @@ function UpdateSchool() {
           changedStudents.push(row)
         })
       }
+      if (changedClasses.length > 0) {
+        changedClasses.forEach((row) => {
+          changedClassesArray.push(row)
+        })
+      }
     })
     await Promise.all(promises)
+    setIsLoadingStudents(false)
     console.log('ChangedStudents for display', changedStudents)
+    console.log('ChangedClasses for display', changedClassesArray)
     setChangedStudents(changedStudents)
+    setChangedClasses(changedClassesArray)
 
     setSchoolDataLoaded(true)
   }
@@ -125,9 +141,10 @@ function UpdateSchool() {
 
   // This is a Detail component to show student-classrooms assignments
   function StudentClassrooms(params) {
-    let studentId = params.data.data.wondeStudentId
-    let studentClassroomList = changedClasses.filter((classroom) => {
-      return classroom.studentID === studentId
+    console.log('params', params)
+    let id = params.data.data.id
+    let changedClassesForThisStudent = changedClasses.filter((classroom) => {
+      return classroom.id === id
     })
 
     return (
@@ -136,7 +153,7 @@ function UpdateSchool() {
         hoverStateEnabled={true}
         allowColumnReordering={true}
         columnAutoWidth={true}
-        dataSource={studentClassroomList}
+        dataSource={changedClassesForThisStudent}
       ></DataGrid>
     )
   }
@@ -195,27 +212,27 @@ function UpdateSchool() {
             <span style={{ color: 'red' }}>{selectedSchool.schoolName}</span>
           </div>
         </CCol>
-        <CCol xs={2}>
+        <CCol xs={3}>
           {selectedSchool.schoolName !== 'none' ? (
             <Button
               stylingMode="outlined"
               style={{ marginBottom: '15px' }}
               onClick={getSchoolUpdates}
             >
-              Get Updates
+              Get Student/Classroom Updates
             </Button>
           ) : null}
         </CCol>
         <CCol xs={1}></CCol>
         <CCol xs={1}></CCol>
-        <CCol xs={3}></CCol>
+        <CCol xs={2}></CCol>
       </CRow>
 
       <div className="d-flex justify-content-center">
         {schoolDataLoaded ? (
           <>
-            <Button stylingMode="outlined" onClick={dummyCallback}>
-              {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
+            <Button stylingMode="outlined" style={{ marginBottom: '15px' }} onClick={dummyCallback}>
+              {`Save updates for ${selectedSchool.schoolName} (not active yet)`}
             </Button>
           </>
         ) : null}
@@ -237,6 +254,7 @@ function UpdateSchool() {
                     allowColumnReordering={true}
                     columnAutoWidth={true}
                     dataSource={changedStudents}
+                    keyExpr="id"
                   >
                     <SearchPanel visible={true} />
                     <Export enabled={true} allowExportSelectedData={true} />
@@ -247,6 +265,7 @@ function UpdateSchool() {
                     <Column caption="CHANGE" dataField="change" />
                     <Column caption="SOURCE" dataField="source" />
                     <Column caption="ID" dataField="id" />
+                    <MasterDetail enabled={true} component={StudentClassrooms} />
                   </DataGrid>
                 )}
               </CRow>

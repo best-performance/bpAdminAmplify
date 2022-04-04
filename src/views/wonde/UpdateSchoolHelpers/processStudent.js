@@ -33,6 +33,7 @@ export default async function processStudent(student) {
     ]
     student.classes.data.forEach((item) => {
       changedClasses.push({
+        id: student.id, // needed for Master/Detail
         className: item.name,
         classType: 'Classroom',
         updatedAt: item.updated_at.date,
@@ -131,7 +132,7 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
       source: 'Wonde',
     })
     returnArray.push({
-      id: DBStudent.id,
+      id: DBStudent.wondeID,
       firstName: DBStudent.firstName,
       lastName: DBStudent.lastName,
       gender: getGender(DBStudent.gender),
@@ -141,7 +142,7 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
     })
   } else {
     // we get here if the student details are not changed
-    // but the classrooms maybe
+    // but the classrooms maybe - so return it
     returnArray.push({
       id: wondeStudent.id,
       firstName: wondeStudent.forename,
@@ -156,6 +157,12 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
 }
 
 // Check if any student classes details have been updated in Wonde
+// compare the arrays and note
+// if a class in in Dynmao - but not in Wonde
+// if a class is in Wonde - but not in Dynamo
+// if in both
+//   check if class name has changed
+//   check if the teacher has changed
 function findClassChanges(wondeStudent, DBStudent) {
   //console.log('wondeStudent', wondeStudent)
   //console.log('DBStudent', DBStudent)
@@ -165,12 +172,6 @@ function findClassChanges(wondeStudent, DBStudent) {
   let DBClassesMap = new Map()
   let wondeClassesMap = new Map()
 
-  // compare the arrays and note
-  // if a class in in Dynmao - but not in Wonde
-  // if a class is in Wonde - but not in Dynamo
-  // if in both
-  //   check if class name has changed
-  //   check if the teacher has changed
   DBStudent.classrooms.items.forEach((item) => {
     DBClassesMap.set(item.classroom.wondeID, item.classroom)
   })
@@ -187,10 +188,12 @@ function findClassChanges(wondeStudent, DBStudent) {
       //console.log('classroom in wonde and Dynamo', item, wondeClass)
       let returnItem = { ...item.classroom }
       returnItem.change = 'In both'
+      returnItem.id = DBStudent.wondeID
       returnArray.push(returnItem)
     } else {
       //console.log('classroom in Dynamo only', item)
       let returnItem = { ...item.classroom }
+      returnItem.id = DBStudent.wondeID
       returnItem.change = 'Dynamo Only'
       returnArray.push(returnItem)
     }
@@ -207,6 +210,7 @@ function findClassChanges(wondeStudent, DBStudent) {
         classType: 'Classroom',
         updatedAt: item.updated_at.date,
         wondeID: item.id,
+        id: wondeStudent.id,
         change: 'Wonde Only',
       }
       returnArray.push(returnItem)
