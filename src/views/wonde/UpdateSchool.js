@@ -31,6 +31,7 @@ function UpdateSchool() {
 
   // To display the changed students (new students or details changed)
   const [changedStudents, setChangedStudents] = useState([])
+  const [changedClasses, setChangedClasses] = useState([])
 
   // This one is for the CSV upload display (as per the standard upload spreadsheet)
   const [formattedStudentClassrooms, setFormattedStudentClassrooms] = useState([])
@@ -80,9 +81,7 @@ function UpdateSchool() {
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
-    console.log('==================================running this from updates...')
     let unfilteredUpdates = await getChangedStudents(selectedSchool, '2022-03-16 00:00:00')
-    console.log('==================================end running from updates')
 
     console.log('No of updated students reported by Wonde', unfilteredUpdates.length)
     console.log('unfiltered updates[0]', unfilteredUpdates[0])
@@ -101,11 +100,11 @@ function UpdateSchool() {
     formatStudentClassrooms(filteredUpdates, null, selectedSchool, setFormattedStudentClassrooms)
 
     // check each student to look for changes of details like DoB, etc
-    // If its a new student the, the new student details are returned
+    // If its a new student then, the new student details are returned
     // If its an existing student with changes, the existing and new student details are returned
     let changedStudents = []
     let promises = filteredUpdates.map(async (student) => {
-      let changedStudent = await processStudent(student)
+      let { changedStudent, changedClasses } = await processStudent(student)
       if (changedStudent.length > 0) {
         changedStudent.forEach((row) => {
           changedStudents.push(row)
@@ -122,6 +121,24 @@ function UpdateSchool() {
   // dummy callback to be filled in
   function dummyCallback() {
     return
+  }
+
+  // This is a Detail component to show student-classrooms assignments
+  function StudentClassrooms(params) {
+    let studentId = params.data.data.wondeStudentId
+    let studentClassroomList = changedClasses.filter((classroom) => {
+      return classroom.studentID === studentId
+    })
+
+    return (
+      <DataGrid
+        showBorders={true}
+        hoverStateEnabled={true}
+        allowColumnReordering={true}
+        columnAutoWidth={true}
+        dataSource={studentClassroomList}
+      ></DataGrid>
+    )
   }
 
   if (!loggedIn.username) {
