@@ -17,17 +17,17 @@ import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
 // Helper functions
-import { getAllSchoolsFromWonde } from './helpers/getAllSchoolsFromWonde'
-import { getStudentsFromWonde } from './helpers/getStudentsFromWonde'
-import { getTeachersFromWonde } from './helpers/getTeachersFromWonde'
-import { formatStudentClassrooms } from './helpers/formatStudentClassrooms'
-import { applyOptions } from './helpers/applyOptions' // for filtering the CSV data
-import { OptionsPopup } from './helpers/optionsPopup'
-import { saveSchool } from './helpers/saveSchool' // save it if it does not already exist in table School
-import { deleteSchoolDataFromDynamoDB } from './helpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser } from './helpers/cognitoFns'
-import { batchWrite } from './helpers/batchWrite'
-import { getRegion, getToken, getURL } from './helpers/featureToggles'
+import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
+import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
+import { getTeachersFromWonde } from './NewSchoolHelpers/getTeachersFromWonde'
+import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
+import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
+import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
+import { deleteSchoolDataFromDynamoDB } from './NewSchoolHelpers/deleteSchoolDataFromDynamoDB'
+import { addNewCognitoUser } from './NewSchoolHelpers/cognitoFns'
+import { batchWrite } from './NewSchoolHelpers/batchWrite'
+import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
+import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -74,7 +74,7 @@ function NewSchool() {
 
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([])
-  const [wondeTeachers, setWondeTeachers] = useState([])
+  const [wondeTeachers, setWondeTeachers] = useState([]) // we only use the email field
 
   // Next four are for the student-teacher and classroom-teacher displays
   const [displayStudents, setDisplayStudents] = useState([])
@@ -82,8 +82,9 @@ function NewSchool() {
   const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
   const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
 
-  // This one is for the CSV upload display (as per the standard upload spreadsheet)
+  // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
+  // This one is for the CSV Format-Filtered tab (as per the standard upload spreadsheet)
   const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
 
   // some loading indicators
@@ -134,16 +135,21 @@ function NewSchool() {
     console.log('apply filter options')
     console.log(yearOptions)
 
-    // apply the filters - but it won't work here
-    setFilteredStudentClassrooms(
-      applyOptions(
-        studentClassrooms,
-        yearOptions,
-        kinterDayClasses,
-        kinterDayClassName,
-        coreSubjectOption,
-      ),
+    // now applying teh filter to the raw Wonde data as per doco
+    let filteredWondeStudents = applyOptionsSchoolSpecific(
+      wondeStudents, // raw data from Wonde
+      yearOptions,
+      kinterDayClasses,
+      kinterDayClassName,
+      coreSubjectOption,
+      selectedSchool,
     )
+    formatStudentClassrooms(
+      filteredWondeStudents,
+      wondeTeachers, // only for the email address
+      selectedSchool,
+      setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
+    ) // this is for the uploader format
   }
 
   // This useEffect() reads and saves the contents of 4 lookups
@@ -197,7 +203,7 @@ function NewSchool() {
     console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
-    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
+    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
@@ -254,6 +260,8 @@ function NewSchool() {
     if (selectedSchool === {}) return
     setSchoolDataLoaded(false)
     setIsLoadingStudents(true)
+
+    // get the students->classes->teachers
     let { wondeStudentsTemp } = await getStudentsFromWonde(
       selectedSchool.wondeID,
       setWondeStudents,
@@ -262,22 +270,23 @@ function NewSchool() {
     )
     setIsLoadingStudents(false)
     setIsLoadingTeachers(true)
+
+    // get the teachers
     let { wondeTeachersTemp } = await getTeachersFromWonde(
       selectedSchool.wondeID,
       setWondeTeachers,
       setDisplayTeachers,
       setDisplayTeacherClassrooms,
     )
-    // let { wondeClassrooms } = await getClassroomsFromWonde(selectedSchool.wondeID)
-    // console.log(wondeClassrooms)
-
     setIsLoadingTeachers(false)
+
+    // format as per csv uploader
     formatStudentClassrooms(
       wondeStudentsTemp,
-      wondeTeachersTemp,
+      wondeTeachersTemp, // only for the email address
       selectedSchool,
       setStudentClassrooms,
-    ) // this is for the uploader format
+    )
     setSchoolDataLoaded(true)
   }
 
@@ -1065,7 +1074,9 @@ function NewSchool() {
   return (
     <CContainer>
       <CRow>
-        <h4 className="text-center">Wonde Integration - New School Uptake</h4>
+        <div style={{ textAlign: 'center', fontSize: '30px' }}>
+          <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>
+        </div>
       </CRow>
       <div className="d-flex justify-content-center">
         <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>

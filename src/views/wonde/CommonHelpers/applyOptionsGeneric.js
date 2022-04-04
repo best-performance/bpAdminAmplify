@@ -1,9 +1,6 @@
-// This filters the studentclassroom list to remove unwanted records
-// Filter Rules:
-//    Only include years 1-12,FY and K by default or otherwise the contents of
-//    Add year level to the start of Classroom names if not already there
-//    Remove Mon-AM, Mon-PM and replace with "Mon-Fri" for FY students
-export function applyOptions(
+//applyOptions_Generoc()
+// This is to use a template for new schools - make a copy and edit
+function applyOptions_Generic(
   listToFilter,
   yearOptions,
   kinterDayClasses,
@@ -64,4 +61,4 @@ export function applyOptions(
   })
   console.log('filtered list', filteredList)
   return filteredList
-} // end function applyFilters()
+} // end function applyOptions_Generic()

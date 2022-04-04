@@ -9,7 +9,7 @@ frontend:
         - echo "REACT_APP_EDCOMPANION_USER_POOL_CLIENT_ID=$EDCOMPANION_USER_POOL_CLIENT_ID" >> .env
         - echo "REACT_APP_EDCOMPANION_USER_POOL_CLIENT_WEB_ID=$EDCOMPANION_USER_POOL_CLIENT_WEB_ID" >> .env
         - echo "REACT_APP_EDCOMPANION_USER_POOL_ID=$EDCOMPANION_USER_POOL_ID" >> .env
-        - echo "REACT_APP_IDENTITY_POOL=$IDENTITY_POOL_ID" >> .env
+        - echo "REACT_APP_IDENTITY_POOL_ID=$IDENTITY_POOL_ID" >> .env
         - echo "REACT_APP_UPLOADS_BUCKET=$UPLOADS_BUCKET" >> .env
         - echo "REACT_APP_SCHOOL_STUDENT_TABLE=$SCHOOL_STUDENT_TABLE" >> .env
         - echo "REACT_APP_SCHOOL_TABLE=$SCHOOL_TABLE" >> .env
@@ -25,6 +25,7 @@ frontend:
         - echo "REACT_APP_CLASSROOM_YEARLEVEL_TABLE=$CLASSROOM_YEARLEVEL_TABLE" >> .env
         - echo "REACT_APP_COUNTRY_TABLE=$COUNTRY_TABLE" >> .env
         - echo "REACT_APP_LEARNINGAREA_TABLE=$LEARNINGAREA_TABLE" >> .env
+        - echo "REACT_APP_APPSYNC_API=$APPSYNC_API" >> .env
         - yarn install --immutable --immutable-cache --check-cache
     build:
       commands:

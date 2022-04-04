@@ -1,4 +1,4 @@
-import { getToken, getURL } from './featureToggles'
+import { getToken, getURL } from '../CommonHelpers/featureToggles'
 import axios from 'axios'
 
 // gets the classromms for a particular school

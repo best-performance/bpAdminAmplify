@@ -1,5 +1,5 @@
 import AWS from 'aws-sdk'
-import { updateAWSCredentials } from './updateAWSCredentials.js'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 import { deleteUser } from './cognitoFns'
 
 // Tables to store school data (NB its repeated in NewSchool)

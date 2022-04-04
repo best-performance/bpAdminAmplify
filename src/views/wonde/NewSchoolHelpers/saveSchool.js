@@ -1,7 +1,7 @@
 import { v4 } from 'uuid'
 import dayjs from 'dayjs'
 import AWS from 'aws-sdk'
-import { updateAWSCredentials } from './updateAWSCredentials.js'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 /** ----------------------------------------------------------------------- */
 export async function saveSchool(
   selectedSchool,
@@ -14,7 +14,7 @@ export async function saveSchool(
   console.log('inside SaveSchool')
   console.log(selectedSchool)
   console.log('tableName')
-  updateAWSCredentials()
+  await updateAWSCredentials()
   let docClient = new AWS.DynamoDB.DocumentClient()
   // first check if the WondeID already exists (ie the school is already saved)
   const queryParams = {

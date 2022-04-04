@@ -1,12 +1,13 @@
 import React, { useContext, useEffect } from 'react'
 import { CCard, CContainer, CRow, CSpinner } from '@coreui/react'
-import Storage from '@aws-amplify/storage'
+import { Storage } from '@aws-amplify/storage'
 import { useState } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import Button from 'devextreme-react/button'
 import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
-import { getRegion } from 'src/views/wonde/helpers/featureToggles'
+
+import { updateAWSCredentials } from '../../../wonde/CommonHelpers/updateAWSCredentials'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()
@@ -16,12 +17,16 @@ const FileUploader = () => {
   const { loggedIn } = useContext(loggedInContext)
 
   useEffect(() => {
-    Storage.configure({
-      bucket: process.env.REACT_APP_UPLOADS_BUCKET,
-      region: getRegion(),
-      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL}`,
-    })
-    listCurrentfiles()
+    async function loadConfigure() {
+      await updateAWSCredentials()
+      Storage.configure({
+        bucket: process.env.REACT_APP_UPLOADS_BUCKET,
+        region: 'eu-west-2', // there is only one bucket and its in the UK
+        identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
+      })
+      listCurrentfiles()
+    }
+    loadConfigure()
     return () => {
       setSelectedFile(null) // This worked for me
       setIsSelected(false)
@@ -32,6 +37,7 @@ const FileUploader = () => {
   }, [])
 
   async function listCurrentfiles() {
+    await updateAWSCredentials()
     let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
     setSchoolFiles(
       listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),

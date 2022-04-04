@@ -15,7 +15,7 @@ import { cilMenu } from '@coreui/icons'
 
 import { logoNegative } from 'src/assets/brand/logo-negative'
 
-import { getRegionName } from 'src/views/wonde/helpers/featureToggles'
+import { getRegionName } from 'src/views/wonde/CommonHelpers/featureToggles'
 
 function AppHeader() {
   const { loggedIn } = useContext(loggedInContext)
