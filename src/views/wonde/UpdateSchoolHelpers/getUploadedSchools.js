@@ -1,4 +1,3 @@
-import axios from 'axios'
 import AWS from 'aws-sdk'
 import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 
@@ -8,7 +7,7 @@ const SCHOOL_TABLE = process.env.REACT_APP_SCHOOL_TABLE
 export async function getUploadedSchools(url, token) {
   let schools = []
   try {
-    updateAWSCredentials()
+    await updateAWSCredentials()
 
     let docClient = new AWS.DynamoDB.DocumentClient()
     let response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
@@ -19,7 +18,7 @@ export async function getUploadedSchools(url, token) {
             schoolName: school.schoolName,
             wondeID: school.wondeID,
             lastWondeUpdate: '01/01/2022',
-            // TODO - add a lastWondeUpdate field
+            // TODO - add a lastWondeUpdate field to sSchool table
           })
       })
       return schools

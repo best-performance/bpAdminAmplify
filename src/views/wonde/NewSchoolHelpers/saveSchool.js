@@ -14,7 +14,7 @@ export async function saveSchool(
   console.log('inside SaveSchool')
   console.log(selectedSchool)
   console.log('tableName')
-  updateAWSCredentials()
+  await updateAWSCredentials()
   let docClient = new AWS.DynamoDB.DocumentClient()
   // first check if the WondeID already exists (ie the school is already saved)
   const queryParams = {

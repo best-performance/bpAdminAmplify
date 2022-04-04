@@ -1,4 +1,5 @@
 import { getToken, getURL } from '../CommonHelpers/featureToggles'
+import { getYearCode } from '../CommonHelpers/getYearCode'
 import axios from 'axios'
 import _ from 'lodash'
 
@@ -30,7 +31,14 @@ export async function getStudentsFromWonde(
       })
       // eslint-disable-next-line no-loop-func
       response.data.data.forEach((student) => {
-        wondeStudentsTemp.push(student) // save the original response data
+        if (student.id === 'B889709018') console.log('-------student B889709018', student)
+        // Format the year code because its needed for filtering
+        let formattedStudent = { ...student }
+        formattedStudent.yearCode = getYearCode(formattedStudent)
+        wondeStudentsTemp.push(formattedStudent) // save the response data
+
+        // Remainer here is for the obsolescent student->classroom
+        // and teachClassrom displays
         // only add classroom entries if the student is assigned to a class
         if (student.classes.data.length > 0) {
           student.classes.data.forEach((classroom) => {
@@ -78,6 +86,7 @@ export async function getStudentsFromWonde(
   console.log('no of students with no classrooms', noClassesCount)
   students = _.sortBy(students, ['year', 'wondeStudentId'])
 
+  console.log('wondeStudentsTemp', wondeStudentsTemp)
   setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
   setDisplayStudents(students)
   setDisplayStudentClassrooms(classrooms)

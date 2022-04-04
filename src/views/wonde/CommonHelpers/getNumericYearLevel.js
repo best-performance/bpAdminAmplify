@@ -1,4 +1,4 @@
-// retrun a year level that matches the supplied year code.
+// return a year level that matches the supplied year code.
 export function getNumericYearLevel(yearCode) {
   switch (yearCode) {
     case 'K':

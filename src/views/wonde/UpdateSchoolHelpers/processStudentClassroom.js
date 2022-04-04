@@ -26,7 +26,7 @@ const getStudentByWondeID = /* GraphQL */ `
 
 export default async function processStudentClassroom(student) {
   // get ready for AWS service calls
-  updateAWSCredentials() // uses the Cognito Identify pool role
+  await updateAWSCredentials() // uses the Cognito Identify pool role
 
   let studentClasses = []
   // do a test Appsync call

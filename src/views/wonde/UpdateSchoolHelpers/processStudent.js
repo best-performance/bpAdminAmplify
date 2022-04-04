@@ -15,7 +15,7 @@ const CLASSROOM_STUDENT_INDEX = 'byStudent'
 
 export default async function processStudent(student) {
   // get ready for AWS service calls
-  updateAWSCredentials() // uses the Cognito Identify pool role
+  await updateAWSCredentials() // uses the Cognito Identify pool role
 
   // using the DocumentClient API
   let docClient = new AWS.DynamoDB.DocumentClient()
@@ -29,7 +29,7 @@ export default async function processStudent(student) {
     return findStudentDetailChanges(student, DBStudent.Items[0])
   } else {
     // then student is not in the DB
-    console.log(`${student.forename} ${student.surname} is a new student`)
+    console.log(`${student.forename} ${student.surname} is a new student`, student)
     return [
       {
         id: student.id,

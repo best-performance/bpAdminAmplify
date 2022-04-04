@@ -1,10 +1,7 @@
 import dayjs from 'dayjs'
 import _ from 'lodash'
-import { makeYearCode } from '../CommonHelpers/makeYearCode'
 import { getGender } from '../CommonHelpers/getGender'
 import { getNumericYearLevel } from '../CommonHelpers/getNumericYearLevel'
-
-const UNKNOWN = 'unknown'
 
 // This formats either raw or filtered Wonde data into CSV format
 // matching the original csv upload files
@@ -12,7 +9,7 @@ export function formatStudentClassrooms(
   wondeStudents,
   wondeTeachers,
   selectedSchool,
-  setResultStateVariable, // Either setStudentClassrooms | setFilteredStudentCalssrooms
+  setResultStateVariable, // Either setStudentClassrooms | setFilteredStudentClassrooms
 ) {
   console.log('Wonde Student[0]', wondeStudents[0])
   if (wondeTeachers) console.log('wondeTeachers[0]', wondeTeachers[0])
@@ -30,12 +27,6 @@ export function formatStudentClassrooms(
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
     else dob = '01/01/1999' // dummy placeholder
 
-    // Try to construct a yearCode from all the possibilities entered by schools
-    let yearCode = makeYearCode(student)
-    if (yearCode === UNKNOWN) {
-      yearCode = 'U-' + student.year.data.code // Note: makeYearCode() already console.logs it
-    }
-
     // compose an email address - could be duplicate but we only check at point of
     // creating the Cognito entry - which will scream if duplicate exists
     studentPart.email =
@@ -45,7 +36,7 @@ export function formatStudentClassrooms(
     studentPart.firstName = student.forename
     studentPart.middleName = student.middle_names ? student.middle_names : ''
     studentPart.lastName = student.surname
-    studentPart.yearCode = yearCode // like n or K or FY
+    studentPart.yearCode = student.yearCode // like n or K or FY
     studentPart.gender = gender
     studentPart.dob = dob
 
@@ -113,6 +104,6 @@ export function formatStudentClassrooms(
     'numericYearLevel',
     'wondeStudentId',
   ])
-  console.log('CSV formatted data', studentClassroomsTmpSorted[0])
+  console.log('CSV formatted data- studentClassroomsTmpSorted[0]', studentClassroomsTmpSorted[0])
   setResultStateVariable(studentClassroomsTmpSorted) // for display in "upload Format" tab
 } // end of formatStudentClassrooms()

@@ -65,7 +65,7 @@ export function applyOptions_wonde_ANZ(
 
     let filteredClasses = []
     // Put a 'Y' in front of numeric keys
-    let yearCode = student.year.data.code
+    let yearCode = student.yearCode
     let studentYear = parseInt(yearCode)
     if (!isNaN(studentYear)) yearCode = `Y${yearCode}`
     if (yearOptions[yearCode]) {
