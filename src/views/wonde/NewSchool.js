@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
+import Tabs from 'devextreme-react/tabs'
 import {
   DataGrid,
   MasterDetail,
@@ -40,6 +41,21 @@ const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
 const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
 //const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
 
+const schoolTabs = [
+  {
+    id: 0,
+    text: 'Not Uploaded Schools',
+    icon: 'add',
+    content: 'Schools pending to be uploaded',
+  },
+  {
+    id: 1,
+    text: 'Uploaded Schools',
+    icon: 'check',
+    content: 'Schools previously uploaded',
+  },
+]
+
 // Tables to store school data
 // We need to generalise this for regional table names
 // Maybe use a dynamo query to list the available table names?
@@ -71,6 +87,8 @@ function NewSchool() {
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
   const [schools, setSchools] = useState([])
+  const [alreadyLoadedSchools, setAlreadyLoadedSchools] = useState([])
+  const [selectedTabIndex, setSelectedTabIndex] = useState(0)
 
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([])
@@ -98,6 +116,7 @@ function NewSchool() {
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
+  const [schoolsLookup, setSchoolsLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
   // this controls the options popup
@@ -152,6 +171,12 @@ function NewSchool() {
     ) // this is for the uploader format
   }
 
+  function onTabOptionChanged(args) {
+    if (args.name === 'selectedIndex') {
+      setSelectedTabIndex(args.value)
+    }
+  }
+
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
   useEffect(() => {
@@ -178,6 +203,9 @@ function NewSchool() {
       setYearLevelsLoookup(response.Items)
       response = await docClient.scan({ TableName: STATE_TABLE }).promise()
       setStatesLookup(response.Items)
+      response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
+      // adding wondeschool ids
+      setSchoolsLookup(response.Items)
       // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
       // setLearningAreasLookup(response.Items)
     }
@@ -235,11 +263,31 @@ function NewSchool() {
     setDisplayTeachers([])
     setDisplayStudentClassrooms([])
     setDisplayTeacherClassrooms([])
+    let uploadedSchoolsWondeId = []
+
+    if (schoolsLookup && schoolsLookup.length > 0) {
+      for (let i = 0; i < schoolsLookup.length; i++) {
+        if (schoolsLookup[i].wondeID) {
+          uploadedSchoolsWondeId.push(schoolsLookup[i].wondeID)
+        }
+      }
+    }
 
     // back to the business of this function
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
     if (schools) {
-      setSchools(schools)
+      let loadedSchools = []
+      let notLoadedSchools = []
+      schools.forEach((school) => {
+        if (uploadedSchoolsWondeId.lastIndexOf(school.wondeID) === -1) {
+          notLoadedSchools.push(school)
+        } else {
+          loadedSchools.push(school)
+        }
+      })
+      setSchools(notLoadedSchools)
+      setAlreadyLoadedSchools(loadedSchools)
+
       setIsLoadingSchools(false)
     } else {
       console.log('could not read schools from Wonde')
@@ -1086,27 +1134,53 @@ function NewSchool() {
           run testFunction()
         </Button>
       </div>
-      <CRow>
-        <CCol></CCol>
-        <CCol>
-          {isLoadingSchools ? (
-            <CSpinner />
-          ) : (
-            <DataGrid
-              id="dataGrid"
-              keyExpr="wondeID"
-              showBorders={true}
-              hoverStateEnabled={true}
-              onSelectionChanged={selectSchool}
-              allowColumnReordering={true}
-              columnAutoWidth={true}
-              dataSource={schools}
-            >
-              <Selection mode="single" />
-            </DataGrid>
+      <CRow style={{ width: '50%', margin: '20px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <Tabs
+            dataSource={schoolTabs}
+            selectedIndex={selectedTabIndex}
+            onOptionChanged={onTabOptionChanged}
+          />
+          <CCol></CCol>
+          {selectedTabIndex === 0 && (
+            <CCol>
+              {isLoadingSchools ? (
+                <CSpinner />
+              ) : (
+                <DataGrid
+                  id="dataGrid"
+                  keyExpr="wondeID"
+                  showBorders={true}
+                  hoverStateEnabled={true}
+                  onSelectionChanged={selectSchool}
+                  allowColumnReordering={true}
+                  columnAutoWidth={true}
+                  dataSource={schools}
+                >
+                  <Selection mode="single" />
+                </DataGrid>
+              )}
+            </CCol>
           )}
-        </CCol>
-        <CCol></CCol>
+          {selectedTabIndex === 1 && (
+            <CCol>
+              {selectedTabIndex === 1 && isLoadingSchools ? (
+                <CSpinner />
+              ) : (
+                <DataGrid
+                  id="dataGrid"
+                  keyExpr="wondeID"
+                  showBorders={true}
+                  hoverStateEnabled={true}
+                  allowColumnReordering={true}
+                  columnAutoWidth={true}
+                  dataSource={alreadyLoadedSchools}
+                ></DataGrid>
+              )}
+            </CCol>
+          )}
+          <CCol></CCol>
+        </div>
       </CRow>
       <CRow>
         <CCol></CCol>
