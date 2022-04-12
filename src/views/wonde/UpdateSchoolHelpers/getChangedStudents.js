@@ -1,58 +1,43 @@
 // get the students from that have been updated since "aferDate"
-const axios = require('axios')
-const { getToken, getURL } = require('../CommonHelpers/featureToggles')
+
+import axios from 'axios'
+import _ from 'lodash'
+import { getToken, getURL } from '../CommonHelpers/featureToggles'
+import { getYearCode } from '../CommonHelpers/getYearCode'
 
 async function getChangedStudents(school, afterDate) {
-  // First 2 queries are TEST ONLY
-  let URL = `${getURL()}/${school.wondeID}/students/B889709018/?include=year,classes&per_page=200`
-  console.log(URL)
+  let studentsWithUpdates = [] // final output
 
-  let response = await axios({
-    method: 'get',
-    url: URL,
-    headers: {
-      Authorization: getToken(),
-    },
-  })
-  console.log('naked read of student B889709018 no data filter', response)
+  // executed for each student returned by Wonde
+  function saveStudent(student) {
+    if (student.id === 'B1379166035') console.log('-------student B1379166035', student) // 1 before
+    if (student.id === 'B889709018') console.log('-------student B889709018', student)
+    if (student.id === 'B1969204232') console.log('-------student B1969204232', student) // 1 after
 
-  URL = `${getURL()}/${
-    school.wondeID
-  }/students/B889709018/?updated_after=${afterDate}&include=year,classes&per_page=200`
-  console.log(URL)
+    let studentToSave = _.cloneDeep(student)
+    // Format the year code because its needed for filtering
+    studentToSave.yearCode = getYearCode(studentToSave)
+    // save the cloned,modified object
+    studentsWithUpdates.push(studentToSave)
+  }
 
-  response = await axios({
-    method: 'get',
-    url: URL,
-    headers: {
-      Authorization: getToken(),
-    },
-  })
-
-  console.log('naked read of student B889709018 with date Filter', response)
-  // End of TEST queries
-  // let URL = `${getURL()}/${wondeSchoolID}/students?include=classes.employees,classes.subject,year&per_page=200`
-  // was `${getURL()}/${school.wondeID}/students?updated_after=${afterDate}&include=year,classes&per_page=200`
-  let students = []
   try {
     let URL = `${getURL()}/${
       school.wondeID
     }/students?updated_after=${afterDate}&include=classes.employees,classes.subject,year&per_page=200`
     let morePages = true
+    let response
     while (morePages) {
       console.log(URL)
-      let response = await axios({
+      response = await axios({
         method: 'get',
         url: URL,
         headers: {
           Authorization: getToken(),
         },
       })
-      // eslint-disable-next-line no-loop-func
-      response.data.data.forEach((student) => {
-        if (student.id === 'B889709018') console.log('student B889709018 from wonde', student)
-        students.push(student)
-      })
+      console.log('Raw response from Wonde - one page', response)
+      response.data.data.forEach((student) => saveStudent(student))
       // check if all pages are read
       if (response.data.meta.pagination.next != null) {
         URL = response.data.meta.pagination.next
@@ -60,12 +45,12 @@ async function getChangedStudents(school, afterDate) {
         morePages = false
       }
     }
+    console.log('reading finished.................')
+    return studentsWithUpdates
   } catch (error) {
     console.log(error)
     return []
   }
-
-  return students
-}
+} // end getChangedStudents()
 
 export default getChangedStudents

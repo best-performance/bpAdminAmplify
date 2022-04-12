@@ -22,9 +22,11 @@
  *     getStudentsFromWonde() This reads all students from Wonde and saves them
  *        in [WondeStudents] as raw data. Each student object has the data returned by
  *        ..../students?include=classes.employees,classes.subject,year
- *        If no gender then "X" is used
- *        If no DoB then "XX/XX/XXXX" is used
- *        If no year is used then "no year" is entered
+ *        If no gender then "X" is poked in as placeholder
+ *        If no DoB then "01/01/1900" is poked in as placeholder
+ *        The year is used for filtering so we extract the year code here
+ *           getYearCode() converts year to FY|R, K, 1,2,3,4,5,6,7,8,9,10,11,12,12
+ *           or "U-no year" as default
  *     getTeachersFromWonde() This reads all teachers from Wonde and saves them
  *        in [WondeTeachers] as raw data. Each teacher object has the data returned by
  *        ..../employees/?has_class=true&include=contact_details,classes
@@ -33,7 +35,6 @@
  *        [studentClassrooms] which mimics the CSV file format of the old uploader.
  *        Gender is converted to "Male" or "female"
  *        Dob is converetd to "DD/MM/YYYY" format
- *        Year is converted to FY|R, K, 1,2,3,4,5,6,7,8,9,10,11,12,12 or "U-no year" as default
  *
  *  At this point the [studentClassrooms] object is displayed in the leftmost tab
  *  Note there are 2 other redundant tabs that display students and teachers but not documented here

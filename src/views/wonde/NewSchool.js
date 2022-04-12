@@ -231,7 +231,7 @@ function NewSchool() {
     console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
-    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL}`)
+    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls

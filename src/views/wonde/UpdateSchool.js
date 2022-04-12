@@ -1,18 +1,15 @@
-import React, { useEffect, useState, useCallback, useContext } from 'react'
+import React, { useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
 import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
-//import _ from 'lodash'
-import { Auth } from 'aws-amplify'
-import AWS from 'aws-sdk'
+
 // Helper functions
 import { getUploadedSchools } from './UpdateSchoolHelpers/getUploadedSchools'
-import { getRegion } from './CommonHelpers/featureToggles'
 import getChangedStudents from './UpdateSchoolHelpers/getChangedStudents'
 import processStudent from './UpdateSchoolHelpers/processStudent'
-import processStudentClassroom from './UpdateSchoolHelpers/processStudentClassroom'
+//import processStudentClassroom from './UpdateSchoolHelpers/processStudentClassroom'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific'
 import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
 
@@ -23,7 +20,7 @@ import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassro
 
 // a fixed afterDate for test purposes
 //TODO: calculate this date from last update
-const afterDate = '2022-03-16 00:00:00' // formatted as per Wonde examples
+//const afterDate = '2022-03-16 00:00:00' // formatted as per Wonde examples
 
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function UpdateSchool() {
@@ -83,9 +80,12 @@ function UpdateSchool() {
   async function getSchoolUpdates() {
     if (selectedSchool === {}) return
 
-    // find the changed students from Wonde
-    let unfilteredUpdates = await getChangedStudents(selectedSchool, afterDate)
+    console.log('==================================running this from updates...')
+    let unfilteredUpdates = await getChangedStudents(selectedSchool, '2022-03-16 00:00:00')
+    console.log('==================================end running from updates')
+
     console.log('No of updated students reported by Wonde', unfilteredUpdates.length)
+    console.log('unfiltered updates[0]', unfilteredUpdates[0])
 
     // filter out unwanted classrooms and years (school specific)
     let filteredUpdates = applyOptionsSchoolSpecific(
@@ -101,8 +101,8 @@ function UpdateSchool() {
     formatStudentClassrooms(filteredUpdates, null, selectedSchool, setFormattedStudentClassrooms)
 
     // check each student to look for changes of details like DoB, etc
-    // If new student the, the new student details are returned
-    // If existing student with changes, the existing and new student details are returned
+    // If its a new student the, the new student details are returned
+    // If its an existing student with changes, the existing and new student details are returned
     let changedStudents = []
     let promises = filteredUpdates.map(async (student) => {
       let changedStudent = await processStudent(student)

@@ -56,15 +56,14 @@ export function applyOptions_Christ_Church_Grammer(
 
   let filteredList = []
 
-  // The data to be filtered is the raw student->classroom->teacher data read from Wonde
-
+  // The data to be filtered is a clone of the raw student->classroom->teacher data read from Wonde
   wondeStudents.forEach((student) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
 
     let filteredClasses = []
     // Put a 'Y' in front of numeric keys
-    let yearCode = student.year.data.code
+    let yearCode = student.yearCode
     let studentYear = parseInt(yearCode)
     if (!isNaN(studentYear)) yearCode = `Y${yearCode}`
     if (yearOptions[yearCode]) {

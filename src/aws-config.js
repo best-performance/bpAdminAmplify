@@ -14,7 +14,7 @@ const awsconfig = {
   Storage: {
     AWSS3: {
       bucket: `${process.env.REACT_APP_UPLOADS_BUCKET}`, //REQUIRED -  Amazon S3 bucket name
-      region: `${process.env.REACT_APP_REGION}`, //OPTIONAL -  Amazon service region
+      region: 'eu-west-2', // there is only one bucket and its in the UK
       identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
     },
   },

@@ -3,8 +3,11 @@ import { isAUSRegion } from './featureToggles'
 
 const UNKNOWN = 'unknown'
 
-export function makeYearCode(student) {
+export function getYearCode(student) {
   let yearCode = UNKNOWN
+  if (!(student.year && student.year.data && student.year.data.code)) {
+    return yearCode
+  }
   // check for known FY or K strings
   switch (student.year.data.code) {
     case 'Year R': // St Andrew and St Francis CofE Primary School, Our Lady Star of the Sea Catholic Primary School,English Martyrs' Catholic Primary School
@@ -45,5 +48,7 @@ export function makeYearCode(student) {
       }
     }
   }
+  // Just return with a prefix whatever bizarre year code teh school supplied
+  if (yearCode === UNKNOWN) yearCode = 'U-' + student.year.data.code
   return yearCode
 }
