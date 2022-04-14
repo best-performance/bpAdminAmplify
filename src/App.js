@@ -4,6 +4,8 @@ import { HashRouter, Route, Switch } from 'react-router-dom'
 import './scss/style.scss'
 import 'devextreme/dist/css/dx.material.blue.light.css'
 import { Auth } from 'aws-amplify'
+import 'devextreme/dist/css/dx.common.css'
+import './css/dx.generic.BP-brand-colours-v20-2-5.css'
 //import 'devextreme/dist/css/dx.light.css'
 
 // To use react's "context" we need to create a context object,

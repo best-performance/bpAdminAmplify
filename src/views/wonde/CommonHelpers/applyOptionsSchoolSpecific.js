@@ -3,6 +3,7 @@ import { applyOptions_Christ_Church_Grammer } from './applyOptions_Christ_Church
 import { applyOptions_Claires_Court_Schools } from './applyOptions_Claires_Court_Schools'
 import { applyOptions_ParksideGrammar } from './applyOptions_ParksideGrammar'
 import { applyOptions_KingsSchoolEly } from './applyOptions_Kings_School_Ely'
+import { applyOptions_Generic } from './applyOptionsGeneric'
 /**
  * Schools use the classroom names and subject fields in different ways
  * Therefore it requires school-specific processing to identify
