@@ -2,14 +2,7 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import {
-  DataGrid,
-  MasterDetail,
-  Selection,
-  SearchPanel,
-  Column,
-  Export,
-} from 'devextreme-react/data-grid'
+import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
 //import _ from 'lodash'
@@ -19,7 +12,6 @@ import { v4 } from 'uuid'
 // Helper functions
 import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
-import { getTeachersFromWonde } from './NewSchoolHelpers/getTeachersFromWonde'
 import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
 import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
 import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
@@ -73,14 +65,7 @@ function NewSchool() {
   const [schools, setSchools] = useState([])
 
   // These 2 save the raw data as loaded from Wonde
-  const [wondeStudents, setWondeStudents] = useState([])
-  const [wondeTeachers, setWondeTeachers] = useState([]) // we only use the email field
-
-  // Next four are for the student-teacher and classroom-teacher displays
-  const [displayStudents, setDisplayStudents] = useState([])
-  const [displayTeachers, setDisplayTeachers] = useState([])
-  const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
-  const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
+  const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
 
   // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
@@ -90,7 +75,6 @@ function NewSchool() {
   // some loading indicators
   const [isLoadingSchools, setIsLoadingSchools] = useState(false)
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
-  const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
 
   // lookup Tables - these are used by the uploader
@@ -146,7 +130,6 @@ function NewSchool() {
     )
     formatStudentClassrooms(
       filteredWondeStudents,
-      wondeTeachers, // only for the email address
       selectedSchool,
       setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
     ) // this is for the uploader format
@@ -230,11 +213,6 @@ function NewSchool() {
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
     setSchoolDataLoaded(false)
-    // when loading the school list we clear teachers, students and classrooms
-    setDisplayStudents([])
-    setDisplayTeachers([])
-    setDisplayStudentClassrooms([])
-    setDisplayTeacherClassrooms([])
 
     // back to the business of this function
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
@@ -262,31 +240,12 @@ function NewSchool() {
     setIsLoadingStudents(true)
 
     // get the students->classes->teachers
-    let { wondeStudentsTemp } = await getStudentsFromWonde(
-      selectedSchool.wondeID,
-      setWondeStudents,
-      setDisplayStudents,
-      setDisplayStudentClassrooms,
-    )
+    let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
+    console.log('Wonde Student', wondeStudentsTemp)
     setIsLoadingStudents(false)
-    setIsLoadingTeachers(true)
-
-    // get the teachers
-    let { wondeTeachersTemp } = await getTeachersFromWonde(
-      selectedSchool.wondeID,
-      setWondeTeachers,
-      setDisplayTeachers,
-      setDisplayTeacherClassrooms,
-    )
-    setIsLoadingTeachers(false)
 
     // format as per csv uploader
-    formatStudentClassrooms(
-      wondeStudentsTemp,
-      wondeTeachersTemp, // only for the email address
-      selectedSchool,
-      setStudentClassrooms,
-    )
+    formatStudentClassrooms(wondeStudentsTemp, selectedSchool, setStudentClassrooms)
     setSchoolDataLoaded(true)
   }
 
@@ -315,7 +274,6 @@ function NewSchool() {
       return
     }
     // From here we assume [FilteredStudentClassrooms] contains filtered data
-    // It has an artifical email address firstnamelastname@schoolname poked in
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
     // Each row represents a student, a classroom and up to 5 teachers
     let uniqueClassroomsMap = new Map()
@@ -450,6 +408,7 @@ function NewSchool() {
     //     so the ClassroomID is available
     // First make a classroomTeacher array from the raw Wonde Teacher data
     let classroomTeachersArrayRaw = []
+    let wondeTeachers = [] // URGENT TODO - load classroomTeachersArrayRaw using wondeStudents
     wondeTeachers.forEach((teacher) => {
       teacher.classes.data.forEach((classroom) => {
         classroomTeachersArrayRaw.push({
@@ -459,7 +418,8 @@ function NewSchool() {
         })
       })
     })
-    // Then remove teachers and classrooms that were filtered out
+
+    // function definition
     function validClassroomTeacher(row) {
       if (
         uniqueClassroomsMap.get(row.wondeClassroomId) &&
@@ -468,7 +428,9 @@ function NewSchool() {
         return true
       }
       return false
-    }
+    } //end validClassroomTeacher()
+
+    // Then remove teachers and classrooms that were filtered out
     let classroomTeachersArrayTmp = classroomTeachersArrayRaw.filter((row) => {
       return validClassroomTeacher(row)
     })
@@ -1028,42 +990,6 @@ function NewSchool() {
     } // end saving classroomStudents
   }
 
-  // This is a Detail component to show student-classrooms assignments
-  function StudentClassrooms(params) {
-    let studentId = params.data.data.wondeStudentId
-    let studentClassroomList = displayStudentClassrooms.filter((student) => {
-      return student.wondeStudentId === studentId
-    })
-
-    return (
-      <DataGrid
-        showBorders={true}
-        hoverStateEnabled={true}
-        allowColumnReordering={true}
-        columnAutoWidth={true}
-        dataSource={studentClassroomList}
-      ></DataGrid>
-    )
-  }
-
-  // This is a Detail component to show teacher-classrooms assignments
-  function TeacherClassrooms(params) {
-    let teacherId = params.data.data.wondeTeacherId
-    let teacherClassroomList = displayTeacherClassrooms.filter((teacher) => {
-      return teacher.wondeTeacherId === teacherId
-    })
-
-    return (
-      <DataGrid
-        showBorders={true}
-        hoverStateEnabled={true}
-        allowColumnReordering={true}
-        columnAutoWidth={true}
-        dataSource={teacherClassroomList}
-      ></DataGrid>
-    )
-  }
-
   if (!loggedIn.username) {
     return (
       <CContainer>
@@ -1264,50 +1190,6 @@ function NewSchool() {
                     <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
                     <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
                     <Column caption="Teacher 5 Email" dataField="teacher5 email" />
-                  </DataGrid>
-                )}
-              </CRow>
-            </CContainer>
-          </Item>
-          <Item title="Student-Classes">
-            <CContainer>
-              <CRow>
-                {isLoadingStudents ? (
-                  <CSpinner />
-                ) : (
-                  <DataGrid
-                    id="dataGrid"
-                    keyExpr="wondeStudentId"
-                    showBorders={true}
-                    hoverStateEnabled={true}
-                    allowColumnReordering={true}
-                    columnAutoWidth={true}
-                    dataSource={displayStudents}
-                  >
-                    <SearchPanel visible={true} />
-                    <MasterDetail enabled={true} component={StudentClassrooms} />
-                  </DataGrid>
-                )}
-              </CRow>
-            </CContainer>
-          </Item>
-          <Item title="Teacher-Classes">
-            <CContainer>
-              <CRow>
-                {isLoadingTeachers ? (
-                  <CSpinner />
-                ) : (
-                  <DataGrid
-                    id="dataGrid"
-                    keyExpr="wondeTeacherId"
-                    showBorders={true}
-                    hoverStateEnabled={true}
-                    allowColumnReordering={true}
-                    columnAutoWidth={true}
-                    dataSource={displayTeachers}
-                  >
-                    <SearchPanel visible={true} />
-                    <MasterDetail enabled={true} component={TeacherClassrooms} />
                   </DataGrid>
                 )}
               </CRow>

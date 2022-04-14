@@ -104,7 +104,7 @@ function UpdateSchool() {
     )
 
     // Apply the CSV format for display
-    formatStudentClassrooms(filteredUpdates, null, selectedSchool, setFormattedStudentClassrooms)
+    formatStudentClassrooms(filteredUpdates, selectedSchool, setFormattedStudentClassrooms)
 
     // check each student to look for changes of details like DoB, etc
     // If its a new student then, the new student details are returned

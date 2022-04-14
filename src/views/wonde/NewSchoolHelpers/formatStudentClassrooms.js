@@ -7,16 +7,14 @@ import { getNumericYearLevel } from '../CommonHelpers/getNumericYearLevel'
 // matching the original csv upload files
 export function formatStudentClassrooms(
   wondeStudents,
-  wondeTeachers,
   selectedSchool,
   setResultStateVariable, // Either setStudentClassrooms | setFilteredStudentClassrooms
 ) {
   console.log('Wonde Student[0]', wondeStudents[0])
-  if (wondeTeachers) console.log('wondeTeachers[0]', wondeTeachers[0])
-  else console.log('no teachers supplied to formatStudentClassrooms')
 
   let studentClassroomsTmp = []
   wondeStudents.forEach((student) => {
+    //console.log('student', student)
     let studentPart = {}
     // first put defaults for gender and dob if they are missing ( often they are)
     // Converting the original wonde values set for gender,dob to the ones required by the CSV upload format
@@ -27,7 +25,7 @@ export function formatStudentClassrooms(
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
     else dob = '01/01/1999' // dummy placeholder
 
-    // compose an email address - could be duplicate but we only check at point of
+    // compose an email address - could be a duplicate but we only check at point of
     // creating the Cognito entry - which will scream if duplicate exists
     studentPart.email =
       `${student.forename}${student.surname}@${selectedSchool.schoolName}`.replace(/\s/g, '')
@@ -42,6 +40,7 @@ export function formatStudentClassrooms(
 
     // now process the classrooms - may be none
     student.classes.data.forEach((classroom) => {
+      //console.log('classroom', classroom)
       let classroomPart = {}
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
       classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
@@ -53,7 +52,6 @@ export function formatStudentClassrooms(
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom
-
       // First make dummy columns for the teachers (up to 5 teachers)
       // If we dont make these dummy headers DevExtreme will only display the number of teachers in the first record!
       for (let n = 0; n < 5; n++) {
@@ -70,17 +68,6 @@ export function formatStudentClassrooms(
       }
       // now populate teacher columns
       classroom.employees.data.forEach((teacher, index) => {
-        let email = 'placeholder'
-        let teacherID = teacher.id
-
-        // teachers email is in the teachers object array
-        // but may not be supplied when doing updates
-        if (wondeTeachers) {
-          let teacherRecord = wondeTeachers.find((teacher) => teacher.id === teacherID)
-          if (teacherRecord) {
-            email = teacherRecord.contact_details.data.emails.email
-          }
-        }
         // Note: Keys generated dynamically using the array notation[]
         let fnameKey = `teacher${index + 1} FirstName`
         let lnameKey = `teacher${index + 1} LastName`
@@ -89,7 +76,7 @@ export function formatStudentClassrooms(
         let mis_id = `T${index + 1} mis_id`
         classroomPart[fnameKey] = teacher.forename
         classroomPart[lnameKey] = teacher.surname
-        classroomPart[emailKey] = email
+        classroomPart[emailKey] = teacher.email ? teacher.email : 'no email found'
         classroomPart[wondeId] = teacher.id
         classroomPart[mis_id] = teacher.mis_id
       })

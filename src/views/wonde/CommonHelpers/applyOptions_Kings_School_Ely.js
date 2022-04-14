@@ -1,14 +1,20 @@
 import _ from 'lodash'
-// state the school's options here
-export function applyOptions_Generic(
+// Options for Kings School Ely
+// This filters the studentclassroom list to remove unwanted records
+// Filter Rules:
+//    Include all classrooms from Reception to year 6
+//    Compress the Kindy to one class ( to be verified)
+//    Include all year Levels
+export function applyOptions_KingsSchoolEly(
   wondeStudents,
   yearOptions,
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
 ) {
-  console.log('in applyOptions_Generic()')
+  console.log('in applyOptions_KingsSchoolEly()')
   console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
+  console.log('coreSubjectOption', coreSubjectOption)
 
   // Clone since we are doing updates
   let wondeStudentsCloned = _.cloneDeep(wondeStudents)
@@ -52,7 +58,10 @@ export function applyOptions_Generic(
   let filteredList = []
 
   // The data to be filtered is the raw student->classroom->teacher data read from Wonde
+
   wondeStudentsCloned.forEach((student) => {
+    if (student.surname === 'Snell' && student.forename === 'Katie')
+      console.log('Katie Snell.......................', student)
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
 
@@ -84,15 +93,26 @@ export function applyOptions_Generic(
         } else {
           if (coreSubjectOption) {
             if (classroom.subject) {
-              // Parkside has null subject
-              if (classroom.subject.data.name.startsWith('Mathematics')) {
+              // Kings School Ely has Science but also Physics, chemistry, Biology
+              // Kings School Ely has English but also English Literature
+              let subjectName = classroom.subject.data.name
+              if (subjectName.includes('Mathematics')) {
                 classroom.subject = 'Mathematics'
                 filteredClasses.push(classroom)
-              } else if (classroom.subject.data.name.startsWith('English')) {
+              } else if (subjectName.includes('English')) {
                 classroom.subject = 'English'
                 filteredClasses.push(classroom)
-              } else if (classroom.subject.data.name.startsWith('Science')) {
+              } else if (subjectName.includes('Science')) {
                 classroom.subject = 'Science'
+                filteredClasses.push(classroom)
+              } else if (subjectName.includes('Biology')) {
+                classroom.subject = 'Sc-Biology'
+                filteredClasses.push(classroom)
+              } else if (subjectName.includes('Chemistry')) {
+                classroom.subject = 'Sc-Chemistry'
+                filteredClasses.push(classroom)
+              } else if (subjectName.includes('Physics')) {
+                classroom.subject = 'Sc-Physics'
                 filteredClasses.push(classroom)
               }
             }
@@ -115,4 +135,4 @@ export function applyOptions_Generic(
   })
   console.log('filtered list[0]', filteredList[0])
   return filteredList
-} // end function applyOptions_Generic()
+} // end function _applyOptions_KingsSchoolEly()

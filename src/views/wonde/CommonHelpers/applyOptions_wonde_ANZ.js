@@ -1,3 +1,4 @@
+import _ from 'lodash'
 // options for Wonde ANZ Test School
 // This filters the studentclassroom list to remove unwanted records
 // NB: The records are not changed in any way - just pass,block is applied
@@ -19,6 +20,9 @@ export function applyOptions_wonde_ANZ(
   console.log('coreSubjectOption', coreSubjectOption)
   console.log('year Options', yearOptions)
   console.log('listToFilter', wondeStudents)
+
+  // Clone since we are doing updates
+  let wondeStudentsCloned = _.cloneDeep(wondeStudents)
 
   // If a school uptake these parameters are set by the UI
   // After that the chosen options are saved here (ugly!)
@@ -59,7 +63,7 @@ export function applyOptions_wonde_ANZ(
 
   let filteredList = []
 
-  wondeStudents.forEach((student) => {
+  wondeStudentsCloned.forEach((student) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
 

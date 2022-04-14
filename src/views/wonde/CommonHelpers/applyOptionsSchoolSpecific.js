@@ -1,6 +1,8 @@
 import { applyOptions_wonde_ANZ } from './applyOptions_wonde_ANZ'
 import { applyOptions_Christ_Church_Grammer } from './applyOptions_Christ_Church_Grammer'
 import { applyOptions_Claires_Court_Schools } from './applyOptions_Claires_Court_Schools'
+import { applyOptions_ParksideGrammar } from './applyOptions_ParksideGrammar'
+import { applyOptions_KingsSchoolEly } from './applyOptions_Kings_School_Ely'
 /**
  * Schools use the classroom names and subject fields in different ways
  * Therefore it requires school-specific processing to identify
@@ -26,6 +28,14 @@ export function applyOptionsSchoolSpecific(
         kinterDayClassName,
         coreSubjectOption,
       )
+    case 'A111084749': // Wonde ANZ Testing School (UK)
+      return applyOptions_KingsSchoolEly(
+        wondeStudents,
+        yearOptions,
+        kinterDayClasses,
+        kinterDayClassName,
+        coreSubjectOption,
+      )
     case 'A605175766': //Christ Church Grammar School (AU)
       return applyOptions_Christ_Church_Grammer(
         wondeStudents,
@@ -36,6 +46,14 @@ export function applyOptionsSchoolSpecific(
       )
     case 'A809309573': //Claires Court Schools (UK)
       return applyOptions_Claires_Court_Schools(
+        wondeStudents,
+        yearOptions,
+        kinterDayClasses,
+        kinterDayClassName,
+        coreSubjectOption,
+      )
+    case 'A23570669': // Parkside Community Primary School (UK)
+      return applyOptions_ParksideGrammar(
         wondeStudents,
         yearOptions,
         kinterDayClasses,

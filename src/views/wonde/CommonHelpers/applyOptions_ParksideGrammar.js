@@ -1,14 +1,20 @@
 import _ from 'lodash'
-// state the school's options here
-export function applyOptions_Generic(
+// Options for Parkside Grammar
+// This filters the studentclassroom list to remove unwanted records
+// Filter Rules:
+//    Include all classrooms from Reception to year 6
+//    Compress the Kindy to one class ( to be verified)
+//    Include all year Levels
+export function applyOptions_ParksideGrammar(
   wondeStudents,
   yearOptions,
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
 ) {
-  console.log('in applyOptions_Generic()')
+  console.log('in applyOptions_ParksideGrammar()')
   console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
+  console.log('coreSubjectOption', coreSubjectOption)
 
   // Clone since we are doing updates
   let wondeStudentsCloned = _.cloneDeep(wondeStudents)
@@ -52,6 +58,7 @@ export function applyOptions_Generic(
   let filteredList = []
 
   // The data to be filtered is the raw student->classroom->teacher data read from Wonde
+
   wondeStudentsCloned.forEach((student) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
@@ -115,4 +122,4 @@ export function applyOptions_Generic(
   })
   console.log('filtered list[0]', filteredList[0])
   return filteredList
-} // end function applyOptions_Generic()
+} // end function applyOptions_ParksideGrammar()

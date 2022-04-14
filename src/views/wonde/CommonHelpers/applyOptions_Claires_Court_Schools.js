@@ -1,3 +1,4 @@
+import _ from 'lodash'
 // Options for Christ_Church_Grammer
 // This filters the studentclassroom list to remove unwanted records
 // Filter Rules:
@@ -15,6 +16,9 @@ export function applyOptions_Claires_Court_Schools(
 ) {
   console.log('in applyOptions_Claires_Court_Schools()')
   console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
+
+  // Clone since we are doing updates
+  let wondeStudentsCloned = _.cloneDeep(wondeStudents)
 
   // If a school uptake these parameters are set by the UI
   // After that the chosen options are remembered here (ugly)
@@ -56,7 +60,7 @@ export function applyOptions_Claires_Court_Schools(
 
   // The data to be filtered is the raw student->classroom->teacher data read from Wonde
 
-  wondeStudents.forEach((student, index) => {
+  wondeStudentsCloned.forEach((student, index) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
 
