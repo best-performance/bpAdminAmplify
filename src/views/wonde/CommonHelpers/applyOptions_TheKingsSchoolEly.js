@@ -5,14 +5,14 @@ import _ from 'lodash'
 //    Include all classrooms from Reception to year 6
 //    Compress the Kindy to one class ( to be verified)
 //    Include all year Levels
-export function applyOptions_KingsSchoolEly(
+export function applyOptions_TheKingsSchoolEly(
   wondeStudents,
   yearOptions,
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
 ) {
-  console.log('in applyOptions_KingsSchoolEly()')
+  console.log('in applyOptions_TheKingsSchoolEly()')
   console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
   console.log('coreSubjectOption', coreSubjectOption)
 
@@ -135,4 +135,4 @@ export function applyOptions_KingsSchoolEly(
   })
   console.log('filtered list[0]', filteredList[0])
   return filteredList
-} // end function _applyOptions_KingsSchoolEly()
+} // end function applyOptions_TheKingsSchoolEly()

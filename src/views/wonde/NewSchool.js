@@ -301,7 +301,7 @@ function NewSchool() {
   // This is the new function to save a school to edComapnion based on the filtered CSV data
   async function saveSchoolCSVtoDynamoDB() {
     // See description of old loader at end of file
-    if (!schoolDataLoaded) return // can't save unless data has been loaded
+    if (!schoolDataLoaded) return // can't save unless data has been loaded from Wonde
     console.log('Saving School to DynamoDB')
 
     /**
@@ -328,33 +328,37 @@ function NewSchool() {
     let uniqueClassroomsMap = new Map()
     let uniqueTeachersMap = new Map()
     let uniqueStudentsMap = new Map()
-    // This map is used to store the teachers emails and the cognito username. Later, based on the email, the userId will be updated properly.
+    // This map is used to store the teachers emails and the cognito username.
+    // Later, based on the email, the userId will be updated properly.
     let teacherCognitoUserNames = new Map()
+    // This array will be later used to create the classroomTeachers table
+    let classroomTeachersFromCSV = []
 
     filteredStudentClassrooms.forEach((row) => {
       // Make a unique list of classrooms
+      // Also make an array of classroomTeachers - for later use
       if (!uniqueClassroomsMap.get(row.CwondeId)) {
+        // If teh classroom was not met before then we save its teachers
+        // to be avaialble for a later to create the classroomTeachers table
+        for (let n = 0; n < 4; n++) {
+          let wondeId = `T${n + 1} WondeId`
+          let emailKey = `teacher${n + 1} email`
+          if (row[wondeId] !== '-') {
+            classroomTeachersFromCSV.push({
+              CWondeId: row.CwondeId, // later we swap this for the EdC classroom id
+              email: row[emailKey],
+            })
+          }
+        }
         uniqueClassroomsMap.set(row.CwondeId, {
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
           mis_id: row.Cmis_id,
+          // classroomID will be added after classroom are saved
         })
       }
-      // Make a unique list of students
-      if (!uniqueStudentsMap.get(row.SwondeId)) {
-        uniqueStudentsMap.set(row.SwondeId, {
-          email: row.email,
-          wondeId: row.SwondeId, // not in EdC
-          mis_id: row.Smis_id,
-          firstName: row.firstName,
-          middleName: row.middleName,
-          lastName: row.lastName,
-          yearCode: row.yearCode,
-          gender: row.gender,
-          dob: row.dob,
-        })
-      }
+
       // Make a unique list of teachers
       for (let n = 0; n < 4; n++) {
         let wondeId = `T${n + 1} WondeId`
@@ -374,6 +378,21 @@ function NewSchool() {
             })
           }
         }
+      }
+
+      // Make a unique list of students
+      if (!uniqueStudentsMap.get(row.SwondeId)) {
+        uniqueStudentsMap.set(row.SwondeId, {
+          email: row.email,
+          wondeId: row.SwondeId, // not in EdC
+          mis_id: row.Smis_id,
+          firstName: row.firstName,
+          middleName: row.middleName,
+          lastName: row.lastName,
+          yearCode: row.yearCode,
+          gender: row.gender,
+          dob: row.dob,
+        })
       }
     })
 
@@ -410,12 +429,12 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          let id = v4()
+          let id = v4() // leave this here
           const className = uniqueClassroomsArray[index].className
           batchToWrite.push({
             PutRequest: {
               Item: {
-                id: id, // this is the EdC id generated locally
+                id: id, // this is the EdC id generated above
                 classType: 'Classroom',
                 // focusGroupType: null, // its not a focus group
                 className: className,
@@ -454,40 +473,13 @@ function NewSchool() {
     // -----------------------------------------------------------------------
     // Now make a classroomTeacherArray for records to save in classroomTeachers
     // NB: Must be run AFTER classrooms are saved
-    //     so the ClassroomID is available
-    // First make a classroomTeacher array from the raw Wonde Teacher data
-    let classroomTeachersArrayRaw = []
-    let wondeTeachers = [] // URGENT TODO - load classroomTeachersArrayRaw using wondeStudents
-    wondeTeachers.forEach((teacher) => {
-      teacher.classes.data.forEach((classroom) => {
-        classroomTeachersArrayRaw.push({
-          wondeClassroomId: classroom.id,
-          wondeTeacherId: teacher.id,
-          email: teacher.contact_details.data.emails.email,
-        })
-      })
-    })
-
-    // function definition
-    function validClassroomTeacher(row) {
-      if (
-        uniqueClassroomsMap.get(row.wondeClassroomId) &&
-        uniqueTeachersMap.get(row.wondeTeacherId)
-      ) {
-        return true
-      }
-      return false
-    } //end validClassroomTeacher()
-
-    // Then remove teachers and classrooms that were filtered out
-    let classroomTeachersArrayTmp = classroomTeachersArrayRaw.filter((row) => {
-      return validClassroomTeacher(row)
-    })
+    // We already have classroomTeachersFromCSV[] constructed above
+    // as an array of {CwondeID,email} objects
     // now shape the array into {classroomId, email:email} objects for EdC
-    let classroomTeachersArray = classroomTeachersArrayTmp.map((row) => {
+    let classroomTeachersArray = classroomTeachersFromCSV.map((row) => {
       return {
+        classroomID: uniqueClassroomsMap.get(row.CwondeId).classroomID,
         email: row.email,
-        classroomID: uniqueClassroomsMap.get(row.wondeClassroomId).classroomID,
       }
     })
 
