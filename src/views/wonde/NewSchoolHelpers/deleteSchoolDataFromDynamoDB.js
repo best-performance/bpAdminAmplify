@@ -273,10 +273,10 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('Deleting studentRecords records (D8)')
   await deleteAll(studentRecords, STUDENT_TABLE, 'id')
 
-  // console.log('Deleting cognito users for students')
-  // for (let i = 0; i < studentUsersRecords.length; i++) {
-  //   await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
-  // }
+  console.log('Deleting cognito users for students')
+  for (let i = 0; i < studentUsersRecords.length; i++) {
+    await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
+  }
 
   console.log('Deleting studentUsers records (D9)')
   await deleteAll(studentUsersRecords, USER_TABLE, 'email')

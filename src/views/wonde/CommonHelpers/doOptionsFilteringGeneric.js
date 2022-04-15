@@ -5,7 +5,7 @@ export function doOptionsFilteringGeneric(
   yearOptions, // array of years to include
   kinterDayClasses, // true if compressing Kindy Classes
   kinterDayClassName, // use this classroom name style if compressing Kindy Classes
-  coreSubjectOption, // true if accpting classes with core subjects only
+  coreSubjectOption, // true if accepting classes with core subjects only
 ) {
   let filteredList = []
 

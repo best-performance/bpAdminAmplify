@@ -15,7 +15,6 @@ export function applyOptions_Claires_Court_Schools(
   coreSubjectOption,
 ) {
   console.log('in applyOptions_Claires_Court_Schools()')
-  console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
 
   // Clone since we are doing updates
   let wondeStudentsCloned = _.cloneDeep(wondeStudents)
@@ -44,15 +43,12 @@ export function applyOptions_Claires_Court_Schools(
     }
   }
   if (kinterDayClasses === null) {
-    // not used in Claires Court
     kinterDayClasses = false
   }
   if (kinterDayClassName === null) {
-    // not used in Claires Court
     kinterDayClasses = ''
   }
   if (coreSubjectOption === null) {
-    // only taking core classes in Claires Court
     coreSubjectOption = true
   }
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import Tabs from 'devextreme-react/tabs'
 import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
@@ -32,21 +31,6 @@ const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
 const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
 const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
 //const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
-
-const schoolTabs = [
-  {
-    id: 0,
-    text: 'Not Uploaded Schools',
-    icon: 'add',
-    content: 'Schools pending to be uploaded',
-  },
-  {
-    id: 1,
-    text: 'Uploaded Schools',
-    icon: 'check',
-    content: 'Schools previously uploaded',
-  },
-]
 
 // Tables to store school data
 // We need to generalise this for regional table names
@@ -78,9 +62,8 @@ function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
+  const [isDataFiltered, setIsDataFiltered] = useState(false)
   const [schools, setSchools] = useState([])
-  const [alreadyLoadedSchools, setAlreadyLoadedSchools] = useState([])
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0)
 
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
@@ -135,6 +118,7 @@ function NewSchool() {
   }
 
   function applyFilterOptions() {
+    setIsDataFiltered(true)
     console.log('apply filter options')
     console.log(yearOptions)
 
@@ -152,12 +136,6 @@ function NewSchool() {
       selectedSchool,
       setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
     ) // this is for the uploader format
-  }
-
-  function onTabOptionChanged(args) {
-    if (args.name === 'selectedIndex') {
-      setSelectedTabIndex(args.value)
-    }
   }
 
   // This useEffect() reads and saves the contents of 4 lookups
@@ -255,17 +233,15 @@ function NewSchool() {
     // back to the business of this function
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
     if (schools) {
-      let loadedSchools = []
-      let notLoadedSchools = []
+      let displaySchools = []
       schools.forEach((school) => {
         if (uploadedSchoolsWondeId.lastIndexOf(school.wondeID) === -1) {
-          notLoadedSchools.push(school)
+          displaySchools.push({ ...school, isUploaded: false })
         } else {
-          loadedSchools.push(school)
+          displaySchools.push({ ...school, isUploaded: true })
         }
       })
-      setSchools(notLoadedSchools)
-      setAlreadyLoadedSchools(loadedSchools)
+      setSchools(displaySchools)
 
       setIsLoadingSchools(false)
     } else {
@@ -284,6 +260,7 @@ function NewSchool() {
 
   // wrapper funtion triggered by "Get data for ..." button to read all school data
   async function getSchoolData() {
+    setIsDataFiltered(false)
     if (selectedSchool === {}) return
     setSchoolDataLoaded(false)
     setIsLoadingStudents(true)
@@ -453,6 +430,8 @@ function NewSchool() {
             },
           })
           uniqueClassroomsArray[index].classroomID = id // add the generated EC id for use below
+          // uniqueClassroomsMap.get(uniqueClassroomsArray[index].wondeId).classroomID = id
+
           index++
         } // end batch loop
 
@@ -476,9 +455,14 @@ function NewSchool() {
     // We already have classroomTeachersFromCSV[] constructed above
     // as an array of {CwondeID,email} objects
     // now shape the array into {classroomId, email:email} objects for EdC
+
     let classroomTeachersArray = classroomTeachersFromCSV.map((row) => {
+      let classroom = uniqueClassroomsArray.find((classroom) => {
+        return classroom.wondeId === row.CWondeId
+      })
       return {
-        classroomID: uniqueClassroomsMap.get(row.CwondeId).classroomID,
+        //classroomID: uniqueClassroomsMap.get(row.CwondeId).classroomID,
+        classroomID: classroom.classroomID,
         email: row.email,
       }
     })
@@ -1055,49 +1039,25 @@ function NewSchool() {
       </div>
       <CRow style={{ width: '50%', margin: '20px' }}>
         <div style={{ marginBottom: '20px' }}>
-          <Tabs
-            dataSource={schoolTabs}
-            selectedIndex={selectedTabIndex}
-            onOptionChanged={onTabOptionChanged}
-          />
           <CCol></CCol>
-          {selectedTabIndex === 0 && (
-            <CCol>
-              {isLoadingSchools ? (
-                <CSpinner />
-              ) : (
-                <DataGrid
-                  id="dataGrid"
-                  keyExpr="wondeID"
-                  showBorders={true}
-                  hoverStateEnabled={true}
-                  onSelectionChanged={selectSchool}
-                  allowColumnReordering={true}
-                  columnAutoWidth={true}
-                  dataSource={schools}
-                >
-                  <Selection mode="single" />
-                </DataGrid>
-              )}
-            </CCol>
-          )}
-          {selectedTabIndex === 1 && (
-            <CCol>
-              {selectedTabIndex === 1 && isLoadingSchools ? (
-                <CSpinner />
-              ) : (
-                <DataGrid
-                  id="dataGrid"
-                  keyExpr="wondeID"
-                  showBorders={true}
-                  hoverStateEnabled={true}
-                  allowColumnReordering={true}
-                  columnAutoWidth={true}
-                  dataSource={alreadyLoadedSchools}
-                ></DataGrid>
-              )}
-            </CCol>
-          )}
+          <CCol>
+            {isLoadingSchools ? (
+              <CSpinner />
+            ) : (
+              <DataGrid
+                id="dataGrid"
+                keyExpr="wondeID"
+                showBorders={true}
+                hoverStateEnabled={true}
+                onSelectionChanged={selectSchool}
+                allowColumnReordering={true}
+                columnAutoWidth={true}
+                dataSource={schools}
+              >
+                <Selection mode="single" />
+              </DataGrid>
+            )}
+          </CCol>
           <CCol></CCol>
         </div>
       </CRow>
@@ -1146,18 +1106,20 @@ function NewSchool() {
             >
               {`Apply Filter Options`}
             </Button>
-            <Button
-              style={{ marginBottom: '10px' }}
-              stylingMode="outlined"
-              onClick={deleteAllTables}
-            >
-              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
-            </Button>
+            {selectedSchool && selectedSchool.isUploaded && (
+              <Button
+                style={{ marginBottom: '10px' }}
+                stylingMode="outlined"
+                onClick={deleteAllTables}
+              >
+                {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
+              </Button>
+            )}
           </>
         ) : null}
       </div>
       <div className="d-flex justify-content-center">
-        {schoolDataLoaded ? (
+        {isDataFiltered && selectedSchool && !selectedSchool.isUploaded && schoolDataLoaded ? (
           <>
             <Button
               style={{ marginBottom: '10px' }}

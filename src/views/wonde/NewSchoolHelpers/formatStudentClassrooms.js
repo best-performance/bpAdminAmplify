@@ -48,7 +48,16 @@ export function formatStudentClassrooms(
       // subject can be an object in the raw data, but we convert to a string in the filtered data
       // and both of these cases pass here - hence the test.
       // ALSO: "subject" is not part of the csv format, but used to get classroomLearningArea
-      classroomPart.subject = typeof classroom.subject === 'string' ? classroom.subject : ''
+      classroomPart.subject = ''
+      if (classroom.subject) {
+        if (typeof classroom.subject === 'string') {
+          classroomPart.subject = classroom.subject
+        } else {
+          if (classroom.subject.data && classroom.subject.data.name) {
+            classroomPart.subject = classroom.subject.data.name
+          }
+        }
+      }
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom

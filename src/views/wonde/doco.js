@@ -3,7 +3,7 @@
  * It outlines the process of uploading a school as implemented in NewSchool
  * it also looks ahead to later incremental updates and periodic resyncing
  *
- * <NewSchool> is teh component
+ * <NewSchool> is the component for school uptakes
  *
  * It has a useEffect() executed once to read the lookup tables to retrieve
  * the EdC/Elastik IDs for
@@ -19,51 +19,44 @@
  * It retrieves all the data from Wonde for the selected school
  *
  * getSchoolData() calls
- *     getStudentsFromWonde() This reads all students from Wonde and saves them
- *        in [WondeStudents] as raw data. Each student object has the data returned by
+ *     getStudentsFromWonde() calls either
+ *     readStudentsGroupsTeachers() if the school uses groups instead of classes
+ *     Each student object has the data returned by
+ *        ..../students?include=groups.employees,year
+ *     readStudentsClassesTeachers() if teh school uses classes
+ *     Each student object has the data returned by
  *        ..../students?include=classes.employees,classes.subject,year
- *        If no gender then "X" is poked in as placeholder
- *        If no DoB then "01/01/1900" is poked in as placeholder
- *        The year is used for filtering so we extract the year code here
- *           getYearCode() converts year to FY|R, K, 1,2,3,4,5,6,7,8,9,10,11,12,12
+ *
+ *     In both cases  we extract the year code here using getYearCode()
+ *        getYearCode() converts year to FY|R, K, 1,2,3,4,5,6,7,8,9,10,11,12,12
  *           or "U-no year" as default
- *     getTeachersFromWonde() This reads all teachers from Wonde and saves them
- *        in [WondeTeachers] as raw data. Each teacher object has the data returned by
- *        ..../employees/?has_class=true&include=contact_details,classes
- *        There is no filtering
- *     formatStudentClassrooms() This processes [WondeStudents] and [WondeTeachers] into
- *        [studentClassrooms] which mimics the CSV file format of the old uploader.
+ *     In both cases, a unique list of teachers is prepared and the teacher email address
+ *     is added to each employee object.
+ *
+ *     formatStudentClassrooms() This processes [WondeStudents] into [studentClassrooms]
+ *     which mimics the CSV file format of the old uploader.
+ *        Dob is converetd to "DD/MM/YYYY" format or '01/01/1999' is inserted if no DoB
  *        Gender is converted to "Male" or "female"
- *        Dob is converetd to "DD/MM/YYYY" format
+ *        It fills in "subject" field if available
  *
- *  At this point the [studentClassrooms] object is displayed in the leftmost tab
- *  Note there are 2 other redundant tabs that display students and teachers but not documented here
- *  because they will be removed later.
+ *  At this point the [studentClassrooms] object has the data in CSV formmat and is displayed
  *
+ *  Filtering:
  *  The [studentClassrooms] object will contain classes that are not needed in EdC/Elastik
  *  The UI provides a popup screen to allow the user to define the filtering needed.
- *
  *  There is a function called ApplyFilterOptions() activated by a UI Button of the same name.
- *  Old approach
- * -------------
- *  This in turn calls applyOptions() which does the filtering and returns the filtered list
- *  ApplyFilterOptions() then stores results in [filteredStudentClassrooms]
- *  [filteredStudentClassrooms] is displayed in the second tab of the display
- *  applyOptions() is [studentClassrooms] and does these things:
- *     converts numeric year codes like 1,2,3 to Y1,Y2,Y3 etc (better in formatStudentClassrooms()?)
- *     remove duplicate classes for primary schools based on Mon-AM etc
- *     Note: Check above code in ApplyOptions() with Diego
- *     remove all secondary classes that are not core subjects
- * New approach (now implemented)
- * ------------
+ *
  *  Apply the filter options on the original raw data from Wonde (saved in [WondeStudents]).
  *  The filtering will do as below depending on UI options chosen"
  *  1. Remove classes eg those that are not core
  *  2. Amalgamate classes eg those like AM,PM etc in FY
  *  3. Remove years eg the school only want years 3-5 loaded
- *  After filtering we then apply formatStudentClassrooms() to make it scv format.
- *  The main reason for filtering the raw data is that filtering on update or resync data will need
- *  to be done on raw data, therefore making the code reusable.
+ *
+ *  After filtering teh data is passed to formatStudentClassrooms() to make it scv format.
+ *
+ * Summary
+ * getStudentsFromWonde() -> [wondeStudents] -> formatStudentClassrooms() -> [studentClassrooms]
+ * getStudentsFromWonde() -> [wondeStudents]-> applyFilterOptions() -> formatStudentClassrooms() -> [filteredStudentClassrooms]
  *
  *  There is a function called save saveSchoolCSVtoDynamoDB() which is executed by a UI Button
  *  This does the following:
