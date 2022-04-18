@@ -1,13 +1,6 @@
-import _ from 'lodash'
+import { doOptionsFilteringGeneric } from './doOptionsFilteringGeneric'
 // Options for Christ_Church_Grammer
-// This filters the studentclassroom list to remove unwanted records
-// Filter Rules:
-//    CristChurch grammer only has primary students (FY to year 6)
-//    Classroom names contain the subject. There is no subject field.
-//    Allow all core subject classrooms
-//    No need to remove duplicates like FY AM,PM as in UK schools
-//    We are allowing Science, English and Maths classes only
-//    Subject is extracted from the classroom name
+
 export function applyOptions_Christ_Church_Grammer(
   wondeStudents,
   yearOptions,
@@ -16,10 +9,6 @@ export function applyOptions_Christ_Church_Grammer(
   coreSubjectOption,
 ) {
   console.log('in applyOptions_Christ_Church_Grammer()')
-  console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
-
-  // Clone since we are doing updates
-  let wondeStudentsCloned = _.cloneDeep(wondeStudents)
 
   // If a school uptake these parameters are set by the UI
   // After that the chosen options are remembered here (ugly)
@@ -46,54 +35,21 @@ export function applyOptions_Christ_Church_Grammer(
     }
   }
   if (kinterDayClasses === null) {
-    // not used in CristChurch grammer
     kinterDayClasses = false
   }
   if (kinterDayClassName === null) {
-    // not used in CristChurch grammer
     kinterDayClasses = ''
   }
   if (coreSubjectOption === null) {
-    // only taking core classes in CristChurch grammer
     coreSubjectOption = true
   }
-
-  let filteredList = []
-
-  // The data to be filtered is a clone of the raw student->classroom->teacher data read from Wonde
-  wondeStudentsCloned.forEach((student) => {
-    // Each student has a list of classrooms, that we have to filter
-    // Must be one of the selected years
-
-    let filteredClasses = []
-    // Put a 'Y' in front of numeric keys
-    let yearCode = student.yearCode
-    let studentYear = parseInt(yearCode)
-    if (!isNaN(studentYear)) yearCode = `Y${yearCode}`
-    if (yearOptions[yearCode]) {
-      student.classes.data.forEach((classroom) => {
-        if (coreSubjectOption) {
-          if (classroom.name.startsWith('Mathematics')) {
-            classroom.subject = 'Mathematics'
-            filteredClasses.push(classroom)
-          } else if (classroom.name.startsWith('English')) {
-            classroom.subject = 'English'
-            filteredClasses.push(classroom)
-          } else if (classroom.name.startsWith('Science')) {
-            classroom.subject = 'Science'
-            filteredClasses.push(classroom)
-          }
-        } else {
-          // Accept all classrooms (not likely)
-          filteredClasses.push(classroom)
-        }
-      })
-      student.classes.data = filteredClasses
-      filteredList.push(student)
-    } else {
-      console.log('student filtered out', student)
-    }
-  })
-  console.log('filtered list', filteredList[0])
+  // This school can use the generic filtering function
+  let filteredList = doOptionsFilteringGeneric(
+    wondeStudents,
+    yearOptions,
+    kinterDayClasses,
+    kinterDayClassName, // use this classroom name style if compressing classes
+    coreSubjectOption,
+  )
   return filteredList
 } // end function applyOptions_Christ_Church_Grammer()

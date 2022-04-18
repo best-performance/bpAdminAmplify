@@ -100,6 +100,7 @@ export function formatStudentClassrooms(
     'numericYearLevel',
     'wondeStudentId',
   ])
-  console.log('CSV formatted data- studentClassroomsTmpSorted[0]', studentClassroomsTmpSorted[0])
+
   setResultStateVariable(studentClassroomsTmpSorted) // for display in "upload Format" tab
+  return studentClassroomsTmpSorted // The returned data is just for later console.log
 } // end of formatStudentClassrooms()

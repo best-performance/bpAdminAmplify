@@ -16,7 +16,7 @@ const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
 // const STUDENT_DATA_TABLE = 'StudentData'
 
 // This is a new function to delete all records from the dynamo tables ( except the lookups)
-// Its intended to be used only during testing - it empties all tables
+// Its intended to be used only during testing - it empties all tables and Cognito entries for students and teachers
 // WondeID refers to the school wonde ID
 export async function deleteSchoolDataFromDynamoDB(wondeID) {
   await updateAWSCredentials()
@@ -126,7 +126,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
           [tableName]: batchToDelete, //[] notation constructs key name from variable
         },
       }
-      // cary out the bacthDelete
+      // cary out the batchDelete
       //console.log(`deleting batch ${i}`)
       try {
         await docClient.batchWrite(params).promise()
@@ -135,7 +135,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
         console.log(`problem deleting batch ${i} in ${tableName}`, err)
       }
     } // end of aray loop
-  }
+  } // end deleteAll()
 
   // Getting records for the school wonde ID
   let schoolTableData = tablesMap.get(SCHOOL_TABLE)
@@ -145,7 +145,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
     schoolTableData.indexName,
     wondeID,
   )
-  console.log('this is the school record returned (1)', schoolRecords)
+  console.log('School record found (1)', schoolRecords)
 
   // Getting classrooms for the school in process
   let classroomTableData = tablesMap.get(CLASSROOM_TABLE)
@@ -155,7 +155,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
     classroomTableData.indexName,
     schoolRecords && schoolRecords.length > 0 ? schoolRecords[0].id : null,
   )
-  console.log('these are the classrooms returned (2)', classroomRecords)
+  console.log('Classrooms records found (2)', classroomRecords)
 
   let classroomYearLevelTableData = tablesMap.get(CLASSROOM_YEARLEVEL_TABLE)
   let classroomYearLevelData = await getAll(
@@ -166,7 +166,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   )
   classroomYearLevelRecords = [...classroomYearLevelRecords, ...classroomYearLevelData]
 
-  console.log('These are the classroomYearLevelRecords found (3)', classroomYearLevelRecords)
+  console.log('ClassroomYearLevel records found (3)', classroomYearLevelRecords)
 
   console.log('Getting the teacher users records for the schoolId')
   let userTableData = tablesMap.get(USER_TABLE)
@@ -187,7 +187,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
     }
   })
 
-  console.log('These are the teacher records (5)', teacherUserRecords)
+  console.log('Teacher User records found (5)', teacherUserRecords)
 
   // Getting the classroomTeacherRecords for every teacher record
   let classroomTeacherTableData = tablesMap.get(CLASSROOM_TEACHER_TABLE)
@@ -203,7 +203,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
       classroomTeacherRecords = [...classroomTeacherRecords, ...classroomTeacherData]
     }
   }
-  console.log('These are the classroomTeacher records (6)', classroomTeacherRecords)
+  console.log('ClassroomTeacher records found (6)', classroomTeacherRecords)
 
   // Getting the records for the classroom students
   let classroomStudentTableData = tablesMap.get(CLASSROOM_STUDENT_TABLE)
@@ -219,7 +219,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
       classroomStudentRecords = [...classroomStudentRecords, ...classroomStudentData]
     }
   }
-  console.log('These are the classroom student records (9)', classroomStudentRecords)
+  console.log('ClassroomStudent records found (9)', classroomStudentRecords)
 
   // Getting the records for schoolStudents for the wondeSchoolID
   let schoolStudentRecordsTableData = tablesMap.get(SCHOOL_STUDENT_TABLE)
@@ -229,17 +229,17 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
     schoolStudentRecordsTableData.indexName,
     schoolRecords && schoolRecords.length > 0 ? schoolRecords[0].id : null,
   )
-  console.log('these are the schoolStudent records returned (8)', schoolStudentsRecords)
+  console.log('schoolStudent records found (8)', schoolStudentsRecords)
 
   // Getting the records for student table for the wondeSchoolID
   schoolStudentsRecords.forEach((schoolStudent) => {
     studentRecords.push({ id: schoolStudent.studentID })
   })
-  console.log('these are the student records returned (7)', studentRecords)
+  console.log('Student records found (7)', studentRecords)
 
-  console.log('these are the studentUser records returned (10)', studentUsersRecords)
+  console.log('Student User records found (10)', studentUsersRecords)
 
-  // After getting all the records for the tables, those ones should be deleted in the following order
+  // After retrieving each table's data, they should be deleted in the following order
   /**
    *
    */
@@ -273,18 +273,17 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('Deleting studentRecords records (D8)')
   await deleteAll(studentRecords, STUDENT_TABLE, 'id')
 
-  console.log('Deleting cognito users for students')
-  for (let i = 0; i < studentUsersRecords.length; i++) {
-    await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
-  }
+  // Deleting cognito users for students
+  // console.log('Deleting cognito users for students')
+  // for (let i = 0; i < studentUsersRecords.length; i++) {
+  //   await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
+  // }
 
   console.log('Deleting studentUsers records (D9)')
   await deleteAll(studentUsersRecords, USER_TABLE, 'email')
-
-  // Deleting cognito users for students
 
   console.log('Deleting SchoolRecords records (D10)')
   await deleteAll(schoolRecords, SCHOOL_TABLE, 'id')
 
   console.log('Delete data for the school is finished')
-} // end of test function deleteSchoolDataFromDynamoDB()
+} // end of function deleteSchoolDataFromDynamoDB()

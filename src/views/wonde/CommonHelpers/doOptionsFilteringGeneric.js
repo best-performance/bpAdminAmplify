@@ -42,10 +42,17 @@ export function doOptionsFilteringGeneric(
           }
         } else {
           if (coreSubjectOption) {
-            if (classroom.subject) {
-              // Some schools have Science but also Physics, chemistry, Biology
-              // Traps here might be "Domestic Science" maybe also "English Literature"
-              let subjectName = classroom.subject.data.name
+            let subjectName = null
+            // if there is no subject or subject.data.name, then the subject may
+            // be mined from the classroom name (true for Christ Church Grammer AU at least)
+            if (classroom.subject && classroom.subject.data.name) {
+              subjectName = classroom.subject.data.name
+            } else {
+              if (classroom.name) subjectName = classroom.name
+            }
+            // Some schools have Science but also Physics, chemistry, Biology
+            // Traps here might be "Domestic Science" maybe also "English Literature"
+            if (subjectName) {
               if (subjectName.includes('Mathematics')) {
                 classroom.subject = 'Mathematics'
                 filteredClasses.push(classroom)
@@ -65,6 +72,8 @@ export function doOptionsFilteringGeneric(
                 classroom.subject = 'Sc-Physics'
                 filteredClasses.push(classroom)
               }
+            } else {
+              // No subject found so class is filtered out - Is this correct?
             }
           } else {
             // Accept all classrooms
@@ -77,10 +86,10 @@ export function doOptionsFilteringGeneric(
         student.classes.data = filteredClasses
         filteredList.push(student)
       } else {
-        console.log(`No core classes - student filtered out`, student)
+        console.log(`student has no core classes - filtered out`, student)
       }
     } else {
-      console.log(`yearcode ${student.yearCode} bad - student filtered out`, student)
+      console.log(`Bad student yearcode ${student.yearCode} - filtered out`, student)
     }
   })
   console.log('filtered list[0]', filteredList[0])
