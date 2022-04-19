@@ -1,7 +1,7 @@
 import { doOptionsFilteringGeneric } from './doOptionsFilteringGeneric'
-// options for Wonde ANZ Test School
+// options for deafult
 
-export function applyOptions_wonde_ANZ(
+export function applyOptions_DefaultSchool(
   wondeStudents, // the list to filter
   yearOptions, // contains the list of years to include
   kinterDayClasses, // set if we want to remove Kintergarten AM,PM classes
@@ -14,7 +14,6 @@ export function applyOptions_wonde_ANZ(
   // After that the chosen options are remembered here (ugly)
   if (yearOptions === null) {
     yearOptions = {
-      // Wonde ANZ Test School has all years up to Y12
       Y1: true,
       Y2: true,
       Y3: true,
@@ -27,23 +26,20 @@ export function applyOptions_wonde_ANZ(
       Y10: true,
       Y11: true,
       Y12: true,
-      Y13: false,
+      Y13: true,
       K: true,
       R: true,
       FY: true,
     }
   }
   if (kinterDayClasses === null) {
-    // not used in Wonde ANZ Test School
     kinterDayClasses = false
   }
   if (kinterDayClassName === null) {
-    // not used in Wonde ANZ Test School
     kinterDayClasses = ''
   }
   if (coreSubjectOption === null) {
-    // only taking core classes in Wonde ANZ Test School
-    coreSubjectOption = true
+    coreSubjectOption = false
   }
   // This school can use the generic filtering function
   let filteredList = doOptionsFilteringGeneric(

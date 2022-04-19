@@ -1,32 +1,33 @@
 import { doOptionsFilteringGeneric } from './doOptionsFilteringGeneric'
-// options for Wonde ANZ Test School
+// Options for St Mark's Primary School
 
-export function applyOptions_wonde_ANZ(
-  wondeStudents, // the list to filter
-  yearOptions, // contains the list of years to include
-  kinterDayClasses, // set if we want to remove Kintergarten AM,PM classes
-  kinterDayClassName,
-  coreSubjectOption, // set if we only include core subjects
+export function applyOptions_StMarkPrimarySchool(
+  wondeStudents,
+  yearOptions, // array of years to include
+  kinterDayClasses, // true if compressing Kindy Classes
+  kinterDayClassName, // use this classroom name style if compressing Kindy Classes
+  coreSubjectOption, // true if accpting classes with core subjects only
 ) {
-  console.log('in applyOptions_wonde_ANZ()')
+  console.log('in applyOptions_StMarkPrimarySchool()')
 
   // If a school uptake these parameters are set by the UI
-  // After that the chosen options are remembered here (ugly)
+  // For updates the options parameters will all be null
+  // and the desired/chosen ones are hardwired here.
   if (yearOptions === null) {
     yearOptions = {
-      // Wonde ANZ Test School has all years up to Y12
+      Y0: true,
       Y1: true,
       Y2: true,
       Y3: true,
       Y4: true,
       Y5: true,
       Y6: true,
-      Y7: true,
-      Y8: true,
-      Y9: true,
-      Y10: true,
-      Y11: true,
-      Y12: true,
+      Y7: false,
+      Y8: false,
+      Y9: false,
+      Y10: false,
+      Y11: false,
+      Y12: false,
       Y13: false,
       K: true,
       R: true,
@@ -34,17 +35,15 @@ export function applyOptions_wonde_ANZ(
     }
   }
   if (kinterDayClasses === null) {
-    // not used in Wonde ANZ Test School
     kinterDayClasses = false
   }
   if (kinterDayClassName === null) {
-    // not used in Wonde ANZ Test School
     kinterDayClasses = ''
   }
   if (coreSubjectOption === null) {
-    // only taking core classes in Wonde ANZ Test School
-    coreSubjectOption = true
+    coreSubjectOption = false
   }
+
   // This school can use the generic filtering function
   let filteredList = doOptionsFilteringGeneric(
     wondeStudents,
@@ -54,4 +53,4 @@ export function applyOptions_wonde_ANZ(
     coreSubjectOption,
   )
   return filteredList
-} // end function applyOptions_wonde_ANZ()
+} // end function applyOptions_StMarkPrimarySchool()
