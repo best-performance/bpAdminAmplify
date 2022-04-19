@@ -179,7 +179,7 @@ export function OptionsPopup({
       title="Upload Filter Options"
       container=".dx-viewport"
       width={500}
-      height={500}
+      height={550}
     >
       <Position at="center" my="center" of={null} />
 
@@ -261,8 +261,12 @@ export function OptionsPopup({
                 onValueChanged={yearOptionChanged}
               />
             </div>
-            <div style={{ height: '20px' }}></div>
-            <Button onClick={selectAll}>{selectAllToggle ? 'Select All' : 'Deselect All'}</Button>
+            <div style={{ height: '40px' }}>
+              {/* <div style={{ height: '20px' }}></div> */}
+              <Button style={{ marginTop: '15px' }} onClick={selectAll}>
+                {selectAllToggle ? 'Select All' : 'Deselect All'}
+              </Button>
+            </div>
           </CCol>
           <CCol sm={8}>
             <div>

@@ -13,7 +13,7 @@ export async function saveSchool(
   //This puts and entry in table School if not already there
   console.log('inside SaveSchool')
   console.log(selectedSchool)
-  console.log('tableName')
+  console.log('tableName', tableName)
   await updateAWSCredentials()
   let docClient = new AWS.DynamoDB.DocumentClient()
   // first check if the WondeID already exists (ie the school is already saved)
@@ -32,11 +32,11 @@ export async function saveSchool(
     let response = await docClient.query(queryParams).promise()
     if (response.Count > 0) {
       console.log('school already in School table')
-      return response.Items[0].id // the schoolID
+      return { alreadyLoaded: true, schoolID: response.Items[0].id } // the schoolID
     }
   } catch (err) {
     console.log('Error locating school in School table', err)
-    return false
+    return { alreadyLoaded: null, schoolID: null }
   }
 
   // Save the school since its not already in the database
@@ -76,10 +76,10 @@ export async function saveSchool(
   }
   try {
     await docClient.put(params).promise()
-    console.log('successfull saved school')
-    return schoolID
+    console.log(`Successfull saved school ${schoolID}`)
+    return { alreadyLoaded: false, schoolID: schoolID }
   } catch (err) {
-    console.log('Error saving school in School table', err)
-    return false
+    console.log(`Error saving school ${schoolID}`, err)
+    return { alreadyLoaded: null, schoolID: null }
   }
 } // end of saveSchool

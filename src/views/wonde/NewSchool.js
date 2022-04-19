@@ -2,15 +2,7 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import Tabs from 'devextreme-react/tabs'
-import {
-  DataGrid,
-  MasterDetail,
-  Selection,
-  SearchPanel,
-  Column,
-  Export,
-} from 'devextreme-react/data-grid'
+import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import dayjs from 'dayjs'
 //import _ from 'lodash'
@@ -20,7 +12,6 @@ import { v4 } from 'uuid'
 // Helper functions
 import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
-import { getTeachersFromWonde } from './NewSchoolHelpers/getTeachersFromWonde'
 import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
 import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
 import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
@@ -40,21 +31,6 @@ const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
 const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
 const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
 //const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
-
-const schoolTabs = [
-  {
-    id: 0,
-    text: 'Not Uploaded Schools',
-    icon: 'add',
-    content: 'Schools pending to be uploaded',
-  },
-  {
-    id: 1,
-    text: 'Uploaded Schools',
-    icon: 'check',
-    content: 'Schools previously uploaded',
-  },
-]
 
 // Tables to store school data
 // We need to generalise this for regional table names
@@ -86,19 +62,11 @@ function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
+  const [isDataFiltered, setIsDataFiltered] = useState(false)
   const [schools, setSchools] = useState([])
-  const [alreadyLoadedSchools, setAlreadyLoadedSchools] = useState([])
-  const [selectedTabIndex, setSelectedTabIndex] = useState(0)
 
   // These 2 save the raw data as loaded from Wonde
-  const [wondeStudents, setWondeStudents] = useState([])
-  const [wondeTeachers, setWondeTeachers] = useState([]) // we only use the email field
-
-  // Next four are for the student-teacher and classroom-teacher displays
-  const [displayStudents, setDisplayStudents] = useState([])
-  const [displayTeachers, setDisplayTeachers] = useState([])
-  const [displayStudentClassrooms, setDisplayStudentClassrooms] = useState([])
-  const [displayTeacherClassrooms, setDisplayTeacherClassrooms] = useState([])
+  const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
 
   // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
@@ -108,7 +76,6 @@ function NewSchool() {
   // some loading indicators
   const [isLoadingSchools, setIsLoadingSchools] = useState(false)
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
-  const [isLoadingTeachers, setIsLoadingTeachers] = useState(false)
   const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
 
   // lookup Tables - these are used by the uploader
@@ -116,7 +83,6 @@ function NewSchool() {
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
-  const [schoolsLookup, setSchoolsLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
   // this controls the options popup
@@ -143,18 +109,22 @@ function NewSchool() {
   })
   const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
-  const [coreSubjectOption, setCoreSubjectOption] = useState(true)
+  const [coreSubjectOption, setCoreSubjectOption] = useState(false)
 
   function getFilterOptions() {
     console.log('get filter options')
     setOptionsPopupVisible(true)
   }
 
+  // This is executed when "Apply Filter Options" button is pressed
   function applyFilterOptions() {
-    console.log('apply filter options')
+    setIsDataFiltered(true)
+    console.log('Applying filter options')
     console.log(yearOptions)
 
-    // now applying teh filter to the raw Wonde data as per doco
+    // now applying the filter to the raw Wonde data
+    // doco.js explains why we filter the raw data - then format
+    // as opposed to filtering the formatted data.
     let filteredWondeStudents = applyOptionsSchoolSpecific(
       wondeStudents, // raw data from Wonde
       yearOptions,
@@ -163,25 +133,17 @@ function NewSchool() {
       coreSubjectOption,
       selectedSchool,
     )
-    formatStudentClassrooms(
+    let formattedFilteredCSV = formatStudentClassrooms(
       filteredWondeStudents,
-      wondeTeachers, // only for the email address
       selectedSchool,
       setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
     ) // this is for the uploader format
-  }
-
-  function onTabOptionChanged(args) {
-    if (args.name === 'selectedIndex') {
-      setSelectedTabIndex(args.value)
-    }
+    console.log('Formatted,Filtered Students from Wonde', formattedFilteredCSV)
   }
 
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
   useEffect(() => {
-    // we assume for now that the lookups are already populated in sandbox account
-
     const getLookupData = async () => {
       let credentials
       try {
@@ -203,9 +165,6 @@ function NewSchool() {
       setYearLevelsLoookup(response.Items)
       response = await docClient.scan({ TableName: STATE_TABLE }).promise()
       setStatesLookup(response.Items)
-      response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
-      // adding wondeschool ids
-      setSchoolsLookup(response.Items)
       // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
       // setLearningAreasLookup(response.Items)
     }
@@ -216,6 +175,7 @@ function NewSchool() {
   // This is for testing to delete all records from the Dynamo tables if they exist
   async function deleteAllTables() {
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
+    await getAllSchools() // refresh the dusplay after deletion
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -251,42 +211,53 @@ function NewSchool() {
     // console.log('result after adding the user', result)
   } // end of testFuntion()
 
-  // Invokes function to get the list of available schools from Wonde
-  // first clears all state
+  //Function to get the list of Wonde schools already uploaded into DynamoDB
+  async function getEdComSchools() {
+    let credentials
+    try {
+      credentials = await Auth.currentCredentials()
+
+      AWS.config.update({
+        credentials: credentials,
+        region: getRegion(),
+      })
+      const docClient = new AWS.DynamoDB.DocumentClient()
+      let response
+      response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
+
+      // only return schools with WondeIDs
+      let wondeSchools = response.Items.filter((school) => {
+        return school.wondeID
+      })
+      return wondeSchools
+    } catch (err) {
+      console.log(err)
+      return []
+    }
+  }
+  // Function to get the list of available schools from Wonde
   async function getAllSchools() {
     setIsLoadingSchools(true)
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
     setSchoolDataLoaded(false)
-    // when loading the school list we clear teachers, students and classrooms
-    setDisplayStudents([])
-    setDisplayTeachers([])
-    setDisplayStudentClassrooms([])
-    setDisplayTeacherClassrooms([])
-    let uploadedSchoolsWondeId = []
 
-    if (schoolsLookup && schoolsLookup.length > 0) {
-      for (let i = 0; i < schoolsLookup.length; i++) {
-        if (schoolsLookup[i].wondeID) {
-          uploadedSchoolsWondeId.push(schoolsLookup[i].wondeID)
-        }
-      }
-    }
+    // we need the uploaded schools also to indicate "loaded" on the UI
+    let edComSchools = await getEdComSchools()
+    console.log('EdComSchools', edComSchools)
 
     // back to the business of this function
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
     if (schools) {
-      let loadedSchools = []
-      let notLoadedSchools = []
+      let displaySchools = []
       schools.forEach((school) => {
-        if (uploadedSchoolsWondeId.lastIndexOf(school.wondeID) === -1) {
-          notLoadedSchools.push(school)
+        if (edComSchools.find((x) => x.wondeID === school.wondeID)) {
+          displaySchools.push({ ...school, isUploaded: true })
         } else {
-          loadedSchools.push(school)
+          displaySchools.push({ ...school, isUploaded: false })
         }
       })
-      setSchools(notLoadedSchools)
-      setAlreadyLoadedSchools(loadedSchools)
+      setSchools(displaySchools)
 
       setIsLoadingSchools(false)
     } else {
@@ -305,97 +276,102 @@ function NewSchool() {
 
   // wrapper funtion triggered by "Get data for ..." button to read all school data
   async function getSchoolData() {
+    setIsDataFiltered(false)
     if (selectedSchool === {}) return
     setSchoolDataLoaded(false)
     setIsLoadingStudents(true)
+    setStudentClassrooms([]) //empty the csv display
+    setFilteredStudentClassrooms([]) // empty the formatted csv display
 
     // get the students->classes->teachers
-    let { wondeStudentsTemp } = await getStudentsFromWonde(
-      selectedSchool.wondeID,
-      setWondeStudents,
-      setDisplayStudents,
-      setDisplayStudentClassrooms,
-    )
+    let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
+    console.log('Unformatted,Unfiltered Students from Wonde', wondeStudentsTemp)
     setIsLoadingStudents(false)
-    setIsLoadingTeachers(true)
-
-    // get the teachers
-    let { wondeTeachersTemp } = await getTeachersFromWonde(
-      selectedSchool.wondeID,
-      setWondeTeachers,
-      setDisplayTeachers,
-      setDisplayTeacherClassrooms,
-    )
-    setIsLoadingTeachers(false)
 
     // format as per csv uploader
-    formatStudentClassrooms(
+    let formattedCSV = formatStudentClassrooms(
       wondeStudentsTemp,
-      wondeTeachersTemp, // only for the email address
       selectedSchool,
       setStudentClassrooms,
     )
+    console.log('Formatted,Unfiltered StudentClassrooms from Wonde', formattedCSV)
     setSchoolDataLoaded(true)
   }
 
-  // This is the new function to save a school to edComapnion based on the filtered CSV data
+  /**
+   * *********************************************************
+   * Save the school,students,teachers, classes etc to Dynamo
+   * edCompanion based on the filtered CSV data [FilteredStudentClassrooms]
+   * *********************************************************
+   */
   async function saveSchoolCSVtoDynamoDB() {
-    // See description of old loader at end of file
-    if (!schoolDataLoaded) return // can't save unless data has been loaded
-    console.log('Saving School to DynamoDB')
+    if (!schoolDataLoaded) return // can't save unless data has been loaded from Wonde
 
     /**
      * Save the selected school to School table if not already saved
      * returns the EC schoolID of the saved school
      */
     let schoolID // the EC id of the saved School
+    let response = {}
     try {
-      schoolID = await saveSchool(
+      response = await saveSchool(
         selectedSchool,
         countriesLookup,
         statesLookup,
         SCHOOL_TABLE,
         SCHOOL_WONDE_INDEX,
       )
-      console.log('School saved', schoolID)
     } catch (err) {
-      console.log('error saving school', err)
+      console.log(`Error saving school ${selectedSchool.wondeID}`, err)
       return
     }
-    // From here we assume [FilteredStudentClassrooms] contains filtered data
-    // It has an artifical email address firstnamelastname@schoolname poked in
+    // If saveSChool() returns that the school is already in DynamoDB, then it aborts the upload
+    if (response.alreadyLoaded) {
+      console.log(`School ${response.schoolID} is already loaded in DynamoDB so aborting`)
+      return
+    }
+    // School not in DynamoDB so we can proceed with upload.
+    console.log(`Saving school ${response.wondeID} to DynamoDB`)
+    schoolID = response.schoolID
+
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
     // Each row represents a student, a classroom and up to 5 teachers
     let uniqueClassroomsMap = new Map()
     let uniqueTeachersMap = new Map()
     let uniqueStudentsMap = new Map()
-    // This map is used to store the teachers emails and the cognito username. Later, based on the email, the userId will be updated properly.
+
+    // This map is used to store the teachers emails and the cognito username.
+    // Later, based on the email, the userId will be updated properly.
     let teacherCognitoUserNames = new Map()
+
+    // This array will be later used to create the classroomTeachers table
+    let classroomTeachersFromCSV = []
 
     filteredStudentClassrooms.forEach((row) => {
       // Make a unique list of classrooms
+      // Also make an array of classroomTeachers - for later use
       if (!uniqueClassroomsMap.get(row.CwondeId)) {
+        // If the classroom is "new" then we save its teachers
+        // to be avaialble later to create the classroomTeachers table
+        for (let n = 0; n < 4; n++) {
+          let wondeId = `T${n + 1} WondeId`
+          let emailKey = `teacher${n + 1} email`
+          if (row[wondeId] !== '-') {
+            classroomTeachersFromCSV.push({
+              CwondeId: row.CwondeId, // later we swap this for the EdC classroom id
+              email: row[emailKey],
+            })
+          }
+        }
         uniqueClassroomsMap.set(row.CwondeId, {
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
           mis_id: row.Cmis_id,
+          // classroomID will be added after classroom are saved
         })
       }
-      // Make a unique list of students
-      if (!uniqueStudentsMap.get(row.SwondeId)) {
-        uniqueStudentsMap.set(row.SwondeId, {
-          email: row.email,
-          wondeId: row.SwondeId, // not in EdC
-          mis_id: row.Smis_id,
-          firstName: row.firstName,
-          middleName: row.middleName,
-          lastName: row.lastName,
-          yearCode: row.yearCode,
-          gender: row.gender,
-          dob: row.dob,
-        })
-      }
+
       // Make a unique list of teachers
       for (let n = 0; n < 4; n++) {
         let wondeId = `T${n + 1} WondeId`
@@ -415,6 +391,22 @@ function NewSchool() {
             })
           }
         }
+      }
+
+      // Make a unique list of students
+      if (!uniqueStudentsMap.get(row.SwondeId)) {
+        uniqueStudentsMap.set(row.SwondeId, {
+          email: row.email, //email was generated in formatStudentClassrooms()
+          // and looks like "firstnamelastname@schoolname" with no spaces
+          wondeId: row.SwondeId, // not in EdC
+          mis_id: row.Smis_id,
+          firstName: row.firstName,
+          middleName: row.middleName,
+          lastName: row.lastName,
+          yearCode: row.yearCode,
+          gender: row.gender,
+          dob: row.dob,
+        })
       }
     })
 
@@ -451,12 +443,12 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          let id = v4()
+          let id = v4() // leave this here
           const className = uniqueClassroomsArray[index].className
           batchToWrite.push({
             PutRequest: {
               Item: {
-                id: id, // this is the EdC id generated locally
+                id: id, // this is the EdC id generated above
                 classType: 'Classroom',
                 // focusGroupType: null, // its not a focus group
                 className: className,
@@ -475,6 +467,7 @@ function NewSchool() {
             },
           })
           uniqueClassroomsArray[index].classroomID = id // add the generated EC id for use below
+
           index++
         } // end batch loop
 
@@ -495,36 +488,17 @@ function NewSchool() {
     // -----------------------------------------------------------------------
     // Now make a classroomTeacherArray for records to save in classroomTeachers
     // NB: Must be run AFTER classrooms are saved
-    //     so the ClassroomID is available
-    // First make a classroomTeacher array from the raw Wonde Teacher data
-    let classroomTeachersArrayRaw = []
-    wondeTeachers.forEach((teacher) => {
-      teacher.classes.data.forEach((classroom) => {
-        classroomTeachersArrayRaw.push({
-          wondeClassroomId: classroom.id,
-          wondeTeacherId: teacher.id,
-          email: teacher.contact_details.data.emails.email,
-        })
+    // We already have classroomTeachersFromCSV[] constructed above
+    // as an array of {CwondeID,email} objects
+    // now shape the array into {classroomId, email} objects for EdC
+
+    let classroomTeachersArray = classroomTeachersFromCSV.map((row) => {
+      let classroom = uniqueClassroomsArray.find((classroom) => {
+        return classroom.wondeId === row.CwondeId
       })
-    })
-    // Then remove teachers and classrooms that were filtered out
-    function validClassroomTeacher(row) {
-      if (
-        uniqueClassroomsMap.get(row.wondeClassroomId) &&
-        uniqueTeachersMap.get(row.wondeTeacherId)
-      ) {
-        return true
-      }
-      return false
-    }
-    let classroomTeachersArrayTmp = classroomTeachersArrayRaw.filter((row) => {
-      return validClassroomTeacher(row)
-    })
-    // now shape the array into {classroomId, email:email} objects for EdC
-    let classroomTeachersArray = classroomTeachersArrayTmp.map((row) => {
       return {
+        classroomID: classroom.classroomID,
         email: row.email,
-        classroomID: uniqueClassroomsMap.get(row.wondeClassroomId).classroomID,
       }
     })
 
@@ -606,14 +580,17 @@ function NewSchool() {
 
       for (let i = 0; i < uniqueTeachersArray.length; i++) {
         let teacher = uniqueTeachersArray[i]
-        let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
-        if (result.username === FAILED) {
-          console.log(
-            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
-          )
-        } else {
-          teacherCognitoUserNames.set(teacher.email, result.username)
+        if (teacher.email !== 'no email found') {
+          let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+          if (result.username === FAILED) {
+            console.log(
+              `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
+            )
+          } else {
+            teacherCognitoUserNames.set(teacher.email, result.username)
+          }
         }
+        console.log(`Teacher ${teacher} has no email so not saved to Cognito`)
       }
       console.timeEnd('saved teachers cognito')
     } catch (err) {}
@@ -671,7 +648,7 @@ function NewSchool() {
               },
             },
           })
-          uniqueTeachersArray[index].userID = id // save the ID for the ClassroomTeachers tables
+          ///uniqueTeachersArray[index].userID = id // save the ID for the ClassroomTeachers tables
           index++
         } // end batch loop
 
@@ -831,39 +808,26 @@ function NewSchool() {
 
     // -----------------------------------------------------------------------
     // Now make a classroomStudentArray for records to save in classroomStudents
-    // NB: Must be run AFTER classrooms and Students are saved
-    //     so the ClassroomID and StudentID are available
-    // First make a classroomStudent array from the raw Wonde Student data
-    let classroomStudentsArrayRaw = []
-    wondeStudents.forEach((student) => {
-      student.classes.data.forEach((classroom) => {
-        classroomStudentsArrayRaw.push({
-          wondeClassroomId: classroom.id, // its a Wonde id
-          wondeStudentId: student.id, // also a Wonde id
-        })
+    // NB: Run AFTER Classrooms and Students are saved so the ClassroomID and StudentID are available
+    // Note: [filteredStudentClassrooms] is already a classroom-student lookalike but has Wonde Ids
+    // The task is to swap for EdCompanion/Elastik ids
+
+    let classroomStudentsArray = filteredStudentClassrooms.map((row) => {
+      // locate the unique classroom - which now has the EdCompanion/Elastic classroomID
+      let classroom = uniqueClassroomsArray.find((classroom) => {
+        return classroom.wondeId === row.CwondeId
       })
-    })
-    // Then remove students and classrooms that were filtered out
-    function validClassroomStudent(row) {
-      if (
-        uniqueClassroomsMap.get(row.wondeClassroomId) &&
-        uniqueStudentsMap.get(row.wondeStudentId)
-      ) {
-        return true
-      }
-      return false
-    }
-    let classroomStudentsArrayTmp = classroomStudentsArrayRaw.filter((row) => {
-      return validClassroomStudent(row)
-    })
-    // now shape the array into {classroomId, studentID} objects for EdC
-    let classroomStudentsArray = classroomStudentsArrayTmp.map((row) => {
+      // locate the unique student - which now has the EdCompanion/Elastic studentID
+      let student = uniqueStudentsArray.find((student) => {
+        return student.wondeId === row.SwondeId
+      })
       return {
-        classroomID: uniqueClassroomsMap.get(row.wondeClassroomId).classroomID,
-        studentID: uniqueStudentsMap.get(row.wondeStudentId).studentID,
+        classroomID: classroom.classroomID,
+        studentID: student.studentID,
       }
     })
-    //console.log('classroomStudentsArray', classroomStudentsArray)
+
+    console.log('classroomStudentsArray', classroomStudentsArray)
 
     //Save the Students
     //  add to student *
@@ -874,12 +838,28 @@ function NewSchool() {
     try {
       console.time('Saved Student Users') // measure how long it takes to save
 
-      // in the case of Student users, many students have no email address which precludes them
-      // from both having a User record or a Cognito record
-
+      // Student email addresses were added in formatStudentClassrooms()
+      // email address is set as firstnamelastname@schoolname with all spaces removed
       let uniqueStudentsArrayWithEmail = uniqueStudentsArray.filter((student) => {
         return student.email !== EMPTY
       })
+
+      // They should all have emails so lets verify
+      if (uniqueStudentsArrayWithEmail.length !== uniqueStudentsArray.length) {
+        console.log(
+          `uniqueStudentsArrayWithEmail has ${uniqueStudentsArrayWithEmail.length} records`,
+        )
+        console.log(`uniqueStudentsArray has ${uniqueStudentsArray.length} records`)
+      }
+
+      // check for name clashes - ie duplicate email addresses and report
+      let uniqueStudentNames = new Map()
+      uniqueStudentsArray.forEach((student) => {
+        if (!uniqueStudentNames.get(`${student.firstName}${student.lastName}`))
+          uniqueStudentNames.set(`${student.firstName}${student.lastName}`)
+        else console.log(`${student.firstName}${student.lastName} is duplicated`)
+      })
+
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
       let batchesCount = parseInt(uniqueStudentsArrayWithEmail.length / BATCH_SIZE) + 1 // allow for remainder
       let lastBatchSize = uniqueStudentsArrayWithEmail.length % BATCH_SIZE // which could be 0
@@ -1074,42 +1054,8 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classroomStudents
-  }
 
-  // This is a Detail component to show student-classrooms assignments
-  function StudentClassrooms(params) {
-    let studentId = params.data.data.wondeStudentId
-    let studentClassroomList = displayStudentClassrooms.filter((student) => {
-      return student.wondeStudentId === studentId
-    })
-
-    return (
-      <DataGrid
-        showBorders={true}
-        hoverStateEnabled={true}
-        allowColumnReordering={true}
-        columnAutoWidth={true}
-        dataSource={studentClassroomList}
-      ></DataGrid>
-    )
-  }
-
-  // This is a Detail component to show teacher-classrooms assignments
-  function TeacherClassrooms(params) {
-    let teacherId = params.data.data.wondeTeacherId
-    let teacherClassroomList = displayTeacherClassrooms.filter((teacher) => {
-      return teacher.wondeTeacherId === teacherId
-    })
-
-    return (
-      <DataGrid
-        showBorders={true}
-        hoverStateEnabled={true}
-        allowColumnReordering={true}
-        columnAutoWidth={true}
-        dataSource={teacherClassroomList}
-      ></DataGrid>
-    )
+    await getAllSchools() // refresh the display after adding school data
   }
 
   if (!loggedIn.username) {
@@ -1136,49 +1082,25 @@ function NewSchool() {
       </div>
       <CRow style={{ width: '50%', margin: '20px' }}>
         <div style={{ marginBottom: '20px' }}>
-          <Tabs
-            dataSource={schoolTabs}
-            selectedIndex={selectedTabIndex}
-            onOptionChanged={onTabOptionChanged}
-          />
           <CCol></CCol>
-          {selectedTabIndex === 0 && (
-            <CCol>
-              {isLoadingSchools ? (
-                <CSpinner />
-              ) : (
-                <DataGrid
-                  id="dataGrid"
-                  keyExpr="wondeID"
-                  showBorders={true}
-                  hoverStateEnabled={true}
-                  onSelectionChanged={selectSchool}
-                  allowColumnReordering={true}
-                  columnAutoWidth={true}
-                  dataSource={schools}
-                >
-                  <Selection mode="single" />
-                </DataGrid>
-              )}
-            </CCol>
-          )}
-          {selectedTabIndex === 1 && (
-            <CCol>
-              {selectedTabIndex === 1 && isLoadingSchools ? (
-                <CSpinner />
-              ) : (
-                <DataGrid
-                  id="dataGrid"
-                  keyExpr="wondeID"
-                  showBorders={true}
-                  hoverStateEnabled={true}
-                  allowColumnReordering={true}
-                  columnAutoWidth={true}
-                  dataSource={alreadyLoadedSchools}
-                ></DataGrid>
-              )}
-            </CCol>
-          )}
+          <CCol>
+            {isLoadingSchools ? (
+              <CSpinner />
+            ) : (
+              <DataGrid
+                id="dataGrid"
+                keyExpr="wondeID"
+                showBorders={true}
+                hoverStateEnabled={true}
+                onSelectionChanged={selectSchool}
+                allowColumnReordering={true}
+                columnAutoWidth={true}
+                dataSource={schools}
+              >
+                <Selection mode="single" />
+              </DataGrid>
+            )}
+          </CCol>
           <CCol></CCol>
         </div>
       </CRow>
@@ -1227,18 +1149,20 @@ function NewSchool() {
             >
               {`Apply Filter Options`}
             </Button>
-            <Button
-              style={{ marginBottom: '10px' }}
-              stylingMode="outlined"
-              onClick={deleteAllTables}
-            >
-              {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
-            </Button>
+            {selectedSchool && selectedSchool.isUploaded && (
+              <Button
+                style={{ marginBottom: '10px' }}
+                stylingMode="outlined"
+                onClick={deleteAllTables}
+              >
+                {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
+              </Button>
+            )}
           </>
         ) : null}
       </div>
       <div className="d-flex justify-content-center">
-        {schoolDataLoaded ? (
+        {isDataFiltered && selectedSchool && !selectedSchool.isUploaded && schoolDataLoaded ? (
           <>
             <Button
               style={{ marginBottom: '10px' }}
@@ -1343,50 +1267,6 @@ function NewSchool() {
               </CRow>
             </CContainer>
           </Item>
-          <Item title="Student-Classes">
-            <CContainer>
-              <CRow>
-                {isLoadingStudents ? (
-                  <CSpinner />
-                ) : (
-                  <DataGrid
-                    id="dataGrid"
-                    keyExpr="wondeStudentId"
-                    showBorders={true}
-                    hoverStateEnabled={true}
-                    allowColumnReordering={true}
-                    columnAutoWidth={true}
-                    dataSource={displayStudents}
-                  >
-                    <SearchPanel visible={true} />
-                    <MasterDetail enabled={true} component={StudentClassrooms} />
-                  </DataGrid>
-                )}
-              </CRow>
-            </CContainer>
-          </Item>
-          <Item title="Teacher-Classes">
-            <CContainer>
-              <CRow>
-                {isLoadingTeachers ? (
-                  <CSpinner />
-                ) : (
-                  <DataGrid
-                    id="dataGrid"
-                    keyExpr="wondeTeacherId"
-                    showBorders={true}
-                    hoverStateEnabled={true}
-                    allowColumnReordering={true}
-                    columnAutoWidth={true}
-                    dataSource={displayTeachers}
-                  >
-                    <SearchPanel visible={true} />
-                    <MasterDetail enabled={true} component={TeacherClassrooms} />
-                  </DataGrid>
-                )}
-              </CRow>
-            </CContainer>
-          </Item>
         </TabPanel>
       </CRow>
     </CContainer>
@@ -1394,14 +1274,7 @@ function NewSchool() {
 }
 export default NewSchool
 /**
- * Notes:
- * The code calling the existing lambda has a loop that is called onece for every "classroom"
- * Im not sure what a classroom data structure is - but probably is either
- * a) One line of the csv ( most probable)
- * b) grouped lines of the CSV
- * b) an invesion of the CSV data that shows classrooms
- */
-/**
+ * Notes: On How the EdCompanion CSV uploader works
  * Pseudo code for Frank's old loader in EdCompanion
  * Passed in a datastructure that includes the classroom
  * The sequence is

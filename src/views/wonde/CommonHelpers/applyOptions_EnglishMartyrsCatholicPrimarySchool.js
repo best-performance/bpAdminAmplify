@@ -1,20 +1,21 @@
 import { doOptionsFilteringGeneric } from './doOptionsFilteringGeneric'
-// options for Wonde ANZ Test School
-
-export function applyOptions_wonde_ANZ(
-  wondeStudents, // the list to filter
-  yearOptions, // contains the list of years to include
-  kinterDayClasses, // set if we want to remove Kintergarten AM,PM classes
-  kinterDayClassName,
-  coreSubjectOption, // set if we only include core subjects
+// Options for English Martyrs Catholic PrimarySchool
+export function applyOptions_EnglishMartyrsCatholicPrimarySchool(
+  wondeStudents,
+  yearOptions,
+  kinterDayClasses,
+  kinterDayClassName, // use this classroom name style if compressing classes
+  coreSubjectOption,
 ) {
-  console.log('in applyOptions_wonde_ANZ()')
+  console.log('in applyOptions_EnglishMartyrsCatholicPrimarySchool()')
+  console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
+  console.log('coreSubjectOption', coreSubjectOption)
 
   // If a school uptake these parameters are set by the UI
   // After that the chosen options are remembered here (ugly)
   if (yearOptions === null) {
     yearOptions = {
-      // Wonde ANZ Test School has all years up to Y12
+      Y0: true,
       Y1: true,
       Y2: true,
       Y3: true,
@@ -27,23 +28,20 @@ export function applyOptions_wonde_ANZ(
       Y10: true,
       Y11: true,
       Y12: true,
-      Y13: false,
+      Y13: true,
       K: true,
       R: true,
       FY: true,
     }
   }
   if (kinterDayClasses === null) {
-    // not used in Wonde ANZ Test School
-    kinterDayClasses = false
+    kinterDayClasses = true
   }
   if (kinterDayClassName === null) {
-    // not used in Wonde ANZ Test School
-    kinterDayClasses = ''
+    kinterDayClasses = 'K-Mon-Fri'
   }
   if (coreSubjectOption === null) {
-    // only taking core classes in Wonde ANZ Test School
-    coreSubjectOption = true
+    coreSubjectOption = false
   }
   // This school can use the generic filtering function
   let filteredList = doOptionsFilteringGeneric(
@@ -54,4 +52,4 @@ export function applyOptions_wonde_ANZ(
     coreSubjectOption,
   )
   return filteredList
-} // end function applyOptions_wonde_ANZ()
+} // end function applyOptions_EnglishMartyrsCatholicPrimarySchool()

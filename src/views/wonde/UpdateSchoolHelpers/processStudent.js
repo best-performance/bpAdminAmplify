@@ -1,36 +1,26 @@
 const dayjs = require('dayjs')
-const AWS = require('aws-sdk')
+const { API } = require('aws-amplify')
 const { updateAWSCredentials } = require('../CommonHelpers/updateAWSCredentials')
 const { getGender } = require('../CommonHelpers/getGender')
-
-// TODO: Put all table names in a separate file
-const STUDENT_TABLE = process.env.REACT_APP_STUDENT_TABLE
-const SCHOOL_STUDENT_TABLE = process.env.REACT_APP_SCHOOL_STUDENT_TABLE
-const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
-const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
-const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
-
-const STUDENT_WONDE_INDEX = 'byWondeID'
-const CLASSROOM_STUDENT_INDEX = 'byStudent'
 
 export default async function processStudent(student) {
   // get ready for AWS service calls
   await updateAWSCredentials() // uses the Cognito Identify pool role
 
-  // using the DocumentClient API
-  let docClient = new AWS.DynamoDB.DocumentClient()
-
-  // first find if the student already exists in the Student table (dynamoDB)
-  let DBStudent = await findStudent(student, docClient)
-
-  if (DBStudent.Count > 0) {
-    // then student exists in the DB
-    //console.log(`${student.forename} ${student.surname} is existing student`)
-    return findStudentDetailChanges(student, DBStudent.Items[0])
+  // read the student and classes using Appsync
+  let DBStudent = await findStudentClassesInDynamo(student)
+  let changedClasses = []
+  let changedStudent = []
+  if (DBStudent.length > 0) {
+    // then student exists in the DB - is returned as an array of size 1
+    changedClasses = findClassChanges(student, DBStudent[0])
+    //console.log('changed Classes', changedClasses)
+    changedStudent = findStudentDetailChanges(student, DBStudent[0])
+    return { changedStudent, changedClasses }
   } else {
     // then student is not in the DB
     console.log(`${student.forename} ${student.surname} is a new student`, student)
-    return [
+    changedStudent = [
       {
         id: student.id,
         firstName: student.forename,
@@ -41,61 +31,75 @@ export default async function processStudent(student) {
         source: 'Wonde',
       },
     ]
+    student.classes.data.forEach((item) => {
+      changedClasses.push({
+        id: student.id, // needed for Master/Detail
+        className: item.name,
+        classType: 'Classroom',
+        updatedAt: item.updated_at.date,
+        wondeID: item.id,
+        change: 'New Student',
+      })
+    })
+    return { changedStudent, changedClasses }
   }
 } // end process student
 
 /******************************
  * Local Helper functions
  ******************************/
-// find changes in clasroom assignments
-async function findClassChanges(DBStudentID, docClient, student) {
-  const queryParams = {
-    TableName: CLASSROOM_STUDENT_TABLE,
-    IndexName: CLASSROOM_STUDENT_INDEX,
-    KeyConditionExpression: '#studentID = :studentID',
-    ExpressionAttributeNames: {
-      '#studentID': 'studentID',
-    },
-    ExpressionAttributeValues: {
-      ':studentID': DBStudentID,
-    },
+// Query stduents details in Dynamo, returning all data
+// needed to check for student and class changes
+const getStudentByWondeID = /* GraphQL */ `
+  query GetStudentByWondeID($wondeID: String) {
+    getStudentByWondeID(wondeID: $wondeID) {
+      items {
+        wondeID
+        birthDate
+        firstName
+        lastName
+        gender
+        updatedAt
+        classrooms {
+          items {
+            classroom {
+              wondeID
+              updatedAt
+              className
+              classType
+            }
+          }
+        }
+      }
+    }
   }
+`
+async function findStudentClassesInDynamo(student) {
   try {
-    let response = await docClient.query(queryParams).promise()
-    console.log(
-      'DB class Assignments: ',
-      response.Items.length,
-      'Wonde class Assignments: ',
-      student.classes.data.length,
-    )
-    return true
-  } catch (err) {
-    console.log('error', err)
-    return
-  }
-} //  end findClassChanges()
+    const response = await API.graphql({
+      query: getStudentByWondeID,
+      variables: { wondeID: student.id },
+      authMode: 'AMAZON_COGNITO_USER_POOLS',
+    })
 
-// check if Wonde student already exists in the EdC Student table
-async function findStudent(student, docClient) {
-  const queryParams = {
-    TableName: STUDENT_TABLE,
-    IndexName: STUDENT_WONDE_INDEX,
-    KeyConditionExpression: '#wondeID = :wondeID',
-    ExpressionAttributeNames: {
-      '#wondeID': 'wondeID',
-    },
-    ExpressionAttributeValues: {
-      ':wondeID': student.id,
-    },
-  }
-  try {
-    let response = await docClient.query(queryParams).promise()
-    return response
+    // check if the student is assigned to some classrooms
+    if (response.data.getStudentByWondeID.items.length > 0) {
+      const {
+        data: {
+          getStudentByWondeID: { items },
+        },
+      } = response
+      //console.log('classrooms in Dynamo for student', student.id, items)
+    } else {
+      //console.log('Student is not in dynamo', student.id, student.surname)
+      return []
+    }
+    return response.data.getStudentByWondeID.items
   } catch (err) {
-    console.log('error', err)
-    return
+    console.log(err)
+    return []
   }
-} // end findStudent()
+} // end findStudentPlusClasses()
 
 // Check if any student details have been updated in Wonde
 function findStudentDetailChanges(wondeStudent, DBStudent) {
@@ -128,7 +132,7 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
       source: 'Wonde',
     })
     returnArray.push({
-      id: DBStudent.id,
+      id: DBStudent.wondeID,
       firstName: DBStudent.firstName,
       lastName: DBStudent.lastName,
       gender: getGender(DBStudent.gender),
@@ -136,6 +140,82 @@ function findStudentDetailChanges(wondeStudent, DBStudent) {
       change: changeReason,
       source: 'DynamoDB',
     })
+  } else {
+    // we get here if the student details are not changed
+    // but the classrooms maybe - so return it
+    returnArray.push({
+      id: wondeStudent.id,
+      firstName: wondeStudent.forename,
+      lastName: wondeStudent.surname,
+      gender: getGender(wondeStudent.gender),
+      dob: dayjs(wondeStudent.date_of_birth.date).format('YYYY-MM-DD'),
+      change: 'No Change',
+      source: 'Both',
+    })
   }
   return returnArray
-} // end studentDetailsChanged()
+}
+
+// Check if any student classes details have been updated in Wonde
+// compare the arrays and note
+// if a class in in Dynmao - but not in Wonde
+// if a class is in Wonde - but not in Dynamo
+// if in both
+//   check if class name has changed
+//   check if the teacher has changed
+function findClassChanges(wondeStudent, DBStudent) {
+  //console.log('wondeStudent', wondeStudent)
+  //console.log('DBStudent', DBStudent)
+  let returnArray = []
+
+  // have to work with the union of 2 lists of classrooms
+  let DBClassesMap = new Map()
+  let wondeClassesMap = new Map()
+
+  DBStudent.classrooms.items.forEach((item) => {
+    DBClassesMap.set(item.classroom.wondeID, item.classroom)
+  })
+  //console.log('DBClassesMap', DBClassesMap)
+  wondeStudent.classes.data.forEach((item) => {
+    wondeClassesMap.set(item.id, item)
+  })
+  //console.log('wondeClassesMap', wondeClassesMap)
+
+  DBStudent.classrooms.items.forEach((item) => {
+    // is the classroom in the Wonde List?
+    let wondeClass = wondeClassesMap.get(item.classroom.wondeID)
+    if (wondeClass) {
+      //console.log('classroom in wonde and Dynamo', item, wondeClass)
+      let returnItem = { ...item.classroom }
+      returnItem.change = 'In both'
+      returnItem.id = DBStudent.wondeID
+      returnArray.push(returnItem)
+    } else {
+      //console.log('classroom in Dynamo only', item)
+      let returnItem = { ...item.classroom }
+      returnItem.id = DBStudent.wondeID
+      returnItem.change = 'Dynamo Only'
+      returnArray.push(returnItem)
+    }
+  })
+  wondeStudent.classes.data.forEach((item) => {
+    // is the classroom in the Wonde List?
+    let DBClass = DBClassesMap.get(item.id)
+    if (DBClass) {
+      //console.log('already returned', item)
+    } else {
+      //console.log('classroom in Wonde only', item)
+      let returnItem = {
+        className: item.name,
+        classType: 'Classroom',
+        updatedAt: item.updated_at.date,
+        wondeID: item.id,
+        id: wondeStudent.id,
+        change: 'Wonde Only',
+      }
+      returnArray.push(returnItem)
+    }
+  })
+
+  return returnArray
+}

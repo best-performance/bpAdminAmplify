@@ -1,28 +1,17 @@
 import { getYearCodeForYear0 } from './featureToggles'
-import { getYearCode_KingsSchoolEly } from './getYearCode_KingsSchoolEly'
 import { isAUSRegion } from './featureToggles'
 
 const UNKNOWN = 'unknown'
 
-export function getYearCode(student, wondeSchoolID) {
+export function getYearCode_KingsSchoolEly(student) {
   let yearCode = UNKNOWN
 
-  // chack if one of the schools with unusual year codes
-  switch (wondeSchoolID) {
-    case 'A111084749': {
-      yearCode = getYearCode_KingsSchoolEly(student)
-      return yearCode
-    }
-    default:
-      // process as a "normal" case
-      break
-  }
-
-  if (!(student.year && student.year.data && student.year.data.code)) {
+  if (!(student.year && student.year.data && student.year.data.name)) {
+    // Note: For Kings School Ely, the correct year is in student.year.data.name
     return yearCode
   }
   // check for known FY or K strings
-  switch (student.year.data.code) {
+  switch (student.year.data.name) {
     case 'Year R': // St Andrew and St Francis CofE Primary School, Our Lady Star of the Sea Catholic Primary School,English Martyrs' Catholic Primary School
     case 'R': // St Monica's Catholic Primary School, St Mark's Primary School
     case 'Girls Reception': // Claires Court Schools
@@ -44,7 +33,7 @@ export function getYearCode(student, wondeSchoolID) {
 
   // if we did not find an FY or K code then look for a numeric year level
   if (yearCode === UNKNOWN) {
-    let numStr = student.year.data.code.match(/\d+/) // match returns an array
+    let numStr = student.year.data.name.match(/\d+/) // match returns an array
     if (numStr) {
       let upperYearLevel = isAUSRegion() ? 12 : 13
       let num = parseInt(numStr[0])
@@ -63,6 +52,5 @@ export function getYearCode(student, wondeSchoolID) {
   }
   // Just return with a prefix whatever bizarre year code teh school supplied
   if (yearCode === UNKNOWN) yearCode = 'U-' + student.year.data.code
-  if (yearCode === '11') console.log('yearcode 11', student)
   return yearCode
-}
+} // end function getYearCode_KingsSchoolEly()

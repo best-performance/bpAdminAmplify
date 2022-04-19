@@ -1,20 +1,19 @@
 import { doOptionsFilteringGeneric } from './doOptionsFilteringGeneric'
-// Options for Christ_Church_Grammer
-
-export function applyOptions_Christ_Church_Grammer(
+// Options for St Andrew and St Francis CofE Primary School
+export function applyOptions_StAndrewAndStFrancisCofEPrimarySchool(
   wondeStudents,
-  yearOptions,
-  kinterDayClasses,
-  kinterDayClassName, // use this classroom name style if compressing classes
-  coreSubjectOption,
+  yearOptions, // array of years to include
+  kinterDayClasses, // true if compressing Kindy Classes
+  kinterDayClassName, // use this classroom name style if compressing Kindy Classes
+  coreSubjectOption, // true if accpting classes with core subjects only
 ) {
-  console.log('in applyOptions_Christ_Church_Grammer()')
+  console.log('in applyOptions_StAndrewAndStFrancisCofEPrimarySchool()')
 
   // If a school uptake these parameters are set by the UI
-  // After that the chosen options are remembered here (ugly)
+  // For updates the options parameters will all be null
+  // and the desired/chosen ones are hardwired here.
   if (yearOptions === null) {
     yearOptions = {
-      // CristChurch grammer is primary only
       Y0: true,
       Y1: true,
       Y2: true,
@@ -35,14 +34,15 @@ export function applyOptions_Christ_Church_Grammer(
     }
   }
   if (kinterDayClasses === null) {
-    kinterDayClasses = false
+    kinterDayClasses = true
   }
   if (kinterDayClassName === null) {
-    kinterDayClasses = ''
+    kinterDayClasses = 'K-Mon-Fri'
   }
   if (coreSubjectOption === null) {
-    coreSubjectOption = true
+    coreSubjectOption = false
   }
+
   // This school can use the generic filtering function
   let filteredList = doOptionsFilteringGeneric(
     wondeStudents,
@@ -52,4 +52,4 @@ export function applyOptions_Christ_Church_Grammer(
     coreSubjectOption,
   )
   return filteredList
-} // end function applyOptions_Christ_Church_Grammer()
+} // end function applyOptions_StAndrewAndStFrancisCofEPrimarySchool()

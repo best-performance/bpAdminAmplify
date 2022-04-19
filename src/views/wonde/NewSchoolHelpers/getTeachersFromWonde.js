@@ -1,3 +1,4 @@
+//NOTE: This module is currently not used (BC 18/4/22)
 import { getToken, getURL } from '../CommonHelpers/featureToggles'
 import axios from 'axios'
 

@@ -9,13 +9,18 @@ const getStudentByWondeID = /* GraphQL */ `
   query GetStudentByWondeID($wondeID: String) {
     getStudentByWondeID(wondeID: $wondeID) {
       items {
-        id
+        birthDate
+        firstName
+        lastName
+        gender
+        updatedAt
         classrooms {
           items {
-            classroomID
             classroom {
-              className
               wondeID
+              updatedAt
+              className
+              classType
             }
           }
         }
