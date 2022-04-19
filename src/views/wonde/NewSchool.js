@@ -83,7 +83,6 @@ function NewSchool() {
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
-  const [schoolsLookup, setSchoolsLookup] = useState([])
   // const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
   // this controls the options popup
@@ -110,7 +109,7 @@ function NewSchool() {
   })
   const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
-  const [coreSubjectOption, setCoreSubjectOption] = useState(true)
+  const [coreSubjectOption, setCoreSubjectOption] = useState(false)
 
   function getFilterOptions() {
     console.log('get filter options')
@@ -145,8 +144,6 @@ function NewSchool() {
   // This useEffect() reads and saves the contents of 4 lookups
   // It needs to run just once
   useEffect(() => {
-    // we assume for now that the lookups are already populated in sandbox account
-
     const getLookupData = async () => {
       let credentials
       try {
@@ -168,9 +165,6 @@ function NewSchool() {
       setYearLevelsLoookup(response.Items)
       response = await docClient.scan({ TableName: STATE_TABLE }).promise()
       setStatesLookup(response.Items)
-      // response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
-      // // adding wondeschool ids
-      // setSchoolsLookup(response.Items)
       // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
       // setLearningAreasLookup(response.Items)
     }
@@ -181,6 +175,7 @@ function NewSchool() {
   // This is for testing to delete all records from the Dynamo tables if they exist
   async function deleteAllTables() {
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
+    await getAllSchools() // refresh the dusplay after deletion
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -216,8 +211,7 @@ function NewSchool() {
     // console.log('result after adding the user', result)
   } // end of testFuntion()
 
-  // Invokes function to get the list of available schools from Wonde
-  // first clears all state
+  //Function to get the list of Wonde schools already uploaded into DynamoDB
   async function getEdComSchools() {
     let credentials
     try {
@@ -241,13 +235,14 @@ function NewSchool() {
       return []
     }
   }
-
+  // Function to get the list of available schools from Wonde
   async function getAllSchools() {
     setIsLoadingSchools(true)
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
     setSchoolDataLoaded(false)
 
+    // we need the uploaded schools also to indicate "loaded" on the UI
     let edComSchools = await getEdComSchools()
     console.log('EdComSchools', edComSchools)
 
@@ -311,26 +306,34 @@ function NewSchool() {
    */
   async function saveSchoolCSVtoDynamoDB() {
     if (!schoolDataLoaded) return // can't save unless data has been loaded from Wonde
-    console.log('Saving School to DynamoDB')
 
     /**
      * Save the selected school to School table if not already saved
      * returns the EC schoolID of the saved school
      */
     let schoolID // the EC id of the saved School
+    let response = {}
     try {
-      schoolID = await saveSchool(
+      response = await saveSchool(
         selectedSchool,
         countriesLookup,
         statesLookup,
         SCHOOL_TABLE,
         SCHOOL_WONDE_INDEX,
       )
-      console.log('School saved', schoolID)
     } catch (err) {
-      console.log('error saving school', err)
+      console.log(`Error saving school ${selectedSchool.wondeID}`, err)
       return
     }
+    // If saveSChool() returns that the school is already in DynamoDB, then it aborts the upload
+    if (response.alreadyLoaded) {
+      console.log(`School ${response.schoolID} is already loaded in DynamoDB so aborting`)
+      return
+    }
+    // School not in DynamoDB so we can proceed with upload.
+    console.log(`Saving school ${response.wondeID} to DynamoDB`)
+    schoolID = response.schoolID
+
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
     // Each row represents a student, a classroom and up to 5 teachers
     let uniqueClassroomsMap = new Map()
@@ -577,14 +580,17 @@ function NewSchool() {
 
       for (let i = 0; i < uniqueTeachersArray.length; i++) {
         let teacher = uniqueTeachersArray[i]
-        let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
-        if (result.username === FAILED) {
-          console.log(
-            `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
-          )
-        } else {
-          teacherCognitoUserNames.set(teacher.email, result.username)
+        if (teacher.email !== 'no email found') {
+          let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+          if (result.username === FAILED) {
+            console.log(
+              `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
+            )
+          } else {
+            teacherCognitoUserNames.set(teacher.email, result.username)
+          }
         }
+        console.log(`Teacher ${teacher} has no email so not saved to Cognito`)
       }
       console.timeEnd('saved teachers cognito')
     } catch (err) {}
@@ -1048,6 +1054,8 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classroomStudents
+
+    await getAllSchools() // refresh the display after adding school data
   }
 
   if (!loggedIn.username) {
