@@ -1164,7 +1164,7 @@ function NewSchool() {
             >
               {`Apply Filter Options`}
             </Button>
-            {selectedSchool && selectedSchool.isUploaded && (
+            {selectedSchool && selectedSchool.isLoaded && !selectedSchool.isManual && (
               <Button
                 style={{ marginBottom: '10px' }}
                 stylingMode="outlined"
@@ -1177,7 +1177,7 @@ function NewSchool() {
         ) : null}
       </div>
       <div className="d-flex justify-content-center">
-        {isDataFiltered && selectedSchool && !selectedSchool.isUploaded && schoolDataLoaded ? (
+        {isDataFiltered && selectedSchool && !selectedSchool.isLoaded && schoolDataLoaded ? (
           <>
             <Button
               style={{ marginBottom: '10px' }}
