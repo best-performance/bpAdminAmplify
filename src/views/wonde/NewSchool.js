@@ -224,17 +224,18 @@ function NewSchool() {
       const docClient = new AWS.DynamoDB.DocumentClient()
       let response
       response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
-
-      // only return schools with WondeIDs
-      let wondeSchools = response.Items.filter((school) => {
-        return school.wondeID
-      })
-      return wondeSchools
+      return response.Items
     } catch (err) {
       console.log(err)
       return []
     }
+  } // end getEdComSchools()
+
+  // Utility to remove spaces and hyphens from string and convert to upper case
+  function compressString(str) {
+    return str.replace(/'|\s/g, '').toUpperCase()
   }
+
   // Function to get the list of available schools from Wonde
   async function getAllSchools() {
     setIsLoadingSchools(true)
@@ -251,11 +252,25 @@ function NewSchool() {
     if (schools) {
       let displaySchools = []
       schools.forEach((school) => {
-        if (edComSchools.find((x) => x.wondeID === school.wondeID)) {
-          displaySchools.push({ ...school, isUploaded: true })
+        // check if there is a matching school name in EdCompanion/Elastik
+        let matchingSchool = edComSchools.find(
+          (x) => compressString(x.schoolName) === compressString(school.schoolName),
+        )
+        if (matchingSchool) {
+          //console.log('matching School', matchingSchool)
+          school.isLoaded = true
+          // check if the school has a WondeID
+          if (matchingSchool.wondeID) {
+            school.isManual = false // Dynamo school has a wondeID
+          } else {
+            school.isManual = true // Dynamo school has been uploaded via csv
+          }
         } else {
-          displaySchools.push({ ...school, isUploaded: false })
+          // school is not uploaded
+          school.isLoaded = false
+          school.isManual = false
         }
+        displaySchools.push({ ...school })
       })
       setSchools(displaySchools)
 
