@@ -39,6 +39,7 @@ const FileUploader = () => {
   async function listCurrentfiles() {
     await updateAWSCredentials()
     let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
+    console.log('list of Folders XYZ', listOfFolders)
     setSchoolFiles(
       listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
     )
@@ -54,17 +55,17 @@ const FileUploader = () => {
     if (selectedFile && loggedIn.schoolName) {
       let extension = selectedFile.name.split('.').pop()
       if (['csv', 'xls', 'xlsx'].lastIndexOf(extension) > -1) {
-        let currentFolders = await Storage.list('')
-        let schoolFolder = currentFolders.find((folder) => {
-          if (folder.key) {
-            return folder.key.replace('/', '') === loggedIn.schoolName
-          }
-          return false
-        })
+        // let currentFolders = await Storage.list('')
+        // let schoolFolder = currentFolders.find((folder) => {
+        //   if (folder.key) {
+        //     return folder.key.replace('/', '') === loggedIn.schoolName
+        //   }
+        //   return false
+        // })
 
-        if (!schoolFolder) {
-          await Storage.put(`${loggedIn.schoolName}/`, null, { level: 'protected' })
-        }
+        // if (!schoolFolder) {
+        await Storage.put(`${loggedIn.schoolName}/`, null, { level: 'protected' })
+        // }
 
         Storage.put(`${loggedIn.schoolName}/${selectedFile.name}`, selectedFile, {
           level: 'protected',

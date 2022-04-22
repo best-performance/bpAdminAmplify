@@ -47,7 +47,6 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         Authorization: getToken(),
       },
     })
-    //console.log('teachers', response.data.data)
     response.data.data.forEach((teacher) => {
       if (teacher.contact_details && teacher.contact_details.data.emails.email) {
         teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
@@ -56,7 +55,6 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         teachersMap.set(teacher.id, 'no email found')
       }
     })
-    //console.log(teachersMap)
   } catch (err) {
     console.log(err)
     return []

@@ -20,6 +20,7 @@ import { addNewCognitoUser } from './NewSchoolHelpers/cognitoFns'
 import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
+import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CSV file to bucket
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -181,6 +182,7 @@ function NewSchool() {
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
   // There is  UI button that will run the function
   // Any sort of test function here is acceptable
+
   async function testFunction() {
     console.log('testFuntion() invoked')
     console.log('yearLevels', yearLevelsLookup)
@@ -192,6 +194,8 @@ function NewSchool() {
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
+
+    await CSVUploader(loggedIn)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
