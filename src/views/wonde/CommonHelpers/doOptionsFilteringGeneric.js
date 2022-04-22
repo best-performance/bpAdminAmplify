@@ -53,7 +53,7 @@ export function doOptionsFilteringGeneric(
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"
             if (subjectName) {
-              if (subjectName.includes('Mathematics')) {
+              if (subjectName.includes('Mathematics') || subjectName.includes('Maths')) {
                 classroom.subject = 'Mathematics'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('English')) {

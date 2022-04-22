@@ -346,7 +346,7 @@ function NewSchool() {
       return
     }
     // School not in DynamoDB so we can proceed with upload.
-    console.log(`Saving school ${response.wondeID} to DynamoDB`)
+    console.log(`Saving school ${response} to DynamoDB`)
     schoolID = response.schoolID
 
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
@@ -604,8 +604,9 @@ function NewSchool() {
           } else {
             teacherCognitoUserNames.set(teacher.email, result.username)
           }
+        } else {
+          console.log(`Teacher has no email so not saved to Cognito`, teacher)
         }
-        console.log(`Teacher ${teacher} has no email so not saved to Cognito`)
       }
       console.timeEnd('saved teachers cognito')
     } catch (err) {}

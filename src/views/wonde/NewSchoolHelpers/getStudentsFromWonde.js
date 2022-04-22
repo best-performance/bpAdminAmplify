@@ -49,7 +49,12 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
     })
     //console.log('teachers', response.data.data)
     response.data.data.forEach((teacher) => {
-      teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+      if (teacher.contact_details && teacher.contact_details.data.emails.email) {
+        teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+      } else {
+        console.log('no email found for teacher', teacher)
+        teachersMap.set(teacher.id, 'no email found')
+      }
     })
     //console.log(teachersMap)
   } catch (err) {
@@ -126,7 +131,12 @@ async function readStudentsClassesTeachers(wondeSchoolID) {
     })
     //console.log('teachers', response.data.data)
     response.data.data.forEach((teacher) => {
-      teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+      if (teacher.contact_details && teacher.contact_details.data.emails.email) {
+        teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+      } else {
+        console.log('no email found for teacher', teacher)
+        teachersMap.set(teacher.id, 'no email found')
+      }
     })
   } catch (err) {
     console.log(err)

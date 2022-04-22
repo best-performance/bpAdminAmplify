@@ -61,8 +61,8 @@ export function getYearCode(student, wondeSchoolID) {
       }
     }
   }
-  // Just return with a prefix whatever bizarre year code teh school supplied
+  // Just return with a prefix whatever bizarre year code the school supplied
   if (yearCode === UNKNOWN) yearCode = 'U-' + student.year.data.code
-  if (yearCode === '11') console.log('yearcode 11', student)
+  //if (yearCode === '11') console.log('yearcode 11', student)
   return yearCode
 }
