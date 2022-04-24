@@ -19,12 +19,12 @@ const FileUploader = () => {
   useEffect(() => {
     async function loadConfigure() {
       await updateAWSCredentials()
-      Storage.configure({
+      await Storage.configure({
         bucket: process.env.REACT_APP_UPLOADS_BUCKET,
         region: 'eu-west-2', // there is only one bucket and its in the UK
         identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
       })
-      listCurrentfiles()
+      await listCurrentfiles()
     }
     loadConfigure()
     return () => {
@@ -55,31 +55,21 @@ const FileUploader = () => {
     if (selectedFile && loggedIn.schoolName) {
       let extension = selectedFile.name.split('.').pop()
       if (['csv', 'xls', 'xlsx'].lastIndexOf(extension) > -1) {
-        // let currentFolders = await Storage.list('')
-        // let schoolFolder = currentFolders.find((folder) => {
-        //   if (folder.key) {
-        //     return folder.key.replace('/', '') === loggedIn.schoolName
-        //   }
-        //   return false
-        // })
-
-        // if (!schoolFolder) {
-        await Storage.put(`${loggedIn.schoolName}/`, null, { level: 'protected' })
-        // }
-
-        Storage.put(`${loggedIn.schoolName}/${selectedFile.name}`, selectedFile, {
-          level: 'protected',
-          contentType: selectedFile.type,
-        })
-          .then((result) => {
-            notify('👋 The file has been uploaded', 'success', 3000)
-            setIsUploadingFile(false)
+        try {
+          // Make the "schoolName/" directory - will return key if already exists
+          await Storage.put(`${loggedIn.schoolName}/`, null, { level: 'protected' })
+          // Save the file in the above directory
+          await Storage.put(`${loggedIn.schoolName}/${selectedFile.name}`, selectedFile, {
+            level: 'protected',
+            contentType: selectedFile.type,
           })
-          .catch((err) => {
-            notify('The file has not been uploaded, please contact the support team', 'error', 3000)
-            console.log('error', err)
-            setIsUploadingFile(false)
-          })
+          notify('👋 The file has been uploaded', 'success', 3000)
+          setIsUploadingFile(false)
+        } catch (err) {
+          notify('The file has not been uploaded, please contact the support team', 'error', 3000)
+          console.log('error', err)
+          setIsUploadingFile(false)
+        }
       } else {
         notify('Only spreadsheets with the format CSV, XLS, XLSX are accepted', 'error', 3000)
       }
@@ -92,9 +82,7 @@ const FileUploader = () => {
     document.getElementById('fileInput').value = null
     setSelectedFile(null)
     setIsSelected(false)
-    setTimeout(function () {
-      listCurrentfiles()
-    }, 3000)
+    await listCurrentfiles()
   }
 
   return (

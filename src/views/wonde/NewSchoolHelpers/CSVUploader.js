@@ -10,35 +10,64 @@ async function listCurrentfiles(loggedIn) {
     identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
   })
   //let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
-  let listOfFolders = await Storage.list(``)
+  let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
   console.log(
     'list of folders',
     listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
   )
 }
 
-export async function CSVUploader(loggedIn) {
+/**
+ * This function creates a CSV file from the filteredStudentList
+ * and saves it to a csv file on S3
+ * To create a csv file, create a long string with '\n' delimiting the rows
+ * and ',' delimiting the fields.
+ * Make a header row for the titles then the data in subsequent rows,
+ * and the spreadsheet will know what to do when reading it.
+ */
+export async function CSVUploader(loggedIn, filteredStudentClassrooms) {
   console.log('logged In', loggedIn)
-
+  console.log('FilteredStudentClassrooms', filteredStudentClassrooms)
   await listCurrentfiles(loggedIn)
 
+  //Make the heading row
+  const titleNamePart = `First Name,Last Name,Year Level,Gender,Date of Birth,Classroom,`
+  const titleRowTeachers1 = `Teacher1 First Name, Teacher1 Last Name, Teacher1 Email,`
+  const titleRowTeachers2 = `Teacher2 First Name, Teacher2 Last Name, Teacher2 Email,`
+  const titleRowTeachers3 = `Teacher3 First Name, Teacher3 Last Name, Teacher3 Email,`
+  const titleRowTeachers4 = `Teacher4 First Name, Teacher4 Last Name, Teacher4 Email,`
+  const titleRowTeachers5 = `Teacher5 First Name, Teacher5 Last Name, Teacher5 Email,\n`
+  const titleRow =
+    titleNamePart +
+    titleRowTeachers1 +
+    titleRowTeachers2 +
+    titleRowTeachers3 +
+    titleRowTeachers4 +
+    titleRowTeachers5
+
+  // add a csv file row for every studentClassroom
+  let csvOutput = titleRow
+  filteredStudentClassrooms.forEach((row, index) => {
+    const studentClassroomPart = `${row.firstName},${row.lastName},${row.yearCode},${row.gender},${row.dob},${row.classroomName},`
+    const teacher1Part = `${row['teacher1 FirstName']},${row['teacher1 LastName']},${row['teacher1 email']},`
+    const teacher2Part = `${row['teacher2 FirstName']},${row['teacher2 LastName']},${row['teacher2 email']},`
+    const teacher3Part = `${row['teacher3 FirstName']},${row['teacher3 LastName']},${row['teacher3 email']},`
+    const teacher4Part = `${row['teacher4 FirstName']},${row['teacher4 LastName']},${row['teacher4 email']},`
+    const teacher5Part = `${row['teacher5 FirstName']},${row['teacher5 LastName']},${row['teacher5 email']},\n`
+    const rowOutput =
+      studentClassroomPart +
+      teacher1Part +
+      teacher2Part +
+      teacher3Part +
+      teacher4Part +
+      teacher5Part
+    csvOutput += rowOutput
+  })
+  //console.log('csvOutput', csvOutput)
+  await Storage.put(`${loggedIn.schoolName}/csvFile2.csv`, csvOutput, {
+    level: 'protected',
+    contentType: 'application/vnd.ms-excel',
+  })
+  await listCurrentfiles(loggedIn)
   return
-
-  // await updateAWSCredentials()
-  // Storage.configure({
-  //   bucket: process.env.REACT_APP_UPLOADS_BUCKET,
-  //   region: 'eu-west-2', // there is only one bucket and its in the UK
-  //   identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
-  // })
-
-  // const data = [
-  //   ['name1', 'city1', 'some other info'],
-  //   ['name2', 'city2', 'more info'],
-  // ]
-
-  // let csvContent = 'data:text/csv;charset=utf-8,' + data.map((e) => e.join(',')).join('\n')
-
-  // Storage.put(BucketURL….., csvContent, {
-  //   contentType: 'application/vnd.ms-excel',
-  // })
 }
