@@ -179,6 +179,12 @@ function NewSchool() {
     await getAllSchools() // refresh the dusplay after deletion
   }
 
+  // Create a CSV from teh filtered data and send to S3
+  // Callback for conditional Button below
+  async function SendCSVToS3() {
+    await CSVUploader(loggedIn, filteredStudentClassrooms)
+  }
+
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
   // There is  UI button that will run the function
   // Any sort of test function here is acceptable
@@ -1153,7 +1159,7 @@ function NewSchool() {
         {selectedSchool.schoolName !== 'none' ? (
           <>
             <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={getSchoolData}>
-              {`Get data for ${selectedSchool.schoolName} from Wonde`}
+              {`Get data for ${selectedSchool.schoolName}`}
             </Button>
             <Button
               style={{ marginBottom: '10px' }}
@@ -1175,7 +1181,12 @@ function NewSchool() {
                 stylingMode="outlined"
                 onClick={deleteAllTables}
               >
-                {`Delete data for ${selectedSchool.schoolName} from EdCompanion`}
+                {`Delete ${selectedSchool.schoolName} from EdCompanion`}
+              </Button>
+            )}
+            {isDataFiltered && selectedSchool && (
+              <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={SendCSVToS3}>
+                {`Send CSV to S3`}
               </Button>
             )}
           </>

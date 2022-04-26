@@ -23,7 +23,7 @@ async function listCurrentfiles(loggedIn) {
  * To create a csv file, create a long string with '\n' delimiting the rows
  * and ',' delimiting the fields.
  * Make a header row for the titles then the data in subsequent rows,
- * and the spreadsheet will know what to do when reading it.
+ * and the spreadsheet reader will recognise this format.
  */
 export async function CSVUploader(loggedIn, filteredStudentClassrooms) {
   console.log('logged In', loggedIn)
@@ -64,7 +64,7 @@ export async function CSVUploader(loggedIn, filteredStudentClassrooms) {
     csvOutput += rowOutput
   })
   //console.log('csvOutput', csvOutput)
-  await Storage.put(`${loggedIn.schoolName}/csvFile2.csv`, csvOutput, {
+  await Storage.put(`${loggedIn.schoolName}/csvFile.csv`, csvOutput, {
     level: 'protected',
     contentType: 'application/vnd.ms-excel',
   })

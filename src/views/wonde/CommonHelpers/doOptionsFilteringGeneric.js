@@ -89,7 +89,7 @@ export function doOptionsFilteringGeneric(
         console.log(`student has no core classes - filtered out`, student)
       }
     } else {
-      console.log(`Bad student yearcode ${student.yearCode} - filtered out`, student)
+      console.log(`Student yearcode ${student.yearCode} - filtered out`, student)
     }
   })
   console.log('filtered list[0]', filteredList[0])
