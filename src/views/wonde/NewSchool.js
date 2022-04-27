@@ -201,7 +201,7 @@ function NewSchool() {
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
-    await CSVUploader(loggedIn, filteredStudentClassrooms)
+    //await CSVUploader(loggedIn, filteredStudentClassrooms)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
