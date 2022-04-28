@@ -2,15 +2,14 @@ import { Storage } from '@aws-amplify/storage'
 import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials'
 
 // function to read the currrent folders
-async function listCurrentfiles(loggedIn) {
+async function listCurrentfiles(schoolName) {
   await updateAWSCredentials()
   Storage.configure({
     bucket: process.env.REACT_APP_UPLOADS_BUCKET,
     region: 'eu-west-2', // there is only one bucket and its in the UK
     identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
   })
-  //let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
-  let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
+  let listOfFolders = await Storage.list(`${schoolName}/`, { level: 'protected' })
   console.log(
     'list of folders',
     listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
@@ -25,10 +24,9 @@ async function listCurrentfiles(loggedIn) {
  * Make a header row for the titles then the data in subsequent rows,
  * and the spreadsheet reader will recognise this format.
  */
-export async function CSVUploader(loggedIn, filteredStudentClassrooms) {
-  console.log('logged In', loggedIn)
+export async function CSVUploader(schoolName, filteredStudentClassrooms) {
   console.log('FilteredStudentClassrooms', filteredStudentClassrooms)
-  await listCurrentfiles(loggedIn)
+  await listCurrentfiles(schoolName)
 
   //Make the heading row
   const titleNamePart = `First Name,Last Name,Year Level,Gender,Date of Birth,Classroom,`
@@ -64,10 +62,10 @@ export async function CSVUploader(loggedIn, filteredStudentClassrooms) {
     csvOutput += rowOutput
   })
   //console.log('csvOutput', csvOutput)
-  await Storage.put(`${loggedIn.schoolName}/csvFile.csv`, csvOutput, {
+  await Storage.put(`${schoolName}/csvFile.csv`, csvOutput, {
     level: 'protected',
     contentType: 'application/vnd.ms-excel',
   })
-  await listCurrentfiles(loggedIn)
+  await listCurrentfiles(schoolName)
   return
 }

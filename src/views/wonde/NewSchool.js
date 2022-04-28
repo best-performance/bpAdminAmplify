@@ -21,6 +21,9 @@ import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
 import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CSV file to bucket
+import { updateAWSCredentials } from './CommonHelpers/updateAWSCredentials'
+import { Storage } from '@aws-amplify/storage'
+import { sendEmail } from './CommonHelpers/sendEmail'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -61,6 +64,9 @@ const FAILED = 'failed'
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
+  // test to download a file
+  const [s3Key, setS3Key] = useState(null)
+
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
   const [isDataFiltered, setIsDataFiltered] = useState(false)
@@ -182,7 +188,18 @@ function NewSchool() {
   // Create a CSV from teh filtered data and send to S3
   // Callback for conditional Button below
   async function SendCSVToS3() {
-    await CSVUploader(loggedIn, filteredStudentClassrooms)
+    console.log('loggedIn', loggedIn)
+    let schoolName = loggedIn.schoolName
+    await CSVUploader(schoolName, filteredStudentClassrooms)
+    // Note: really need a table of verified email addresses for schools
+    // Then, when a csv has been uploaded the notification goes to the school admin
+    await sendEmail(
+      'Notice of File Upload - BRENDAN TESTING NO ACTION NEEDED',
+      `A csv file has been uploaded to S3 bucket for your school: ${schoolName}`,
+      'brendan@bcperth.com', // sender
+      [loggedIn.email], // array of addressees (needs to be the School Address)
+      ['diego@bestperformance.com.au'], // array of cc'd addresees
+    )
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -200,8 +217,6 @@ function NewSchool() {
     console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
-
-    //await CSVUploader(loggedIn, filteredStudentClassrooms)
 
     // try to locate a non-existant email
     // not bothering to try-catch these Cognito calls
@@ -1082,6 +1097,25 @@ function NewSchool() {
     } // end saving classroomStudents
 
     await getAllSchools() // refresh the display after adding school data
+  } // end saveSchoolToDynamoDB()
+
+  // test to try to upload a file (works fine)
+  async function getS3File() {
+    await updateAWSCredentials()
+    Storage.configure({
+      bucket: process.env.REACT_APP_UPLOADS_BUCKET,
+      region: 'eu-west-2', // there is only one bucket and its in the UK
+      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
+    })
+    //let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
+    let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
+    console.log(
+      'list of folders',
+      listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
+    )
+    let signedKey = await Storage.get(listOfFolders[0].key, { level: 'protected', download: false })
+    console.log(signedKey)
+    setS3Key(signedKey)
   }
 
   if (!loggedIn.username) {
@@ -1094,6 +1128,12 @@ function NewSchool() {
   return (
     <CContainer>
       <CRow>
+        <a href={s3Key} target="_blank" rel="noreferrer">
+          DownloadFile.csv
+        </a>
+        <Button onClick={getS3File}>get file</Button>
+      </CRow>
+      <CRow>
         <div style={{ textAlign: 'center', fontSize: '30px' }}>
           <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>
         </div>
@@ -1102,9 +1142,11 @@ function NewSchool() {
         <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>
           List All Available Wonde Schools
         </Button>
-        <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
-          run testFunction()
-        </Button>
+        {loggedIn.username === 'brendan' && (
+          <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
+            run testFunction()
+          </Button>
+        )}
       </div>
       <CRow style={{ width: '50%', margin: '20px' }}>
         <div style={{ marginBottom: '20px' }}>

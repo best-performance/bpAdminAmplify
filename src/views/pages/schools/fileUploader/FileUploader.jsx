@@ -8,11 +8,13 @@ import notify from 'devextreme/ui/notify'
 import DataGrid, { Column } from 'devextreme-react/data-grid'
 
 import { updateAWSCredentials } from '../../../wonde/CommonHelpers/updateAWSCredentials'
+import { sendEmail } from '../../../wonde/CommonHelpers/sendEmail'
 
 const FileUploader = () => {
   const [selectedFile, setSelectedFile] = useState()
   const [isSelected, setIsSelected] = useState(false)
   const [isUploadingFile, setIsUploadingFile] = useState(false)
+  const [isLoading, setIsloading] = useState(true)
   const [schoolFiles, setSchoolFiles] = useState([])
   const { loggedIn } = useContext(loggedInContext)
 
@@ -26,7 +28,9 @@ const FileUploader = () => {
       })
       await listCurrentfiles()
     }
+    setIsloading(true)
     loadConfigure()
+    setIsloading(false)
     return () => {
       setSelectedFile(null) // This worked for me
       setIsSelected(false)
@@ -36,6 +40,29 @@ const FileUploader = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Get a signed URL for an S3 folder item, so it can be downloaded
+  async function getS3FileSignedURL(folderItem) {
+    await updateAWSCredentials()
+    Storage.configure({
+      bucket: process.env.REACT_APP_UPLOADS_BUCKET,
+      region: 'eu-west-2', // there is only one bucket and its in the UK
+      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
+    })
+    let signedKey = await Storage.get(folderItem, { level: 'protected', download: false })
+    return signedKey
+  }
+
+  // Send an email when the user downloads a file
+  async function downloadCallback() {
+    await sendEmail(
+      'Notice of File Download - BRENDAN TESTING NO ACTION NEEDED',
+      `A file has been downloaded by ${loggedIn.username} from S3 bucket for school: ${loggedIn.schoolName}`,
+      'brendan@bcperth.com', // sender
+      ['brendan@bcperth.com'], // array of addressees
+      ['diego@bestperformance.com.au'], // array of cc'd addresees
+    )
+  }
+
   async function listCurrentfiles() {
     await updateAWSCredentials()
     let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
@@ -43,6 +70,15 @@ const FileUploader = () => {
     setSchoolFiles(
       listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
     )
+
+    listOfFolders = listOfFolders.filter(
+      (folder) => folder.key.split('/') && folder.key.split('/')[1],
+    )
+
+    listOfFolders.forEach(async (folder) => {
+      folder.s3URL = await getS3FileSignedURL(folder.key)
+    })
+    console.log('filtered list of folders 2', listOfFolders)
   }
 
   const changeHandler = (event) => {
@@ -85,8 +121,22 @@ const FileUploader = () => {
     await listCurrentfiles()
   }
 
+  if (isLoading)
+    return (
+      <CContainer>
+        <CRow>
+          <CSpinner style={{ margin: 'auto' }}></CSpinner>
+        </CRow>
+      </CContainer>
+    )
+
   return (
     <CContainer>
+      {/* <CRow>
+        <a href={signedURLKey} target="_blank" rel="noreferrer">
+          DownloadFile.csv
+        </a>
+      </CRow> */}
       <CRow>
         <CCard style={{ padding: '30px' }}>
           {/* <p className="school-selected"> */}
@@ -153,6 +203,28 @@ const FileUploader = () => {
             cellRender={(cellData) => {
               if (cellData && cellData.value) {
                 return <>{cellData.value.split('/')[1]}</>
+              }
+              return <></>
+            }}
+          />
+          <Column
+            dataField="s3URL"
+            caption="Download File"
+            dataType="string"
+            alignment="center"
+            cellRender={(cellData) => {
+              if (cellData && cellData.value) {
+                console.log('celldata', cellData)
+                return (
+                  <a
+                    href={cellData.value}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={downloadCallback}
+                  >
+                    Click to Download
+                  </a>
+                )
               }
               return <></>
             }}
