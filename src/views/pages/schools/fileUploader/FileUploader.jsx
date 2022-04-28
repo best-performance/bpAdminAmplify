@@ -132,11 +132,6 @@ const FileUploader = () => {
 
   return (
     <CContainer>
-      {/* <CRow>
-        <a href={signedURLKey} target="_blank" rel="noreferrer">
-          DownloadFile.csv
-        </a>
-      </CRow> */}
       <CRow>
         <CCard style={{ padding: '30px' }}>
           {/* <p className="school-selected"> */}

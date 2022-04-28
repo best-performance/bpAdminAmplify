@@ -1127,12 +1127,12 @@ function NewSchool() {
   }
   return (
     <CContainer>
-      <CRow>
+      {/* <CRow>
         <a href={s3Key} target="_blank" rel="noreferrer">
           DownloadFile.csv
         </a>
         <Button onClick={getS3File}>get file</Button>
-      </CRow>
+      </CRow> */}
       <CRow>
         <div style={{ textAlign: 'center', fontSize: '30px' }}>
           <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>
