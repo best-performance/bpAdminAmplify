@@ -96,7 +96,9 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
           })
           wondeStudentsTemp.push(clonedStudent)
         } else {
-          console.log(`Filtered out student ${student.forename} ${student.surname} ... no classes`)
+          console.log(
+            `Filtered out student ${student.forename} ${student.surname} ... not in any group`,
+          )
         }
       })
       // check if all pages are read

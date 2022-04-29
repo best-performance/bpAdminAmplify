@@ -1,7 +1,7 @@
 import _ from 'lodash'
 // This is a generic filtering function that should be OK for most schools
 export function doOptionsFilteringGeneric(
-  wondeStudents,
+  wondeStudents, // as read by getStudentsFromWonde() BEFORE formatStudentClassrooms()
   yearOptions, // array of years to include
   kinterDayClasses, // true if compressing Kindy Classes
   kinterDayClassName, // use this classroom name style if compressing Kindy Classes
@@ -43,12 +43,14 @@ export function doOptionsFilteringGeneric(
         } else {
           if (coreSubjectOption) {
             let subjectName = null
-            // if there is no subject or subject.data.name, then the subject may
-            // be mined from the classroom name (true for Christ Church Grammer AU at least)
-            if (classroom.subject && classroom.subject.data.name) {
-              subjectName = classroom.subject.data.name
-            } else {
-              if (classroom.name) subjectName = classroom.name
+            if (classroom.subject) {
+              if (typeof classroom.subject === 'string') {
+                subjectName = classroom.subject
+              } else {
+                if (classroom.subject.data && classroom.subject.data.name) {
+                  subjectName = classroom.subject.data.name
+                }
+              }
             }
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"
@@ -59,21 +61,21 @@ export function doOptionsFilteringGeneric(
               } else if (subjectName.includes('English')) {
                 classroom.subject = 'English'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('Science')) {
+              } else if (subjectName.includes('Science') && !subjectName.includes('Domestic')) {
                 classroom.subject = 'Science'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('Biology')) {
-                classroom.subject = 'Sc-Biology'
+                classroom.subject = 'Science (Bi)'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('Chemistry')) {
-                classroom.subject = 'Sc-Chemistry'
+                classroom.subject = 'Science (Ch)'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('Physics')) {
-                classroom.subject = 'Sc-Physics'
+                classroom.subject = 'Science (Ph)'
                 filteredClasses.push(classroom)
               }
             } else {
-              // No subject found so class is filtered out - Is this correct?
+              // Not a core subject so filtered out
             }
           } else {
             // Accept all classrooms

@@ -21,8 +21,6 @@ import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
 import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CSV file to bucket
-import { updateAWSCredentials } from './CommonHelpers/updateAWSCredentials'
-import { Storage } from '@aws-amplify/storage'
 import { sendEmail } from './CommonHelpers/sendEmail'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
@@ -34,7 +32,7 @@ import { sendEmail } from './CommonHelpers/sendEmail'
 const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
 const YEARLEVEL_TABLE = process.env.REACT_APP_YEARLEVEL_TABLE
 const STATE_TABLE = process.env.REACT_APP_STATE_TABLE
-//const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
+const LEARNINGAREA_TABLE = process.env.REACT_APP_LEARNINGAREA_TABLE
 
 // Tables to store school data
 // We need to generalise this for regional table names
@@ -64,8 +62,6 @@ const FAILED = 'failed'
 // React component for user to list Wonde schools, read a school and upload the data to EdCompanion
 function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
-  // test to download a file
-  const [s3Key, setS3Key] = useState(null)
 
   // school list and slected school
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
@@ -90,7 +86,7 @@ function NewSchool() {
   const [countriesLookup, setCountriesLookup] = useState([])
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
-  // const [learningAreasLookup, setLearningAreasLookup] = useState([])
+  const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
   // this controls the options popup
   const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
@@ -172,8 +168,8 @@ function NewSchool() {
       setYearLevelsLoookup(response.Items)
       response = await docClient.scan({ TableName: STATE_TABLE }).promise()
       setStatesLookup(response.Items)
-      // response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
-      // setLearningAreasLookup(response.Items)
+      response = await docClient.scan({ TableName: LEARNINGAREA_TABLE }).promise()
+      setLearningAreasLookup(response.Items)
     }
     getLookupData()
     console.log('Loaded lookup tables from dynamoDB in UseEffect()')
@@ -211,6 +207,7 @@ function NewSchool() {
     console.log('yearLevels', yearLevelsLookup)
     console.log('countries', countriesLookup)
     console.log('states', statesLookup)
+    console.log('learningAreas', learningAreasLookup)
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
     console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
@@ -408,6 +405,7 @@ function NewSchool() {
           className: row.classroomName,
           yearCode: row.yearCode,
           mis_id: row.Cmis_id,
+          subject: row.subject ? row.subject : '-', // for use when saving classroomLearningArea
           // classroomID will be added after classroom are saved
         })
       }
@@ -456,6 +454,8 @@ function NewSchool() {
     const uniqueStudentsArray = Array.from(uniqueStudentsMap.values())
 
     console.dir(uniqueClassroomsArray)
+    console.log(learningAreasLookup)
+
     // console.dir(uniqueTeachersArray)
     // console.dir(uniqueStudentsArray)
 
@@ -547,7 +547,7 @@ function NewSchool() {
      * For each classroom
           add to classrooms
           add to classroomYearLevel *
-	        add to classroomLearningArea (Not Done)
+	        add to classroomLearningArea
      */
     // Classrooms saves - next save classroomYearLevels
     console.log('saving ClassroomYearLevels')
@@ -566,25 +566,21 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          // lookup the yearLevelID to save
-          let yearLevelRecord = yearLevelsLookup.find(
-            // eslint-disable-next-line no-loop-func
-            (o) => {
-              let yearCode = uniqueClassroomsArray[index].yearCode
-              if (!isNaN(parseInt(uniqueClassroomsArray[index].yearCode)))
-                yearCode = `Y${uniqueClassroomsArray[index].yearCode}`
-              return yearCode === o.yearCode
-            },
+          // get the yearCode for this classroom
+          // Note yearCode must look like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
+          let yearCode = uniqueClassroomsArray[index].yearCode
+          if (!isNaN(parseInt(uniqueClassroomsArray[index].yearCode)))
+            yearCode = `Y${uniqueClassroomsArray[index].yearCode}`
 
-            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
-          )
+          // lookup the yearLevelID for this yearCode
+          let yearLevelRecord = yearLevelsLookup.find((o) => yearCode === o.yearCode)
 
           //console.log("yearLevelRecord", yearLevelRecord);
           batchToWrite.push({
             PutRequest: {
               Item: {
                 id: v4(), // this is the EdC id generated locally
-                classroomID: uniqueClassroomsArray[index].classroomID, // as poked in saving the classroom
+                classroomID: uniqueClassroomsArray[index].classroomID, // as poked in when saving the classroom
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
                 yearLevelID: yearLevelRecord.id,
                 __typename: 'ClassroomYearLevel',
@@ -608,6 +604,72 @@ function NewSchool() {
       console.log(err)
       return { result: false, msg: err.message } // abandon ship
     } // end save classrommYearLevel
+
+    /**
+     * Save the classrooms
+     * For each classroom
+          add to classrooms
+          add to classroomYearLevel 
+	        add to classroomLearningArea *
+     */
+    //  next save classroomLearning
+    console.log('saving ClassroomLearningAreas')
+    try {
+      console.time('Saved ClassroomLearningAreas') // measure how long it takes to save
+      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+      // process each batch
+      let index = 0 //index in the classrooms array
+      for (let i = 0; i < batchesCount; i++) {
+        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+        if (batchSize === 0) break // must have been an even no of batches
+
+        let batchToWrite = []
+        for (let n = 0; n < batchSize; n++) {
+          // Extract the subject/areaName from the uniqueClassroom record
+          let areaName = uniqueClassroomsArray[index].subject // subject will be defined at least as ""
+          // If its like "Science (Ch)" or similar then make it "Science"
+          if (areaName && areaName.startsWith('Science')) areaName = 'Science'
+          // lookup the learningAreaID in the lookuptable
+          let learningAreaRecord = learningAreasLookup.find((learningAreasLookupRow) => {
+            return areaName === learningAreasLookupRow.areaName
+          })
+
+          if (learningAreaRecord) {
+            // Only save if the classroom has a recognised subject/areaName
+            //console.log("yearLevelRecord", yearLevelRecord);
+            batchToWrite.push({
+              PutRequest: {
+                Item: {
+                  id: v4(), // this is the EdC id generated locally
+                  classroomID: uniqueClassroomsArray[index].classroomID, // as poked in saving the classroom
+                  learningAreaID: learningAreaRecord.id,
+                  __typename: 'ClassroomLearningArea',
+                  createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                  updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                },
+              },
+            })
+          }
+
+          index++
+        } // end batch loop
+
+        let response = await batchWrite(batchToWrite, CLASSROOM_YEARLEVEL_TABLE)
+
+        if (!response.result) {
+          console.log(`exiting at index ${index}`)
+          break
+        }
+      } // end array loop
+      console.timeEnd('Saved ClassroomLearningAreas')
+    } catch (err) {
+      console.log(err)
+      return { result: false, msg: err.message } // abandon ship
+    } // end save classrommLearningArea
 
     /**
      * Save the teachers
@@ -785,20 +847,16 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          // lookup the yearLevelID to save
-          let yearLevelRecord = yearLevelsLookup.find(
-            // eslint-disable-next-line no-loop-func
-            (o) => {
-              let yearCode = uniqueStudentsArray[index].yearCode
-              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
-                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
-              return yearCode === o.yearCode
-            },
+          // Find the yearCode for this student
+          // Note yearCode must look like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
+          let yearCode = uniqueStudentsArray[index].yearCode
+          if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+            yearCode = `Y${uniqueStudentsArray[index].yearCode}`
 
-            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
-          )
-
+          // lookup the yearLevelID for this yearCode
+          let yearLevelRecord = yearLevelsLookup.find((o) => yearCode === o.yearCode)
           //console.log('yearLevelRecord', yearLevelRecord)
+
           let id = v4()
 
           // Converting the original wonde values set for gender,dob to the ones required by the student table in dynamo
@@ -958,8 +1016,8 @@ function NewSchool() {
     } // end saving student User
 
     //Save the Students
-    //  add to student *
-    //  add to user *
+    //  add to student
+    //  add to user
     //  add to schoolStudent *
     //  add to classroomStudent
     //  add to Cognito
@@ -982,19 +1040,14 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          // lookup the yearLevelID to save
+          // find the yearCode for this student
+          // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
+          let yearCode = uniqueStudentsArray[index].yearCode
+          if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
+            yearCode = `Y${uniqueStudentsArray[index].yearCode}`
 
-          let yearLevelRecord = yearLevelsLookup.find(
-            // eslint-disable-next-line no-loop-func
-            (o) => {
-              let yearCode = uniqueStudentsArray[index].yearCode
-              if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
-                yearCode = `Y${uniqueStudentsArray[index].yearCode}`
-              return yearCode === o.yearCode
-            },
-
-            // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
-          )
+          // lookup the yearLevelID that matches the yearCode
+          let yearLevelRecord = yearLevelsLookup.find((o) => yearCode === o.yearCode)
 
           //console.log("yearLevelRecord", yearLevelRecord);
           let id = v4()
@@ -1044,9 +1097,9 @@ function NewSchool() {
     } // end saving schoolStudents
 
     //Save the Students
-    //  add to student *
-    //  add to user *
-    //  add to schoolStudent *
+    //  add to student
+    //  add to user
+    //  add to schoolStudent
     //  add to classroomStudent *
     //  add to Cognito
     try {
@@ -1099,25 +1152,6 @@ function NewSchool() {
     await getAllSchools() // refresh the display after adding school data
   } // end saveSchoolToDynamoDB()
 
-  // test to try to upload a file (works fine)
-  async function getS3File() {
-    await updateAWSCredentials()
-    Storage.configure({
-      bucket: process.env.REACT_APP_UPLOADS_BUCKET,
-      region: 'eu-west-2', // there is only one bucket and its in the UK
-      identityPoolId: `${process.env.REACT_APP_IDENTITY_POOL_ID}`,
-    })
-    //let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
-    let listOfFolders = await Storage.list(`${loggedIn.schoolName}/`, { level: 'protected' })
-    console.log(
-      'list of folders',
-      listOfFolders.filter((folder) => folder.key.split('/') && folder.key.split('/')[1]),
-    )
-    let signedKey = await Storage.get(listOfFolders[0].key, { level: 'protected', download: false })
-    console.log(signedKey)
-    setS3Key(signedKey)
-  }
-
   if (!loggedIn.username) {
     return (
       <CContainer>
@@ -1127,12 +1161,6 @@ function NewSchool() {
   }
   return (
     <CContainer>
-      {/* <CRow>
-        <a href={s3Key} target="_blank" rel="noreferrer">
-          DownloadFile.csv
-        </a>
-        <Button onClick={getS3File}>get file</Button>
-      </CRow> */}
       <CRow>
         <div style={{ textAlign: 'center', fontSize: '30px' }}>
           <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>

@@ -1,6 +1,20 @@
 /**
  * This file is documentation only
- * It outlines the process of uploading a school as implemented in NewSchool
+ *
+ * Summary of filtering and where it occurs
+ * getStudentsFromWonde()
+ *    student.yearCode is added
+ *    classes.data.employees.data.email is added
+ * doOptionsFilteringGeneric() - inserted before formatStudentClassrooms() for the filtered CSV
+ *    removes unwanted years
+ *    removes unwanted classrooms
+ *    amalgamates Kindy classrooms if needed (like mon AM,Mon PM etc)
+ * formatStudentClassrooms()
+ *    student.email is composed as ${student.forename}${student.surname}@${selectedSchool.schoolName}
+ *    classroom.subject is added if possible... ( not should only be done for primary years)
+ *
+ *
+ * Below is outlined the process of uploading a school as implemented in NewSchool
  * it also looks ahead to later incremental updates and periodic resyncing
  *
  * <NewSchool> is the component for school uptakes
@@ -12,8 +26,8 @@
  * It has a function getAllAchools() which is executed by UI Button
  * It retrieves the list of schools for the region from Wonde
  *
- * It has a function selectSchool that uses a useCallback() to remember which
- * school is curretly slected by the User
+ * It has a function selectSchool() that uses a useCallback() to remember which
+ * school is curretly selected by the User
  *
  * It has a function getSchoolData() that is executed by UI Buttom
  * It retrieves all the data from Wonde for the selected school
@@ -23,15 +37,15 @@
  *     readStudentsGroupsTeachers() if the school uses groups instead of classes
  *     Each student object has the data returned by
  *        ..../students?include=groups.employees,year
- *     readStudentsClassesTeachers() if teh school uses classes
+ *     readStudentsClassesTeachers() if the school uses classes
  *     Each student object has the data returned by
  *        ..../students?include=classes.employees,classes.subject,year
  *
  *     In both cases  we extract the year code here using getYearCode()
  *        getYearCode() converts year to FY|R, K, 1,2,3,4,5,6,7,8,9,10,11,12,12
  *           or "U-no year" as default
- *     In both cases, a unique list of teachers is prepared and the teacher email address
- *     is added to each employee object.
+ *     In both cases, a unique list of teachers is prepared and
+ *     the teacher email address is added to each employee object.
  *
  *     formatStudentClassrooms() This processes [WondeStudents] into [studentClassrooms]
  *     which mimics the CSV file format of the old uploader.
