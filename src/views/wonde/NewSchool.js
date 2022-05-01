@@ -45,7 +45,7 @@ const CLASSROOM_TABLE = process.env.REACT_APP_CLASSROOM_TABLE
 const CLASSROOM_TEACHER_TABLE = process.env.REACT_APP_CLASSROOM_TEACHER_TABLE
 const CLASSROOM_STUDENT_TABLE = process.env.REACT_APP_CLASSROOM_STUDENT_TABLE
 const CLASSROOM_YEARLEVEL_TABLE = process.env.REACT_APP_CLASSROOM_YEARLEVEL_TABLE
-//const CLASSROOM_LEARNINGAREA_TABLE = process.env.REACT_APP_CLASSROOM_LEARNINGAREA_TABLE
+const CLASSROOM_LEARNINGAREA_TABLE = process.env.REACT_APP_CLASSROOM_LEARNINGAREA_TABLE
 //const STUDENT_DATA_TABLE = process.env.REACT_APP_STUDENT_DATA_TABLE
 
 // Not environment varible as this is not region-dependent
@@ -609,10 +609,11 @@ function NewSchool() {
      * Save the classrooms
      * For each classroom
           add to classrooms
-          add to classroomYearLevel 
+          add to classroomYearLevel
 	        add to classroomLearningArea *
      */
-    //  next save classroomLearning
+    //  new
+    //  next save classroomLearningArea
     console.log('saving ClassroomLearningAreas')
     try {
       console.time('Saved ClassroomLearningAreas') // measure how long it takes to save
@@ -631,7 +632,7 @@ function NewSchool() {
         for (let n = 0; n < batchSize; n++) {
           // Extract the subject/areaName from the uniqueClassroom record
           let areaName = uniqueClassroomsArray[index].subject // subject will be defined at least as ""
-          // If its like "Science (Ch)" or similar then make it "Science"
+          // If its "Science (Ch)" or similar then make it "Science"
           if (areaName && areaName.startsWith('Science')) areaName = 'Science'
           // lookup the learningAreaID in the lookuptable
           let learningAreaRecord = learningAreasLookup.find((learningAreasLookupRow) => {
@@ -658,7 +659,7 @@ function NewSchool() {
           index++
         } // end batch loop
 
-        let response = await batchWrite(batchToWrite, CLASSROOM_YEARLEVEL_TABLE)
+        let response = await batchWrite(batchToWrite, CLASSROOM_LEARNINGAREA_TABLE)
 
         if (!response.result) {
           console.log(`exiting at index ${index}`)
