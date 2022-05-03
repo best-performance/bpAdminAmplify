@@ -22,6 +22,7 @@ import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
 import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CSV file to bucket
 import { sendEmail } from './CommonHelpers/sendEmail'
+import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -181,7 +182,7 @@ function NewSchool() {
     await getAllSchools() // refresh the dusplay after deletion
   }
 
-  // Create a CSV from teh filtered data and send to S3
+  // Create a CSV from the filtered data and send to S3
   // Callback for conditional Button below
   async function SendCSVToS3() {
     console.log('loggedIn', loggedIn)
@@ -215,22 +216,11 @@ function NewSchool() {
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
-    // try to locate a non-existant email
-    // not bothering to try-catch these Cognito calls
-    // let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
-    // if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
-    // else {
-    //   console.log(response)
-    // }
-    // try to locate a known email
-    // response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-    // if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
-    // else {
-    //   console.log(response) // should print the users details
-    // }
-
-    // let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-    // console.log('result after adding the user', result)
+    console.log('selectedSchool', selectedSchool)
+    if (selectedSchool.id) getUploadedSchoolData(selectedSchool.id)
+    else {
+      console.log('no school selected')
+    }
   } // end of testFuntion()
 
   //Function to get the list of Wonde schools already uploaded into DynamoDB
@@ -269,7 +259,7 @@ function NewSchool() {
     let edComSchools = await getEdComSchools()
     console.log('EdComSchools', edComSchools)
 
-    // back to the business of this function
+    // Get all teh schools from Wonde
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
     if (schools) {
       let displaySchools = []
@@ -280,6 +270,7 @@ function NewSchool() {
         )
         if (matchingSchool) {
           //console.log('matching School', matchingSchool)
+          school.id = matchingSchool.id // we need the DynamoDB school id for later processing
           school.isLoaded = true
           // check if the school has a WondeID
           if (matchingSchool.wondeID) {
@@ -447,6 +438,10 @@ function NewSchool() {
         })
       }
     })
+    // This additional code accommodates loading additional yearlevels, after some yearlevels have been
+    // uploaded. The idea is to read Dynamo and get a list of students, classrooms and teachers that have
+    // been already uploaded. Then cull uniqueStudentsArray,uniqueClassroomsArray,uniqueTeachersArray to remove
+    // those already uploaded.
 
     // make the maps into arrays for simpler processing
     const uniqueClassroomsArray = Array.from(uniqueClassroomsMap.values())
@@ -729,12 +724,12 @@ function NewSchool() {
             uniqueTeachersArray[index].email = `${id}@placeholder.com`
           }
           let userId = teacherCognitoUserNames.get(uniqueTeachersArray[index].email)
-          // if there is no any userId returned by the cognito teacher map, then the record is not created in the user table
+          // if there is no userId returned by the cognito teacher map, then the record is not created in the user table
           if (!userId) continue
           batchToWrite.push({
             PutRequest: {
               Item: {
-                userId, // this is the EdC id generated locally
+                userId, // username returned by Cognito
                 firstName: uniqueTeachersArray[index].firstName,
                 lastName: uniqueTeachersArray[index].lastName,
                 email: uniqueTeachersArray[index].email,
@@ -826,10 +821,11 @@ function NewSchool() {
 
     //Save the Students
     //  add to student *
-    //  add to user
+    //  add to Cognito (Not implemented)
+    //  add to user    (Fix the error with UserID)
     //  add to schoolStudent
     //  add to classroomStudent
-    //  add to Cognito
+
     try {
       console.time('Saved Students') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
@@ -931,10 +927,10 @@ function NewSchool() {
 
     //Save the Students
     //  add to student *
-    //  add to user *
+    //  add to Cognito (Not implemented)
+    //  add to user    (Fix the error with UserID)
     //  add to schoolStudent
     //  add to classroomStudent
-    //  add to Cognito
     try {
       console.time('Saved Student Users') // measure how long it takes to save
 
@@ -977,11 +973,11 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           //console.log('yearLevelRecord', yearLevelRecord)
-          let id = v4()
+          let id = v4() // WRONG I THINK, Should be the username returned by Cognito (see teacher)
           batchToWrite.push({
             PutRequest: {
               Item: {
-                userId: id, // this is the EdC id generated locally
+                userId: id, // WRONG I THINK, Should be the username returned by Cognito (see teacher)
                 firstName: uniqueStudentsArrayWithEmail[index].firstName,
                 lastName: uniqueStudentsArrayWithEmail[index].lastName,
                 email: uniqueStudentsArrayWithEmail[index].email,
@@ -1018,10 +1014,10 @@ function NewSchool() {
 
     //Save the Students
     //  add to student
-    //  add to user
+    //  add to Cognito (Not implemented)
+    //  add to user    (Fix the error with UserID)
     //  add to schoolStudent *
     //  add to classroomStudent
-    //  add to Cognito
 
     try {
       console.time('Saved SchoolStudents') // measure how long it takes to save
@@ -1099,10 +1095,11 @@ function NewSchool() {
 
     //Save the Students
     //  add to student
-    //  add to user
+    //  add to Cognito (Not implemented)
+    //  add to user   (Fix the error with UserID)
     //  add to schoolStudent
     //  add to classroomStudent *
-    //  add to Cognito
+
     try {
       console.time('Saved classroomStudents') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
@@ -1480,3 +1477,19 @@ export default NewSchool
  *
  *
  */
+// try to locate a non-existant email
+// not bothering to try-catch these Cognito calls
+// let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
+// if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
+// else {
+//   console.log(response)
+// }
+// try to locate a known email
+// response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+// if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
+// else {
+//   console.log(response) // should print the users details
+// }
+
+// let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
+// console.log('result after adding the user', result)

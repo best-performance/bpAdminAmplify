@@ -16,7 +16,7 @@ export async function getAllSchoolsFromWonde(url, token) {
     })
     response.data.data.forEach((school) => {
       schools.push({
-        wondeID: school.id,
+        wondeID: school.id, // Wonde call it id
         schoolName: school.name,
         urn: school.urn,
         address1: school.address.address_line_1,
