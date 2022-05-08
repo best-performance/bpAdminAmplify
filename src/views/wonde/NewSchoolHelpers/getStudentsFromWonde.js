@@ -2,6 +2,7 @@ import { getToken, getURL } from '../CommonHelpers/featureToggles'
 import { getYearCode } from '../CommonHelpers/getYearCode'
 import axios from 'axios'
 import _ from 'lodash'
+import { v4 } from 'uuid'
 
 // gets the students list from one school - with classrooms and teachers
 // Note - This has been removed from lambda due to the fluidity of filtering
@@ -47,13 +48,16 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         Authorization: getToken(),
       },
     })
+    // put in a random email if there is no email supplied
     response.data.data.forEach((teacher) => {
+      let id = v4()
+      let teacherEmail
       if (teacher.contact_details && teacher.contact_details.data.emails.email) {
-        teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+        teacherEmail = teacher.contact_details.data.emails.email
       } else {
-        console.log('no email found for teacher', teacher)
-        teachersMap.set(teacher.id, 'no email found')
+        teacherEmail = `${id}@placeholder.com`
       }
+      teachersMap.set(teacher.id, teacherEmail)
     })
   } catch (err) {
     console.log(err)
@@ -131,12 +135,14 @@ async function readStudentsClassesTeachers(wondeSchoolID) {
     })
     //console.log('teachers', response.data.data)
     response.data.data.forEach((teacher) => {
+      let id = v4()
+      let teacherEmail
       if (teacher.contact_details && teacher.contact_details.data.emails.email) {
-        teachersMap.set(teacher.id, teacher.contact_details.data.emails.email)
+        teacherEmail = teacher.contact_details.data.emails.email
       } else {
-        console.log('no email found for teacher', teacher)
-        teachersMap.set(teacher.id, 'no email found')
+        teacherEmail = `${id}@placeholder.com`
       }
+      teachersMap.set(teacher.id, teacherEmail)
     })
   } catch (err) {
     console.log(err)

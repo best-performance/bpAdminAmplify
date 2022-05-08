@@ -47,13 +47,15 @@ const getClassByYear = /* GraphQL */ `
 export async function getUploadedSchoolData(schoolID) {
   await updateAWSCredentials() // uses the Cognito Identify pool role
   try {
-    // get the teachers
-    let response = await API.graphql({
-      query: getTeachersBySchool,
-      variables: { userType: 'Educator', userSchoolID: schoolID },
+    let response
+    // get the classrooms
+    response = await API.graphql({
+      query: getClassByYear,
+      variables: { schoolYear: 2022, schoolID: schoolID },
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     })
-    console.log('Teachers', response)
+    let classrooms = response.data.getClassByYear.items
+    console.log('Classrooms already uploaded', classrooms)
 
     // get the students
     response = await API.graphql({
@@ -61,15 +63,23 @@ export async function getUploadedSchoolData(schoolID) {
       variables: { schoolYear: 2022, schoolID: schoolID },
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     })
-    console.log('Students', response)
+    let students = response.data.getSchoolStudentsByYear.items
+    console.log('Students already uploaded', students)
 
-    // get the classrooms
+    // get the teachers
     response = await API.graphql({
-      query: getClassByYear,
-      variables: { schoolYear: 2022, schoolID: schoolID },
+      query: getTeachersBySchool,
+      variables: { userType: 'Educator', userSchoolID: schoolID },
       authMode: 'AMAZON_COGNITO_USER_POOLS',
     })
-    console.log('Classrooms', response)
+    let teachers = response.data.getTeachersBySchool.items
+    console.log('Teachers already uploaded', teachers)
+
+    return {
+      uploadedClassrooms: classrooms,
+      uploadedStudents: students,
+      uploadedTeachers: teachers,
+    }
   } catch (err) {
     console.log(err)
   }

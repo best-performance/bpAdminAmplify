@@ -51,6 +51,11 @@ export function doOptionsFilteringGeneric(
                   subjectName = classroom.subject.data.name
                 }
               }
+            } else {
+              // there is no subject field so maybe the classname gives a hint
+              if (classroom.name) {
+                subjectName = classroom.name
+              }
             }
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"

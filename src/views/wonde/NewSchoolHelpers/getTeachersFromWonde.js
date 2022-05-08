@@ -1,6 +1,7 @@
 //NOTE: This module is currently not used (BC 18/4/22)
 import { getToken, getURL } from '../CommonHelpers/featureToggles'
 import axios from 'axios'
+import { v4 } from 'uuid'
 
 // local function to find/guess a class's learning Area (relocated from the lambda)
 function getLearningArea(className) {
@@ -62,13 +63,21 @@ export async function getTeachersFromWonde(
           })
         })
         // under new rules we load all teachers
+        // patch the teacher email if missing (often missing in Wonde)
+        let id = v4()
+        let teacherEmail
+        if (employee.contact_details.data.emails.email) {
+          teacherEmail = employee.contact_details.data.emails.email
+        } else {
+          teacherEmail = `${id}@placeholder.com`
+        }
         teachers.push({
           wondeTeacherId: employee.id,
           mis_id: employee.mis_id,
           title: employee.title,
           firstName: employee.forename,
           lastName: employee.surname,
-          email: employee.contact_details.data.emails.email,
+          email: teacherEmail,
         })
       })
       // check if all pages are read

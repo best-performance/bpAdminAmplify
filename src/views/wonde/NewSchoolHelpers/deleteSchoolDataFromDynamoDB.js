@@ -169,7 +169,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
     for (let i = 0; i < classroomRecords.length; i++) {
       let classroom = classroomRecords[i]
       let classroomLearningAreaData = await getAll(
-        CLASSROOM_TEACHER_TABLE,
+        CLASSROOM_LEARNINGAREA_TABLE,
         classroomLearningAreaTableData.index,
         classroomLearningAreaTableData.indexName,
         classroom ? classroom.id : null,
@@ -301,7 +301,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('D6b - Deleting teacher User records')
   await deleteAll(teacherUserRecords, USER_TABLE, 'email')
 
-  console.log('D7 - Deleting SchoolStudentsRecords records (D7)')
+  console.log('D7 - Deleting SchoolStudentsRecords records')
   await deleteAll(schoolStudentsRecords, SCHOOL_STUDENT_TABLE, 'id')
 
   console.log('D8a - Deleting Student records records')

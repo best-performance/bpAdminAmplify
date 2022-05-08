@@ -74,11 +74,24 @@
  *
  *  There is a function called save saveSchoolCSVtoDynamoDB() which is executed by a UI Button
  *  This does the following:
- *     saveSchool() saves the school record in tbale School
- *     makes a unique list of classrooms [uniqueClassroomsMap] from [filteredStudentClassrooms]
- *     makes a unique list of students [uniqueStudentsMap] from [filteredStudentClassrooms]
- *     makes a unique list of teachers [uniqueTeachersMap] from [filteredStudentClassrooms]
- *       This is slightly complicated because of the CSV format
+ *     saveSchool() saves the school record in table School
+ *     makes an array classroomTeachersFromCSV[] from filteredStudentClassrooms[]
+ *     makes a unique list of classrooms uniqueClassroomsMap[] from filteredStudentClassrooms[]
+ *     makes a unique list of students uniqueStudentsMap[] from filteredStudentClassrooms[]
+ *     makes a unique list of teachers uniqueTeachersMap[] from filteredStudentClassrooms[]
+ *
+ *   *****************************************************************************
+ *    5/5/2022 - saveSchoolCSVtoDynamoDB() has been changed to allow addional year levels to be uploaded
+ *   If years 3,5 were previously uploaded then its now OK to ask for year 4 in addition.
+ *   If new option selection was 3,4 then we are not deleting year 5 as of now.
+ *   So we want options 4 and 3,4 and 3,4,5 all to have the same effect - ie to add year 4
+ *
+ *   To this, we cull the unique lists above to remove classes, students and teachers that are
+ *   already uploaded.
+ *   This is nearly sufficent, but not quite. We have to reconstruct
+ *      the classroomTeachersArray (see below)
+ *      the classroomStudentsArray (see below)
+ *   ********************************************************************************
  *
  *   Convert unique maps to arrays [uniqueClassroomsArray], [uniqueTeachersArray], [uniqueStudentsArray]
  *
@@ -87,24 +100,44 @@
  *      id, GSI fields as needed, typeName, createdAt and updatedAt
  *   to all records to emulate what Appsync would have done
  *
- *   For each classroom
- *       add to table classrooms
- *       Make a classroomTeacherArray[] - needs ids above
- *       add to table classroomYearLevel
- *            here we seem to repeat the year code filtering done in ApplyOptions()
- *	     add to table classroomLearningArea (not done yet)
+ *   For each classroom in uniqueClassroomsArray[]
+ *       Save in table Classroom
+ *            and add the classroomID key,value to uniqueClassroomsArray[]
+ *   Make a classroomTeachersArray[]
+ *       For every record in classroomTeachersFromCSV[]  elements {CwondID, email}
+ *           Find the record in uniqueClassroomsArray[] with matching CwondID
+ *           Make a new object {classroomID,email} using the classroomID from uniqueClassroomsArray[]
+ *           Save it in classroomTeachersArray[]
+ *  For each classroom in uniqueClassroomsArray[]
+ *       Save one connection record in table classroomYearLevel
+ *            here we seem to repeat the year code filtering done in ApplyOptions[]
+ *  For each classroom in uniqueClassroomsArray[]
+ *	     Save one connection in classroomLearningArea
  *
- *   For each teacher
- *       add to Cognito
- *       add to User classrooms
- *	     add to table classroomTeacher
+ *   For each teacher uniqueTeachersArray[]
+ *       Save record to Cognito
+ *   For each teacher uniqueTeachersArray[]
+ *       Save in table User
+ *	 For each record in classroomTeachersArray[]
+         Save in table ClassroomTeacher 
  *
- *   For each Student
- *       add to student
- *            here we seem to repeat the year code filtering done in ApplyOptions()
- *            here we change the DoB to '1999-01-01' is not a valid date
- *       Make a classroomStudentArray[] - needs studentsIDs above
- *       add to User
+ *   For each student in uniqueStudenstArray[]
+ *       save record to table Student
+ *            and add the studentID key,value to each uniqueStudentsArray[] element
+ *            (here we seem to repeat the year code filtering done in ApplyOptions())
+ *            (here we change the DoB to '1999-01-01' is not a valid date)
+ *    Make a classroomStudentArray[] - needs studentsIDs above
+ *        For every record in filteredStudentClassrooms[]  elements {CwondID, ,,,,,}
+ *        Find the record in uniqueClassroomsArray[] with matching CwondID
+ *        if found
+ *        Find the CwondID in uniqueStudentsArray[]
+ *        if found
+ *        Make a new object {classroomID,studentID}
+ *             using the classroomID from uniqueClassroomsArray[] and
+ *             using the studentID from uniqueStudentsArray[]
+ *        Save it in classroomStudentsArray[]
+ *   For each student in uniqueStudenstArray[]
+ *       save record in table User
  *             same repitition of yearCode formatting
  *       add to schoolStudent
  *       add to classroomStudent

@@ -85,7 +85,7 @@ export function formatStudentClassrooms(
         let mis_id = `T${index + 1} mis_id`
         classroomPart[fnameKey] = teacher.forename
         classroomPart[lnameKey] = teacher.surname
-        classroomPart[emailKey] = teacher.email ? teacher.email : 'no email found'
+        classroomPart[emailKey] = teacher.email
         classroomPart[wondeId] = teacher.id
         classroomPart[mis_id] = teacher.mis_id
       })
