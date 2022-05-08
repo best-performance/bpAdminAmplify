@@ -1,3 +1,4 @@
+/* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react'
 import { Popup, Position, ToolbarItem } from 'devextreme-react/popup'
 import { Button } from 'devextreme-react/button'
@@ -6,25 +7,16 @@ import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
 import { isAUSRegion, isUKRegion } from '../CommonHelpers/featureToggles'
 
-// eslint-disable-next-line react/prop-types
 export function OptionsPopup({
-  // eslint-disable-next-line react/prop-types
+  availableYearLevels, // array of objects like {yearLevel: "4", loaded:false}
   parentYearOptions,
-  // eslint-disable-next-line react/prop-types
   parentKindyOptions,
-  // eslint-disable-next-line react/prop-types
   parentKindyClassName,
-  // eslint-disable-next-line react/prop-types
   parentCoreSubjectOption,
-  // eslint-disable-next-line react/prop-types
   setOptionsPopupVisible,
-  // eslint-disable-next-line react/prop-types
   setParentYearOptions,
-  // eslint-disable-next-line react/prop-types
   setParentKinterDayClasses,
-  // eslint-disable-next-line react/prop-types
   setParentKinterDayClassName,
-  // eslint-disable-next-line react/prop-types
   setParentCoreSubjectOption,
 }) {
   const [kindyOption, setKindyOption] = useState(parentKindyOptions)
@@ -207,7 +199,9 @@ export function OptionsPopup({
         <CRow>
           <CCol sm={4}>
             <div>
-              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
+              <span>
+                <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
+              </span>
             </div>
             <div>
               <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />

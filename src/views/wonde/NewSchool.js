@@ -68,6 +68,7 @@ function NewSchool() {
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
   const [isDataFiltered, setIsDataFiltered] = useState(false)
   const [schools, setSchools] = useState([])
+  const [selectedSchoolAvailableYearLevels, setSelectedSchoolAvailableYearLevels] = useState([])
 
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
@@ -314,8 +315,31 @@ function NewSchool() {
 
     // get the students->classes->teachers
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
-    console.log('Unformatted,Unfiltered Students from Wonde', wondeStudentsTemp)
+    console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
     setIsLoadingStudents(false)
+
+    // Scan the data and make a Map of available year levels
+    let yearLevelMap = new Map()
+    let yearLevelArray = []
+    wondeStudentsTemp.forEach((classroomStudent) => {
+      if (!yearLevelMap.get(classroomStudent.yearCode))
+        if (!classroomStudent.yearCode.startsWith('U')) {
+          // Add to the map unless is some unrecognised code (marked as U-xxx by getStudentsFromWonde())
+          yearLevelMap.set(classroomStudent.yearCode, classroomStudent.yearCode)
+          yearLevelArray.push(classroomStudent.yearCode)
+        }
+    })
+    // sort by numberic year level
+    yearLevelArray.sort((a, b) => {
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
+    })
+    let yearLevelObjectArray = []
+    yearLevelArray.forEach((yearLevel) => {
+      yearLevelObjectArray.push({ yearLevel: yearLevel, loaded: false })
+    })
+    // save in state variable
+    setSelectedSchoolAvailableYearLevels(yearLevelObjectArray)
+    console.log('yearLevelArray', yearLevelObjectArray)
 
     // format as per csv uploader
     let formattedCSV = formatStudentClassrooms(
@@ -323,7 +347,7 @@ function NewSchool() {
       selectedSchool,
       setStudentClassrooms,
     )
-    console.log('Formatted,Unfiltered StudentClassrooms from Wonde', formattedCSV)
+    console.log('Formatted, Unfiltered StudentClassrooms from Wonde', formattedCSV)
     setSchoolDataLoaded(true)
   }
 
@@ -1267,6 +1291,7 @@ function NewSchool() {
         <CRow>
           {optionsPopupVisible ? (
             <OptionsPopup
+              availableYearLevels={selectedSchoolAvailableYearLevels}
               parentYearOptions={yearOptions}
               parentKindyOptions={kinterDayClasses}
               parentKindyClassName={kinterDayClassName}
