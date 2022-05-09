@@ -68,8 +68,8 @@ function NewSchool() {
   const [schools, setSchools] = useState([]) // school data for all Wonde Schools
   const [isUploaded, setIsUploaded] = useState(false) // set if selected school was previously uploaded
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false) // set if selected school was previously manually uploaded
+  const [isSchoolDataLoaded, setSchoolDataLoaded] = useState(false)
   const [isDataFiltered, setIsDataFiltered] = useState(false) // Set after flter options are applied
-  const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
   const [selectedSchoolAvailableYearLevels, setSelectedSchoolAvailableYearLevels] = useState([])
 
   // some loading indicators
@@ -299,8 +299,8 @@ function NewSchool() {
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
       setSelectedSchool(school)
-      if (school.isManual) setIsManuallyUploaded(true)
-      else setIsManuallyUploaded(false)
+      setIsUploaded(school.isUploaded)
+      setIsManuallyUploaded(school.isManual)
       console.log(school)
     })
     setSchoolDataLoaded(false)
@@ -360,8 +360,8 @@ function NewSchool() {
    * edCompanion based on the filtered CSV data [FilteredStudentClassrooms]
    * *********************************************************
    */
-  async function saveSchoolCSVtoDynamoDB() {
-    if (!schoolDataLoaded) {
+  async function isSaveSchoolCSVtoDynamoDsc() {
+    if (!isSchoolDataLoaded) {
       console.log('Load Wonde data or reload Wonde data after upload')
       return
     } // can't save unless data has been loaded from Wonde
@@ -1347,7 +1347,7 @@ function NewSchool() {
       </div>
       <div className="d-flex justify-content-center">
         {
-          /* isDataFiltered && selectedSchool && !selectedSchool.isLoaded && schoolDataLoaded */ true ? (
+          /* isDataFiltered && selectedSchool && !isSelectedSchoscl.isLoaded && isSchoolDataLoaded */ true ? (
             <>
               <Button
                 style={{ marginBottom: '10px' }}
