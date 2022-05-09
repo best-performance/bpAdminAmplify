@@ -1229,7 +1229,7 @@ function NewSchool() {
     } // end saving classroomStudents
 
     await getAllSchools() // refresh the display after adding school data
-  } // end saveSchoolToDynamoDB()
+  } // end saveSchoolCSVToDynamoDB()
 
   if (!loggedIn.username) {
     return (
