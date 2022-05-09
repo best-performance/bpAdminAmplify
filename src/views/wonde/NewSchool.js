@@ -56,7 +56,6 @@ const SCHOOL_WONDE_INDEX = 'byWondeID'
 const USER_POOL_ID = process.env.REACT_APP_EDCOMPANION_USER_POOL_ID
 
 // some constants for good practice
-const EMPTY = 'EMPTY'
 const BATCH_SIZE = 25 // for batchWrite() operations
 const FAILED = 'failed'
 
@@ -64,11 +63,21 @@ const FAILED = 'failed'
 function NewSchool() {
   const { loggedIn } = useContext(loggedInContext)
 
-  // school list and slected school
+  // Some state variables to control the UI buttons and allowable actions
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
-  const [isDataFiltered, setIsDataFiltered] = useState(false)
-  const [schools, setSchools] = useState([])
+  const [schools, setSchools] = useState([]) // school data for all Wonde Schools
+  const [isUploaded, setIsUploaded] = useState(false) // set if selected school was previously uploaded
+  const [isManuallyUploaded, setIsManuallyUploaded] = useState(false) // set if selected school was previously manually uploaded
+  const [isDataFiltered, setIsDataFiltered] = useState(false) // Set after flter options are applied
+  const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
   const [selectedSchoolAvailableYearLevels, setSelectedSchoolAvailableYearLevels] = useState([])
+
+  // some loading indicators
+  const [isLoadingSchools, setIsLoadingSchools] = useState(false)
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+
+  // this controls the options popup
+  const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
 
   // These 2 save the raw data as loaded from Wonde
   const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
@@ -76,12 +85,7 @@ function NewSchool() {
   // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
   // This one is for the CSV Format-Filtered tab (as per the standard upload spreadsheet)
-  const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // after filters are applied
-
-  // some loading indicators
-  const [isLoadingSchools, setIsLoadingSchools] = useState(false)
-  const [isLoadingStudents, setIsLoadingStudents] = useState(false)
-  const [schoolDataLoaded, setSchoolDataLoaded] = useState(false)
+  const [filteredStudentClassrooms, setFilteredStudentClassrooms] = useState([]) // CSV data after filters are applied
 
   // lookup Tables - these are used by the uploader
   // to locate respective item ids
@@ -89,9 +93,6 @@ function NewSchool() {
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
   const [learningAreasLookup, setLearningAreasLookup] = useState([])
-
-  // this controls the options popup
-  const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
 
   // These variables control the CSV filtering
   const [yearOptions, setYearOptions] = useState({
@@ -298,6 +299,8 @@ function NewSchool() {
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
       setSelectedSchool(school)
+      if (school.isManual) setIsManuallyUploaded(true)
+      else setIsManuallyUploaded(false)
       console.log(school)
     })
     setSchoolDataLoaded(false)
