@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
-import { CContainer, CCol, CRow, CSpinner } from '@coreui/react'
+import { CContainer, CCol, CRow } from '@coreui/react'
 import Button from 'devextreme-react/button'
 import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
+import { confirm } from 'devextreme/ui/dialog' // confirmation dialog
+import { LoadPanel } from 'devextreme-react/load-panel' // loading indicator
+
 import dayjs from 'dayjs'
 //import _ from 'lodash'
 import { Auth } from 'aws-amplify'
@@ -65,16 +68,24 @@ function NewSchool() {
 
   // Some state variables to control the UI buttons and allowable actions
   const [selectedSchool, setSelectedSchool] = useState({ schoolName: 'none' })
-  const [schools, setSchools] = useState([]) // school data for all Wonde Schools
+  const [schools, setSchools] = useState([]) // contains data for all available Wonde Schools
   const [isUploaded, setIsUploaded] = useState(false) // set if selected school was previously uploaded
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false) // set if selected school was previously manually uploaded
-  const [isSchoolDataLoaded, setSchoolDataLoaded] = useState(false)
-  const [isDataFiltered, setIsDataFiltered] = useState(false) // Set after flter options are applied
+  const [isWondeSchoolDataLoaded, setIsWondeSchoolDataLoaded] = useState(false) // set after the Wonde data is uploaded for selected school
+  const [dataFilterPending, setDataFilterPending] = useState(false) // set after user accepts new filter options in the popup
+  const [isDataFiltered, setIsDataFiltered] = useState(false) // Set after flter options are applied (by the useEffect)
   const [selectedSchoolAvailableYearLevels, setSelectedSchoolAvailableYearLevels] = useState([])
 
-  // some loading indicators
+  // Loading indicators for long DB operations
   const [isLoadingSchools, setIsLoadingSchools] = useState(false)
   const [isLoadingStudents, setIsLoadingStudents] = useState(false)
+  const [isSavingSchoolData, setIsSavingSchoolData] = useState(false)
+  const [isDeletingSchoolData, setIsDeletingSchoolData] = useState(false)
+  const [isSendingCSVToS3, setIsSendingCSVToS3] = useState(false)
+  const [isAddingWondeIDs, setIsAddingWondeIDs] = useState(false) // for future use
+
+  // controlling which tab is visible
+  const [tabIndex, setTabIndex] = useState(0) // tab are numbersed 0....n
 
   // this controls the options popup
   const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
@@ -122,29 +133,9 @@ function NewSchool() {
     setOptionsPopupVisible(true)
   }
 
-  // This is executed when "Apply Filter Options" button is pressed
-  function applyFilterOptions() {
-    setIsDataFiltered(true)
-    console.log('Applying filter options')
-    console.log(yearOptions)
-
-    // now applying the filter to the raw Wonde data
-    // doco.js explains why we filter the raw data - then format
-    // as opposed to filtering the formatted data.
-    let filteredWondeStudents = applyOptionsSchoolSpecific(
-      wondeStudents, // raw data from Wonde
-      yearOptions,
-      kinterDayClasses,
-      kinterDayClassName,
-      coreSubjectOption,
-      selectedSchool,
-    )
-    let formattedFilteredCSV = formatStudentClassrooms(
-      filteredWondeStudents,
-      selectedSchool,
-      setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
-    ) // this is for the uploader format
-    console.log('Formatted,Filtered Students from Wonde', formattedFilteredCSV)
+  // Button callback to add WondeIDs to manually uploaded school
+  function AddWondeIDs() {
+    return
   }
 
   // This useEffect() reads and saves the contents of 4 lookups
@@ -178,15 +169,75 @@ function NewSchool() {
     console.log('Loaded lookup tables from dynamoDB in UseEffect()')
   }, [])
 
+  // This is executed by the useEffect below after options have changed
+  const applyFilterOptions = useCallback(() => {
+    console.log('Applying filter options')
+    console.log(yearOptions)
+
+    // now applying the filter to the raw Wonde data
+    // doco.js explains why we filter the raw data - then format
+    // as opposed to filtering the formatted data.
+    let filteredWondeStudents = applyOptionsSchoolSpecific(
+      wondeStudents, // raw data from Wonde
+      yearOptions,
+      kinterDayClasses,
+      kinterDayClassName,
+      coreSubjectOption,
+      selectedSchool,
+    )
+    let formattedFilteredCSV = formatStudentClassrooms(
+      filteredWondeStudents,
+      selectedSchool,
+      setFilteredStudentClassrooms, // put the output into filteredStudentClassrooms
+    ) // this is for the uploader format
+    console.log('Formatted,Filtered Students from Wonde', formattedFilteredCSV)
+    setIsDataFiltered(true)
+  }, [
+    wondeStudents, // raw data from Wonde
+    yearOptions,
+    kinterDayClasses,
+    kinterDayClassName,
+    coreSubjectOption,
+    selectedSchool,
+  ])
+
+  // This useEffect() applies the option filters after user has accepted
+  // options selections in the options popup
+  useEffect(() => {
+    if (dataFilterPending) {
+      applyFilterOptions()
+      setTabIndex(1) // navigate to the filtered Item in the TabPanel
+      setDataFilterPending(false)
+    }
+  }, [applyFilterOptions, dataFilterPending])
+
   // This is for testing to delete all records from the Dynamo tables if they exist
   async function deleteAllTables() {
+    // Do a final confirmation with the user
+    let confirmed = await confirm(
+      '<i>Are you sure?</i>',
+      `Delete All Data from ${selectedSchool.schoolName}`,
+    )
+    console.log(`Confirm delete all data from ${selectedSchool.schoolName}`, confirmed)
+    if (!confirmed) return
+    setIsDeletingSchoolData(true) // loading indicator only
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
-    await getAllSchools() // refresh the dusplay after deletion
+    setIsDeletingSchoolData(false) // loading indicator only
+    await getAllSchools() // refresh the display after deletion
   }
 
   // Create a CSV from the filtered data and send to S3
   // Callback for conditional Button below
   async function SendCSVToS3() {
+    // Do a final confirmation with the user
+    let confirmed = await confirm(
+      '<i>Are you sure?</i>',
+      `Send CSV data to S3 for school ${selectedSchool.schoolName}`,
+    )
+    console.log(`Confirm send CSV data to S3 for school ${selectedSchool.schoolName}`, confirmed)
+    if (!confirmed) return
+
+    setIsSendingCSVToS3(true) // loading indicator only
     console.log('loggedIn', loggedIn)
     let schoolName = loggedIn.schoolName
     await CSVUploader(schoolName, filteredStudentClassrooms)
@@ -199,6 +250,7 @@ function NewSchool() {
       [loggedIn.email], // array of addressees (needs to be the School Address)
       ['diego@bestperformance.com.au'], // array of cc'd addresees
     )
+    setIsSendingCSVToS3(false) // loading indicator only
   }
 
   // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
@@ -252,10 +304,10 @@ function NewSchool() {
 
   // Function to get the list of available schools from Wonde
   async function getAllSchools() {
-    setIsLoadingSchools(true)
+    setIsLoadingSchools(true) // loading indicator
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
-    setSchoolDataLoaded(false)
+    setIsWondeSchoolDataLoaded(false)
 
     // we need the uploaded schools also to indicate "loaded" on the UI
     let edComSchools = await getEdComSchools()
@@ -288,8 +340,7 @@ function NewSchool() {
         displaySchools.push({ ...school })
       })
       setSchools(displaySchools)
-
-      setIsLoadingSchools(false)
+      setIsLoadingSchools(false) // loading indicator
     } else {
       console.log('could not read schools from Wonde')
     }
@@ -299,27 +350,29 @@ function NewSchool() {
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
       setSelectedSchool(school)
-      setIsUploaded(school.isUploaded)
+      setIsUploaded(school.isLoaded)
       setIsManuallyUploaded(school.isManual)
-      console.log(school)
+      console.log('school at 330', school)
     })
-    setSchoolDataLoaded(false)
+    setIsWondeSchoolDataLoaded(false)
   }, [])
 
   // wrapper funtion triggered by "Get data for ..." button
   // to read all school data from Wonde
   async function getSchoolData() {
+    setTabIndex(0) // switch to the correct Wonde Data tab (unfltered)
+    console.log('state', isUploaded, isManuallyUploaded)
     setIsDataFiltered(false)
     if (selectedSchool === {}) return
-    setSchoolDataLoaded(false)
-    setIsLoadingStudents(true)
-    setStudentClassrooms([]) //empty the csv display
-    setFilteredStudentClassrooms([]) // empty the formatted csv display
+    setIsWondeSchoolDataLoaded(false)
+    setIsLoadingStudents(true) // loading indicator
+    setStudentClassrooms([]) //empty the Wonde data TabPanel item
+    setFilteredStudentClassrooms([]) // empty the filtered data TabPanel item
 
     // get the students->classes->teachers
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
-    setIsLoadingStudents(false)
+    setIsLoadingStudents(false) // loading indicator
 
     // Scan the data and make a Map of available year levels
     let yearLevelMap = new Map()
@@ -351,7 +404,7 @@ function NewSchool() {
       setStudentClassrooms,
     )
     console.log('Formatted, Unfiltered StudentClassrooms from Wonde', formattedCSV)
-    setSchoolDataLoaded(true)
+    setIsWondeSchoolDataLoaded(true)
   }
 
   /**
@@ -360,12 +413,22 @@ function NewSchool() {
    * edCompanion based on the filtered CSV data [FilteredStudentClassrooms]
    * *********************************************************
    */
-  async function isSaveSchoolCSVtoDynamoDsc() {
-    if (!isSchoolDataLoaded) {
+  async function saveSchoolCSVtoDynamoDB() {
+    if (!isWondeSchoolDataLoaded) {
       console.log('Load Wonde data or reload Wonde data after upload')
       return
     } // can't save unless data has been loaded from Wonde
     // currently forcing a reload if additional years need to be uploaded immediately after an upload
+
+    // Do a final confirmation with the user
+    let confirmed = await confirm(
+      '<i>Are you sure?</i>',
+      `Upload data to ${selectedSchool.schoolName}`,
+    )
+    console.log(`Confirm upload data to ${selectedSchool.schoolName}`, confirmed)
+    if (!confirmed) return
+
+    setIsSavingSchoolData(true) // loading indicator
 
     let alreadyUploaded = false // needed for logic to add additional years
 
@@ -736,7 +799,6 @@ function NewSchool() {
               },
             })
           }
-
           index++
         } // end batch loop
 
@@ -1230,10 +1292,52 @@ function NewSchool() {
     } catch (err) {
       console.log(err)
     } // end saving classroomStudents
-
+    setIsSavingSchoolData(false) // loading indicator
     await getAllSchools() // refresh the display after adding school data
   } // end saveSchoolToDynamoDB()
 
+  // changes the tab index using a state variable
+  // since we are controlling the tab programmatically
+  function handleTabIndexChange(e) {
+    if (e.fullName === 'selectedIndex') {
+      setTabIndex(e.value)
+    }
+  }
+
+  // This function creates the correct <LoadPanel> is needed
+  function createLoadPanel() {
+    if (isLoadingSchools)
+      return <LoadPanel visible={true} message={`Getting Available Wonde Schools`} />
+    if (isLoadingStudents)
+      return (
+        <LoadPanel visible={true} message={`Getting Wonde data for ${selectedSchool.schoolName}`} />
+      )
+    if (isSavingSchoolData)
+      return (
+        <LoadPanel visible={true} message={`Saving WOnde data to ${selectedSchool.schoolName}`} />
+      )
+    if (isDeletingSchoolData)
+      return (
+        <LoadPanel
+          visible={true}
+          message={`Deleting Wonde data from ${selectedSchool.schoolName}`}
+        />
+      )
+    if (isSendingCSVToS3)
+      return (
+        <LoadPanel
+          visible={true}
+          message={`Sending Wonde data CSV to S3 for ${selectedSchool.schoolName}`}
+        />
+      )
+    if (isAddingWondeIDs)
+      return (
+        <LoadPanel visible={true} message={`Adding WondeIDs to ${selectedSchool.schoolName}`} />
+      )
+    return <></>
+  }
+
+  // finally the UI
   if (!loggedIn.username) {
     return (
       <CContainer>
@@ -1243,13 +1347,19 @@ function NewSchool() {
   }
   return (
     <CContainer>
+      {createLoadPanel()} {/* applies load indicators as needed */}
       <CRow>
         <div style={{ textAlign: 'center', fontSize: '30px' }}>
           <span>Wonde -</span> <span style={{ color: 'red' }}>New School Uptake</span>
         </div>
       </CRow>
       <div className="d-flex justify-content-center">
-        <Button stylingMode="outlined" style={{ marginBottom: '10px' }} onClick={getAllSchools}>
+        <Button
+          stylingMode="contained"
+          style={{ marginBottom: '10px', marginRight: '5px', padding: '3px', borderRadius: '5px' }}
+          type="default"
+          onClick={getAllSchools}
+        >
           List All Available Wonde Schools
         </Button>
         {loggedIn.username === 'brendan' && (
@@ -1259,12 +1369,10 @@ function NewSchool() {
         )}
       </div>
       <CRow style={{ width: '50%', margin: '20px' }}>
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '10px' }}>
           <CCol></CCol>
           <CCol>
-            {isLoadingSchools ? (
-              <CSpinner />
-            ) : (
+            {!isLoadingSchools && (
               <DataGrid
                 id="dataGrid"
                 keyExpr="wondeID"
@@ -1284,12 +1392,17 @@ function NewSchool() {
       </CRow>
       <CRow>
         <CCol></CCol>
-        <CCol>
-          <h6 className="text-center">Selected School:</h6>
-        </CCol>
-        <CCol>
-          <h6 className="text-center">{selectedSchool.schoolName}</h6>
-        </CCol>
+        <div
+          style={{
+            textAlign: 'center',
+            fontSize: '20px',
+            fontWeight: 'bold',
+            marginBottom: '7px',
+          }}
+        >
+          <span style={{ marginRight: '10px' }}>Selected School:</span>
+          <span style={{ color: 'red' }}>{`${selectedSchool.schoolName}`}</span>
+        </div>
         <CCol></CCol>
         <CRow>
           {optionsPopupVisible ? (
@@ -1304,71 +1417,109 @@ function NewSchool() {
               setParentYearOptions={setYearOptions}
               setParentKinterDayClassName={setKinterDayClassName}
               setParentKinterDayClasses={setKinterDayClasses}
+              setParentDataFilterPending={setDataFilterPending}
             ></OptionsPopup>
           ) : null}
         </CRow>
       </CRow>
       <div className="d-flex justify-content-center">
-        {selectedSchool.schoolName !== 'none' ? (
+        {selectedSchool.schoolName !== 'none' && (
           <>
-            <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={getSchoolData}>
+            <Button
+              stylingMode="contained"
+              style={{
+                marginBottom: '10px',
+                marginRight: '5px',
+                padding: '3px',
+                borderRadius: '5px',
+              }}
+              type="default"
+              onClick={getSchoolData}
+            >
               {`Get data for ${selectedSchool.schoolName}`}
             </Button>
-            <Button
-              style={{ marginBottom: '10px' }}
-              stylingMode="outlined"
-              onClick={getFilterOptions}
-            >
-              {`set Filter Options`}
-            </Button>
-            <Button
-              style={{ marginBottom: '10px' }}
-              stylingMode="outlined"
-              onClick={applyFilterOptions}
-            >
-              {`Apply Filter Options`}
-            </Button>
-            {selectedSchool && selectedSchool.isLoaded && !selectedSchool.isManual && (
+            {isWondeSchoolDataLoaded && (
               <Button
-                style={{ marginBottom: '10px' }}
-                stylingMode="outlined"
-                onClick={deleteAllTables}
+                stylingMode="contained"
+                style={{ marginBottom: '10px', padding: '3px', borderRadius: '5px' }}
+                type="default"
+                onClick={getFilterOptions}
               >
-                {`Delete ${selectedSchool.schoolName} from EdCompanion`}
-              </Button>
-            )}
-            {isDataFiltered && selectedSchool && (
-              <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={SendCSVToS3}>
-                {`Send CSV to S3`}
+                {`Set Filter Options`}
               </Button>
             )}
           </>
-        ) : null}
+        )}
       </div>
-      <div className="d-flex justify-content-center">
-        {
-          /* isDataFiltered && selectedSchool && !isSelectedSchoscl.isLoaded && isSchoolDataLoaded */ true ? (
-            <>
+      {selectedSchool.schoolName !== 'none' && (
+        <div className="d-flex justify-content-center">
+          {isWondeSchoolDataLoaded && isUploaded && !isManuallyUploaded && (
+            <Button
+              stylingMode="contained"
+              style={{
+                marginBottom: '10px',
+                marginRight: '5px',
+                padding: '3px',
+                borderRadius: '5px',
+              }}
+              type="default"
+              onClick={deleteAllTables}
+            >
+              {`Delete ${selectedSchool.schoolName} from EdCompanion`}
+            </Button>
+          )}
+          {isWondeSchoolDataLoaded && isUploaded && isManuallyUploaded && (
+            <Button
+              stylingMode="contained"
+              style={{
+                marginBottom: '10px',
+                marginRight: '5px',
+                padding: '3px',
+                borderRadius: '5px',
+              }}
+              type="default"
+              onClick={AddWondeIDs}
+            >
+              {`Add Wonde IDs`}
+            </Button>
+          )}
+          {isWondeSchoolDataLoaded &&
+            isDataFiltered &&
+            isUploaded &&
+            !isManuallyUploaded &&
+            filteredStudentClassrooms.length > 0 && (
               <Button
-                style={{ marginBottom: '10px' }}
-                stylingMode="outlined"
+                stylingMode="contained"
+                style={{
+                  marginBottom: '10px',
+                  marginRight: '5px',
+                  padding: '3px',
+                  borderRadius: '5px',
+                }}
+                type="default"
                 onClick={saveSchoolCSVtoDynamoDB}
               >
                 {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
               </Button>
-            </>
-          ) : null
-        }
-      </div>
-
+            )}
+          {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
+            <Button
+              stylingMode="contained"
+              style={{ marginBottom: '10px', padding: '3px', borderRadius: '5px' }}
+              type="default"
+              onClick={SendCSVToS3}
+            >
+              {`Send CSV to S3`}
+            </Button>
+          )}
+        </div>
+      )}
       <CRow>
-        <TabPanel>
-          <Item title="csv format - raw">
+        <TabPanel selectedIndex={tabIndex} onOptionChanged={handleTabIndexChange}>
+          <Item title="Wonde Data">
             <CContainer>
               <CRow>
-                {isLoadingStudents ? (
-                  <CSpinner />
-                ) : (
+                {!isLoadingStudents && (
                   <DataGrid
                     id="dataGrid"
                     //keyExpr="wondeStudentId"
@@ -1408,48 +1559,44 @@ function NewSchool() {
               </CRow>
             </CContainer>
           </Item>
-          <Item title="csv format - filtered">
+          <Item title="Filtered Data">
             <CContainer>
               <CRow>
-                {isLoadingStudents ? (
-                  <CSpinner />
-                ) : (
-                  <DataGrid
-                    id="dataGrid"
-                    //keyExpr="wondeStudentId"
-                    showBorders={true}
-                    hoverStateEnabled={true}
-                    allowColumnReordering={true}
-                    columnAutoWidth={true}
-                    dataSource={filteredStudentClassrooms}
-                  >
-                    <SearchPanel visible={true} />
-                    <Export enabled={true} allowExportSelectedData={true} />
-                    <Column caption="First Name" dataField="firstName" />
-                    <Column caption="Middle Name" dataField="middleName" />
-                    <Column caption="Last Name" dataField="lastName" />
-                    <Column caption="Year Code" dataField="yearCode" />
-                    <Column caption="Gender" dataField="gender" />
-                    <Column caption="DOB" dataField="dob" />
-                    <Column caption="Classroom Name" dataField="classroomName" />
-                    <Column caption="Subject" dataField="subject" />
-                    <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
-                    <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
-                    <Column caption="Teacher 1 Email" dataField="teacher1 email" />
-                    <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
-                    <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
-                    <Column caption="Teacher 2 Email" dataField="teacher2 email" />
-                    <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
-                    <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
-                    <Column caption="Teacher 3 Email" dataField="teacher3 email" />
-                    <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
-                    <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
-                    <Column caption="Teacher 4 Email" dataField="teacher4 email" />
-                    <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
-                    <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
-                    <Column caption="Teacher 5 Email" dataField="teacher5 email" />
-                  </DataGrid>
-                )}
+                <DataGrid
+                  id="dataGrid"
+                  //keyExpr="wondeStudentId"
+                  showBorders={true}
+                  hoverStateEnabled={true}
+                  allowColumnReordering={true}
+                  columnAutoWidth={true}
+                  dataSource={filteredStudentClassrooms}
+                >
+                  <SearchPanel visible={true} />
+                  <Export enabled={true} allowExportSelectedData={true} />
+                  <Column caption="First Name" dataField="firstName" />
+                  <Column caption="Middle Name" dataField="middleName" />
+                  <Column caption="Last Name" dataField="lastName" />
+                  <Column caption="Year Code" dataField="yearCode" />
+                  <Column caption="Gender" dataField="gender" />
+                  <Column caption="DOB" dataField="dob" />
+                  <Column caption="Classroom Name" dataField="classroomName" />
+                  <Column caption="Subject" dataField="subject" />
+                  <Column caption="Teacher 1 First Name" dataField="teacher1 FirstName" />
+                  <Column caption="Teacher 1 Last Name" dataField="teacher1 LastName" />
+                  <Column caption="Teacher 1 Email" dataField="teacher1 email" />
+                  <Column caption="Teacher 2 First Name" dataField="teacher2 FirstName" />
+                  <Column caption="Teacher 2 Last Name" dataField="teacher2 LastName" />
+                  <Column caption="Teacher 2 Email" dataField="teacher2 email" />
+                  <Column caption="Teacher 3 First Name" dataField="teacher3 FirstName" />
+                  <Column caption="Teacher 3 Last Name" dataField="teacher3 LastName" />
+                  <Column caption="Teacher 3 Email" dataField="teacher3 email" />
+                  <Column caption="Teacher 4 First Name" dataField="teacher4 FirstName" />
+                  <Column caption="Teacher 4 Last Name" dataField="teacher4 LastName" />
+                  <Column caption="Teacher 4 Email" dataField="teacher4 email" />
+                  <Column caption="Teacher 5 First Name" dataField="teacher5 FirstName" />
+                  <Column caption="Teacher 5 Last Name" dataField="teacher5 LastName" />
+                  <Column caption="Teacher 5 Email" dataField="teacher5 email" />
+                </DataGrid>
               </CRow>
             </CContainer>
           </Item>

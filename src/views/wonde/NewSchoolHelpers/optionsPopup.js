@@ -18,6 +18,7 @@ export function OptionsPopup({
   setParentKinterDayClasses,
   setParentKinterDayClassName,
   setParentCoreSubjectOption,
+  setParentDataFilterPending,
 }) {
   const [kindyOption, setKindyOption] = useState(parentKindyOptions)
   const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
@@ -115,6 +116,7 @@ export function OptionsPopup({
     setParentKinterDayClassName(kindyClassname)
     setParentKinterDayClasses(kindyOption)
     setParentCoreSubjectOption(coreSubjectOption)
+    setParentDataFilterPending(true)
     setOptionsPopupVisible(false)
   }
 
