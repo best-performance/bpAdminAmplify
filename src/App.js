@@ -2,11 +2,10 @@ import React, { useState, useEffect } from 'react'
 import loggedInContext from './loggedInContext'
 import { HashRouter, Route, Switch } from 'react-router-dom'
 import './scss/style.scss'
-import 'devextreme/dist/css/dx.material.blue.light.css'
+import 'devextreme/dist/css/dx.dark.css'
 import { Auth } from 'aws-amplify'
-import 'devextreme/dist/css/dx.common.css'
+import 'devextreme/dist/css/dx.light.compact.css' //ref https://js.devexpress.com/Documentation/Guide/Themes_and_Styles/Predefined_Themes/
 import './css/dx.generic.BP-brand-colours-v20-2-5.css'
-//import 'devextreme/dist/css/dx.light.css'
 
 // To use react's "context" we need to create a context object,
 // Then wrap a suitable parent in a <ContextProvider> component,
