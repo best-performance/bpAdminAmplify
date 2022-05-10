@@ -1310,29 +1310,32 @@ function NewSchool() {
       return <LoadPanel visible={true} message={`Getting Available Wonde Schools`} />
     if (isLoadingStudents)
       return (
-        <LoadPanel visible={true} message={`Getting Wonde data for ${selectedSchool.schoolName}`} />
+        <LoadPanel
+          visible={true}
+          message={`Getting Wonde data for "${selectedSchool.schoolName}"`}
+        />
       )
     if (isSavingSchoolData)
       return (
-        <LoadPanel visible={true} message={`Saving WOnde data to ${selectedSchool.schoolName}`} />
+        <LoadPanel visible={true} message={`Saving WOnde data to "${selectedSchool.schoolName}"`} />
       )
     if (isDeletingSchoolData)
       return (
         <LoadPanel
           visible={true}
-          message={`Deleting Wonde data from ${selectedSchool.schoolName}`}
+          message={`Deleting Wonde data from "${selectedSchool.schoolName}"`}
         />
       )
     if (isSendingCSVToS3)
       return (
         <LoadPanel
           visible={true}
-          message={`Sending Wonde data CSV to S3 for ${selectedSchool.schoolName}`}
+          message={`Sending Wonde data CSV to S3 for "${selectedSchool.schoolName}"`}
         />
       )
     if (isAddingWondeIDs)
       return (
-        <LoadPanel visible={true} message={`Adding WondeIDs to ${selectedSchool.schoolName}`} />
+        <LoadPanel visible={true} message={`Adding WondeIDs to "${selectedSchool.schoolName}"`} />
       )
     return <></>
   }
@@ -1360,7 +1363,7 @@ function NewSchool() {
           type="default"
           onClick={getAllSchools}
         >
-          List All Available Wonde Schools
+          List Wonde Schools
         </Button>
         {loggedIn.username === 'brendan' && (
           <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
@@ -1436,7 +1439,7 @@ function NewSchool() {
               type="default"
               onClick={getSchoolData}
             >
-              {`Get data for ${selectedSchool.schoolName}`}
+              {`Get data for "${selectedSchool.schoolName}"`}
             </Button>
             {isWondeSchoolDataLoaded && (
               <Button
@@ -1465,7 +1468,7 @@ function NewSchool() {
               type="default"
               onClick={deleteAllTables}
             >
-              {`Delete ${selectedSchool.schoolName} from EdCompanion`}
+              {`Delete "${selectedSchool.schoolName}"`}
             </Button>
           )}
           {isWondeSchoolDataLoaded && isUploaded && isManuallyUploaded && (
@@ -1499,7 +1502,7 @@ function NewSchool() {
                 type="default"
                 onClick={saveSchoolCSVtoDynamoDB}
               >
-                {`Save data for ${selectedSchool.schoolName} to EdCompanion`}
+                {`Upload "${selectedSchool.schoolName}"`}
               </Button>
             )}
           {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
@@ -1509,7 +1512,7 @@ function NewSchool() {
               type="default"
               onClick={SendCSVToS3}
             >
-              {`Send CSV to S3`}
+              {`Send CSV to S3 for "${selectedSchool.schoolName}"`}
             </Button>
           )}
         </div>
