@@ -170,9 +170,9 @@ export function OptionsPopup({
       closeOnOutsideClick={true}
       showCloseButton={false}
       showTitle={true}
-      title="Upload Filter Options"
+      title="Filter Options"
       container=".dx-viewport"
-      width={500}
+      width={550}
       height={550}
     >
       <Position at="center" my="center" of={null} />
@@ -181,7 +181,7 @@ export function OptionsPopup({
         widget="dxButton"
         toolbar="bottom"
         location="before"
-        options={{ text: 'Accept', onClick: applyFilters }}
+        options={{ text: 'Apply', onClick: applyFilters }}
       />
       <ToolbarItem
         widget="dxButton"
@@ -191,19 +191,20 @@ export function OptionsPopup({
       />
       <CContainer>
         <CRow>
-          <CCol sm={4}>
-            <div style={{ height: '30px', fontWeight: 'bold' }}>Select Year Levels</div>
+          <CCol sm={3} style={{ border: '1px dotted red' }}>
+            <div style={{ height: '30px', fontWeight: 'bold' }}>Year Levels</div>
           </CCol>
-          <CCol sm={8}>
+          <CCol sm={3} style={{ border: '1px dotted red' }}>
+            <div style={{ height: '30px', fontWeight: 'bold' }}>Uploaded</div>
+          </CCol>
+          <CCol sm={6} style={{ border: '1px dotted red' }}>
             <div style={{ height: '30px', fontWeight: 'bold' }}>Other Options</div>
           </CCol>
         </CRow>
         <CRow>
-          <CCol sm={4}>
+          <CCol sm={3} style={{ border: '1px solid red' }}>
             <div>
-              <span>
-                <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
-              </span>
+              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
             </div>
             <div>
               <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />
@@ -253,18 +254,81 @@ export function OptionsPopup({
             <div>
               <CheckBox
                 value={isAUSRegion() ? yearOptions.FY : yearOptions.R}
-                text="Reception/FY"
+                text="Rec/FY"
                 onValueChanged={yearOptionChanged}
               />
             </div>
             <div style={{ height: '40px' }}>
               {/* <div style={{ height: '20px' }}></div> */}
-              <Button style={{ marginTop: '15px' }} onClick={selectAll}>
+              <Button height="35px" style={{ marginTop: '15px' }} onClick={selectAll}>
                 {selectAllToggle ? 'Select All' : 'Deselect All'}
               </Button>
             </div>
           </CCol>
-          <CCol sm={8}>
+          <CCol sm={3} style={{ border: '1px dotted red' }}>
+            <div>
+              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y3} text="Year 3" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y4} text="Year 4" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y5} text="Year 5" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y6} text="Year 6" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y7} text="Year 7" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y8} text="Year 8" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y9} text="Year 9" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y10} text="Year 10" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y11} text="Year 11" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox value={yearOptions.Y12} text="Year 12" onValueChanged={yearOptionChanged} />
+            </div>
+            {isUKRegion() && (
+              <div>
+                <CheckBox
+                  value={yearOptions.Y13}
+                  text="Year 13"
+                  onValueChanged={yearOptionChanged}
+                />
+              </div>
+            )}
+            <div>
+              <CheckBox value={yearOptions.K} text="Kindy" onValueChanged={yearOptionChanged} />
+            </div>
+            <div>
+              <CheckBox
+                value={isAUSRegion() ? yearOptions.FY : yearOptions.R}
+                text="Rec/FY"
+                onValueChanged={yearOptionChanged}
+              />
+            </div>
+            <div style={{ height: '40px' }}>
+              {/* <div style={{ height: '20px' }}></div> */}
+              <Button height="35px" style={{ marginTop: '15px' }} onClick={selectAll}>
+                {selectAllToggle ? 'Select All' : 'Deselect All'}
+              </Button>
+            </div>
+          </CCol>
+          <CCol sm={6} style={{ border: '1px solid red' }}>
             <div>
               <CheckBox
                 defaultValue={kindyOption}
