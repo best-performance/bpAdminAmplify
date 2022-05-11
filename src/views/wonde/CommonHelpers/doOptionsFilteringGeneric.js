@@ -12,6 +12,7 @@ export function doOptionsFilteringGeneric(
   // The data to be filtered is the raw student->classroom->teacher data read from Wonde
   // Clone since we are doing updates
   let wondeStudentsCloned = _.cloneDeep(wondeStudents)
+  console.log('cloned student classroom', wondeStudentsCloned)
   wondeStudentsCloned.forEach((student) => {
     // Each student has a list of classrooms, that we have to filter
     // Must be one of the selected years
@@ -43,20 +44,14 @@ export function doOptionsFilteringGeneric(
         } else {
           if (coreSubjectOption) {
             let subjectName = null
-            if (classroom.subject) {
-              if (typeof classroom.subject === 'string') {
-                subjectName = classroom.subject
-              } else {
-                if (classroom.subject.data && classroom.subject.data.name) {
-                  subjectName = classroom.subject.data.name
-                }
-              }
-            } else {
-              // there is no subject field so maybe the classname gives a hint
-              if (classroom.name) {
-                subjectName = classroom.name
-              }
-            }
+            // Try to find a subject so we can later add classroomLearningArea
+            // If subject not stated explicitely, then classroom names could provide a hints
+            if (classroom.subject && classroom.subject.data && classroom.subject.data.name) {
+              subjectName = classroom.subject.data.name
+            } else if (classroom.subject && typeof classroom.subject === 'string') {
+              subjectName = classroom.subject
+            } else if (classroom.name) subjectName = classroom.name
+
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"
             if (subjectName) {
@@ -66,7 +61,11 @@ export function doOptionsFilteringGeneric(
               } else if (subjectName.includes('English')) {
                 classroom.subject = 'English'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('Science') && !subjectName.includes('Domestic')) {
+              } else if (
+                subjectName.includes('Science') &&
+                !subjectName.includes('Domestic') &&
+                !subjectName.includes('Social')
+              ) {
                 classroom.subject = 'Science'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('Biology')) {

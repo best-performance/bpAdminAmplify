@@ -57,12 +57,13 @@ export function formatStudentClassrooms(
             classroomPart.subject = classroom.subject.data.name
           }
         }
-      } else {
-        if (classroom.name.includes('Mathematics')) classroom.subject = 'Mathematics'
-        else if (classroom.name.includes('English')) classroom.subject = 'English'
-        else if (classroom.name.includes('Science')) classroom.subject = 'Science'
-        else if (classroom.name.includes('Technology')) classroom.subject = 'Technology'
       }
+      // } else {
+      //   if (classroom.name.includes('Mathematics')) classroom.subject = 'Mathematics'
+      //   else if (classroom.name.includes('English')) classroom.subject = 'English'
+      //   else if (classroom.name.includes('Science')) classroom.subject = 'Science'
+      //   else if (classroom.name.includes('Technology')) classroom.subject = 'Technology'
+      // }
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom

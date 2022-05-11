@@ -775,7 +775,7 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           // Extract the subject/areaName from the uniqueClassroom record
-          let areaName = uniqueClassroomsArray[index].subject // subject will be defined at least as ""
+          let areaName = uniqueClassroomsArray[index].subject // subject will be defined at least as "-"
           // If its "Science (Ch)" or similar then make it "Science"
           if (areaName && areaName.startsWith('Science')) areaName = 'Science'
           // lookup the learningAreaID in the lookuptable
