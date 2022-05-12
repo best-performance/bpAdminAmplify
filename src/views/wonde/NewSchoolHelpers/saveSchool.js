@@ -32,11 +32,11 @@ export async function saveSchool(
     let response = await docClient.query(queryParams).promise()
     if (response.Count > 0) {
       console.log('school already in School table')
-      return { alreadyLoaded: true, schoolID: response.Items[0].id } // the schoolID
+      return { schoolID: response.Items[0].id } // the schoolID
     }
   } catch (err) {
     console.log('Error locating school in School table', err)
-    return { alreadyLoaded: null, schoolID: null }
+    return { schoolID: null }
   }
 
   // Save the school since its not already in the database
@@ -77,9 +77,9 @@ export async function saveSchool(
   try {
     await docClient.put(params).promise()
     console.log(`Successfull saved school ${schoolID}`)
-    return { alreadyLoaded: false, schoolID: schoolID }
+    return { schoolID: schoolID }
   } catch (err) {
     console.log(`Error saving school ${schoolID}`, err)
-    return { alreadyLoaded: null, schoolID: null }
+    return { schoolID: null }
   }
 } // end of saveSchool

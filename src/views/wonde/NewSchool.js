@@ -90,8 +90,14 @@ function NewSchool() {
   // this controls the options popup
   const [optionsPopupVisible, setOptionsPopupVisible] = useState(false)
 
-  // These 2 save the raw data as loaded from Wonde
-  const [wondeStudents, setWondeStudents] = useState([]) // Note: yearCode is added by getStudentsFormWonde()
+  // This saves the raw data as loaded from Wonde. Note: yearCode is added by getStudentsFormWonde()
+  const [wondeStudents, setWondeStudents] = useState([])
+
+  // These are arrays of students, teachers and classrooms already
+  // uploaded for the selected school - as read from DynamoDB
+  const [uploadedClassrooms, setUploadedClassrooms] = useState([])
+  const [uploadedTeachers, setUploadedTeachers] = useState([])
+  const [uploadedStudents, setUploadedStudents] = useState([])
 
   // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
@@ -107,22 +113,22 @@ function NewSchool() {
 
   // These variables control the CSV filtering
   const [yearOptions, setYearOptions] = useState({
-    Y1: true,
-    Y2: true,
-    Y3: true,
-    Y4: true,
-    Y5: true,
-    Y6: true,
-    Y7: true,
-    Y8: true,
-    Y9: true,
-    Y10: true,
-    Y11: true,
-    Y12: true,
-    Y13: true,
-    K: true,
-    R: true,
-    FY: true,
+    Y1: false,
+    Y2: false,
+    Y3: false,
+    Y4: false,
+    Y5: false,
+    Y6: false,
+    Y7: false,
+    Y8: false,
+    Y9: false,
+    Y10: false,
+    Y11: false,
+    Y12: false,
+    Y13: false,
+    K: false,
+    R: false,
+    FY: false,
   })
   const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
@@ -135,6 +141,7 @@ function NewSchool() {
 
   // Button callback to add WondeIDs to manually uploaded school
   function AddWondeIDs() {
+    console.log('Add WondeIDs to manually uploaded school- not implemented yet')
     return
   }
 
@@ -359,7 +366,7 @@ function NewSchool() {
 
   // wrapper funtion triggered by "Get data for ..." button
   // to read all school data from Wonde
-  async function getSchoolData() {
+  async function getSchoolData(selectedSchool) {
     setTabIndex(0) // switch to the correct Wonde Data tab (unfltered)
     console.log('state', isUploaded, isManuallyUploaded)
     setIsDataFiltered(false)
@@ -369,11 +376,44 @@ function NewSchool() {
     setStudentClassrooms([]) //empty the Wonde data TabPanel item
     setFilteredStudentClassrooms([]) // empty the filtered data TabPanel item
 
-    // get the students->classes->teachers
+    // Get the students->classes->teachers
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
-    setIsLoadingStudents(false) // loading indicator
 
+    // Retrieve any data already uploaded for this school
+    let uploadedYearLevels = new Map()
+    if (selectedSchool.isUploaded && !selectedSchool.isManual) {
+      let { uploadedClassrooms, uploadeTeachers, uploadedStudents } = await getUploadedSchoolData(
+        selectedSchool.id,
+      )
+      // save then for later use
+      setUploadedClassrooms(uploadedClassrooms)
+      setUploadedTeachers(uploadeTeachers)
+      setUploadedStudents(uploadedStudents)
+
+      //make a unique list of uploaded year codes (year codes are K,Y1 etc)
+      uploadedStudents.forEach((student) => {
+        if (!uploadedYearLevels.get(!student.yearLevel.yearCode))
+          uploadedYearLevels.set(student.yearLevel.yearCode, student.yearLevel.yearCode)
+      })
+
+      let yearStatusArray = []
+      uploadedStudents.forEach((value, key) => {
+        yearStatusArray.push({
+          yearLevel: key,
+          isInSchool: true,
+          isLoaded: true,
+        })
+      })
+    } else {
+      // As good a place as any to clear the state variables
+      setUploadedClassrooms([])
+      setUploadedTeachers([])
+      setUploadedStudents([])
+    }
+
+    // Now we create the yearLevel object to pass to <OptionsPopop> so it knows
+    // which year levels are in the school and whether they are already loaded or not.
     // Scan the data and make a Map of available year levels
     let yearLevelMap = new Map()
     let yearLevelArray = []
@@ -405,6 +445,7 @@ function NewSchool() {
     )
     console.log('Formatted, Unfiltered StudentClassrooms from Wonde', formattedCSV)
     setIsWondeSchoolDataLoaded(true)
+    setIsLoadingStudents(false) // loading indicator
   }
 
   /**
@@ -413,12 +454,11 @@ function NewSchool() {
    * edCompanion based on the filtered CSV data [FilteredStudentClassrooms]
    * *********************************************************
    */
-  async function saveSchoolCSVtoDynamoDB() {
-    if (!isWondeSchoolDataLoaded) {
-      console.log('Load Wonde data or reload Wonde data after upload')
-      return
-    } // can't save unless data has been loaded from Wonde
-    // currently forcing a reload if additional years need to be uploaded immediately after an upload
+  async function saveSchoolCSVtoDynamoDB(selectedSchool) {
+    // Note: Can only reach here if school has not already been uploaded manually
+    // School can either be not uploaded yet or has been uploaded already via BPAdmin
+    // and now user wants to upload additional years
+    // The UI state machine only exposes the "save school data" button when appropriate
 
     // Do a final confirmation with the user
     let confirmed = await confirm(
@@ -430,13 +470,20 @@ function NewSchool() {
 
     setIsSavingSchoolData(true) // loading indicator
 
-    let alreadyUploaded = false // needed for logic to add additional years
+    // Just logging if this is a new upload or adding year levels
+    if (selectedSchool.isLoaded) {
+      console.log(`School ${selectedSchool.schoolName} is already loaded in DynamoDB`)
+      console.log('There are checks below to see if additional year levels are being uploaded')
+    } else {
+      // School not in DynamoDB so we can proceed with full upload.
+      console.log(`Saving school ${selectedSchool.schoolName} to DynamoDB`)
+    }
 
     /**
-     * Save the selected school to School table if not already saved
-     * returns the EC schoolID of the saved school
+     * SaveSchool() will either save the school and return the schooldID as saved
+     * or will return the schoolID of the school if already saved
      */
-    let schoolID // the EC id of the saved School
+
     let response = {}
     try {
       response = await saveSchool(
@@ -450,16 +497,7 @@ function NewSchool() {
       console.log(`Error saving school ${selectedSchool.wondeID}`, err)
       return
     }
-    // If saveSChool() returns that the school is already in DynamoDB, then it aborts the upload
-    if (response.alreadyLoaded) {
-      console.log(`School ${response.schoolID} is already loaded in DynamoDB`)
-      alreadyUploaded = true
-      console.log('There are checks below to see if additional year levels are being uploaded')
-    } else {
-      // School not in DynamoDB so we can proceed with full upload.
-      console.log(`Saving school ${response} to DynamoDB`)
-    }
-    schoolID = response.schoolID
+    let schoolID = response.schoolID // the EC id of the saved School
 
     // We scan [FilteredStudentClassrooms] to get unique classrooms, teachers and students for upload
     // Each row represents a student, a classroom and up to 5 teachers
@@ -474,6 +512,7 @@ function NewSchool() {
     // This array will be later used to create the classroomTeachers table
     let classroomTeachersFromCSV = []
 
+    // Scan the filtered classrooms and make some unique lists
     filteredStudentClassrooms.forEach((row) => {
       // Make a unique list of classrooms
       // Also make an array of classroomTeachers - for later use
@@ -541,9 +580,7 @@ function NewSchool() {
     // remove them from the unique lists, so we dont try to upload them again
     // getUploadedSchoolData() returns unique lists of classrooms, students and teachers
     // that are already uploaded
-    if (alreadyUploaded) {
-      const { uploadedClassrooms, uploadedTeachers, uploadedStudents } =
-        await getUploadedSchoolData(selectedSchool.id)
+    if (selectedSchool.isLoaded) {
       // Cull the 3 unique lists to remove classrooms, students and teachers already uploaded
       uploadedClassrooms.forEach((uploadedClassroom) => {
         let duplicateClassroom = uniqueClassroomsMap.get(uploadedClassroom.wondeID)
@@ -1483,7 +1520,7 @@ function NewSchool() {
               type="default"
               onClick={AddWondeIDs}
             >
-              {`Add Wonde IDs`}
+              {`Add Wonde IDs to "${selectedSchool.schoolName}"`}
             </Button>
           )}
           {isWondeSchoolDataLoaded &&

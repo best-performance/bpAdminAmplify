@@ -5,11 +5,11 @@ import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
-import { isAUSRegion, isUKRegion } from '../CommonHelpers/featureToggles'
+import { isAUSRegion } from '../CommonHelpers/featureToggles'
 
 export function OptionsPopup({
-  availableYearLevels, // array of objects like {yearLevel: "4", loaded:false}
-  parentYearOptions,
+  yearStatusArray, // array of objects like {Y1: {isInSchool: true, IsLoaded :false}}
+  parentYearOptions, // an array of objects like {Y1: true}
   parentKindyOptions,
   parentKindyClassName,
   parentCoreSubjectOption,
@@ -36,59 +36,60 @@ export function OptionsPopup({
       console.log('event', e)
       console.log(e.component._props.text, e.value)
       let yearOptionsCopy = { ...yearOptions }
-      switch (e.component._props.text) {
-        case 'Year 1':
-          yearOptionsCopy.Y1 = e.value
-          break
-        case 'Year 2':
-          yearOptionsCopy.Y2 = e.value
-          break
-        case 'Year 3':
-          yearOptionsCopy.Y3 = e.value
-          break
-        case 'Year 4':
-          yearOptionsCopy.Y4 = e.value
-          break
-        case 'Year 5':
-          yearOptionsCopy.Y5 = e.value
-          break
-        case 'Year 6':
-          yearOptionsCopy.Y6 = e.value
-          break
-        case 'Year 7':
-          yearOptionsCopy.Y7 = e.value
-          break
-        case 'Year 8':
-          yearOptionsCopy.Y8 = e.value
-          break
-        case 'Year 9':
-          yearOptionsCopy.Y9 = e.value
-          break
-        case 'Year 10':
-          yearOptionsCopy.Y10 = e.value
-          break
-        case 'Year 11':
-          yearOptionsCopy.Y11 = e.value
-          break
-        case 'Year 12':
-          yearOptionsCopy.Y12 = e.value
-          break
-        case 'Year 13':
-          yearOptionsCopy.Y13 = e.value
-          break
-        case 'Kindy':
-          yearOptionsCopy.K = e.value
-          break
-        case 'Reception/FY':
-          if (isAUSRegion()) {
-            yearOptionsCopy.FY = e.value
-          } else {
-            yearOptionsCopy.R = e.value
-          }
-          break
-        default:
-          break
-      }
+      if (e.component._props.text in yearOptionsCopy)
+        yearOptionsCopy[e.component._props.text] = e.value
+      //   switch (e.component._props.text) {
+      //     case 'Y1':
+      //       yearOptionsCopy.Y1 = e.value
+      //       break
+      //     case 'Y2':
+      //       yearOptionsCopy.Y2 = e.value
+      //       break
+      //     case 'Y3':
+      //       yearOptionsCopy.Y3 = e.value
+      //       break
+      //     case 'Y4':
+      //       yearOptionsCopy.Y4 = e.value
+      //       break
+      //     case 'Y5':
+      //       yearOptionsCopy.Y5 = e.value
+      //       break
+      //     case 'Y6':
+      //       yearOptionsCopy.Y6 = e.value
+      //       break
+      //     case 'Y7':
+      //       yearOptionsCopy.Y7 = e.value
+      //       break
+      //     case 'Y8':
+      //       yearOptionsCopy.Y8 = e.value
+      //       break
+      //     case 'Y9':
+      //       yearOptionsCopy.Y9 = e.value
+      //       break
+      //     case 'Y10':
+      //       yearOptionsCopy.Y10 = e.value
+      //       break
+      //     case 'Y11':
+      //       yearOptionsCopy.Y11 = e.value
+      //       break
+      //     case 'Y12':
+      //       yearOptionsCopy.Y12 = e.value
+      //       break
+      //     case 'Y13':
+      //       yearOptionsCopy.Y13 = e.value
+      //       break
+      //     case 'K':
+      //       yearOptionsCopy.K = e.value
+      //       break
+      //     case 'FY':
+      //       yearOptionsCopy.FY = e.value
+      //       break
+      //     case 'R':
+      //       yearOptionsCopy.R = e.value
+      //       break
+      //     default:
+      //       break
+      //   }
       setYearOptions(yearOptionsCopy)
     }
   }
@@ -109,7 +110,7 @@ export function OptionsPopup({
     setCoreSubjectOption(e.value)
     console.log(e.value)
   }
-  // this is fired when done and we want to apply the filters
+  // this is fired when done and we want to pass teh changes back to <NewSchool>
   function applyFilters() {
     console.log('apply filters')
     setParentYearOptions(yearOptions)
@@ -120,7 +121,7 @@ export function OptionsPopup({
     setOptionsPopupVisible(false)
   }
 
-  // this is fired when done and we want to apply the filters
+  // this is fired when done and cancelling with no changes
   function cancel() {
     console.log('cancel')
     setOptionsPopupVisible(false)
@@ -128,7 +129,6 @@ export function OptionsPopup({
 
   // this is fired when selectAll or deselectall is presses
   function selectAll(e) {
-    // return // causes recursive update and crashes
     let tickboxVal
     if (selectAllToggle) {
       tickboxVal = true
@@ -154,13 +154,55 @@ export function OptionsPopup({
     yearOptionsCopy.Y12 = tickboxVal
     yearOptionsCopy.Y13 = tickboxVal
     yearOptionsCopy.K = tickboxVal
-    if (isAUSRegion()) {
-      yearOptionsCopy.FY = tickboxVal
-    } else {
-      yearOptionsCopy.R = tickboxVal
-    }
+    yearOptionsCopy.FY = tickboxVal
+    yearOptionsCopy.R = tickboxVal
 
     setYearOptions(yearOptionsCopy)
+  }
+
+  const yearStatusArrayTmp = [
+    { yearLevel: 'K', isInSchool: true, isLoaded: false },
+    { yearLevel: 'FY', isInSchool: true, isLoaded: false },
+    { yearLevel: 'R', isInSchool: true, isLoaded: false },
+    { yearLevel: 'Y1', isInSchool: true, isLoaded: false },
+    { yearLevel: 'Y2', isInSchool: true, isLoaded: true },
+    { yearLevel: 'Y3', isInSchool: true, isLoaded: false },
+    { yearLevel: 'Y4', isInSchool: true, isLoaded: true },
+    { yearLevel: 'Y5', isInSchool: true, isLoaded: false },
+    { yearLevel: 'Y6', isInSchool: true, isLoaded: false },
+    { yearLevel: 'Y7', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y8', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y9', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y10', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y11', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y12', isInSchool: false, isLoaded: false },
+    { yearLevel: 'Y13', isInSchool: false, isLoaded: false },
+  ]
+
+  // This function reads the input parameters and displays
+  // the available year levels, the loaded status and the option status
+  function displayAvailableYearLevels() {
+    let retVal = yearStatusArrayTmp.map((item) => {
+      if (item.isInSchool) {
+        return (
+          <div>
+            <span style={{ display: 'inline-block', width: '80px' }}>
+              <CheckBox
+                value={yearOptions[item.yearLevel]}
+                text={item.yearLevel}
+                onValueChanged={yearOptionChanged}
+              />
+            </span>
+            <span>
+              <CheckBox value={item.isLoaded} />
+            </span>
+          </div>
+        )
+      } else {
+        return <></>
+      }
+    })
+    return retVal
   }
 
   return (
@@ -173,7 +215,7 @@ export function OptionsPopup({
       title="Filter Options"
       container=".dx-viewport"
       width={550}
-      height={550}
+      height={600}
     >
       <Position at="center" my="center" of={null} />
 
@@ -191,144 +233,28 @@ export function OptionsPopup({
       />
       <CContainer>
         <CRow>
-          <CCol sm={3} style={{ border: '1px dotted red' }}>
-            <div style={{ height: '30px', fontWeight: 'bold' }}>Year Levels</div>
+          <CCol sm={4}>
+            <div style={{ height: '30px', fontWeight: 'bold' }}>
+              <span style={{ display: 'inline-block', width: '70px' }}>Years</span>
+              <span>Loaded</span>
+            </div>
           </CCol>
-          <CCol sm={3} style={{ border: '1px dotted red' }}>
-            <div style={{ height: '30px', fontWeight: 'bold' }}>Uploaded</div>
-          </CCol>
-          <CCol sm={6} style={{ border: '1px dotted red' }}>
-            <div style={{ height: '30px', fontWeight: 'bold' }}>Other Options</div>
+          <CCol sm={8}>
+            <div style={{ height: '30px', fontWeight: 'bold', textAlign: 'center' }}>
+              Other Options
+            </div>
           </CCol>
         </CRow>
         <CRow>
-          <CCol sm={3} style={{ border: '1px solid red' }}>
-            <div>
-              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y3} text="Year 3" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y4} text="Year 4" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y5} text="Year 5" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y6} text="Year 6" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y7} text="Year 7" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y8} text="Year 8" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y9} text="Year 9" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y10} text="Year 10" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y11} text="Year 11" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y12} text="Year 12" onValueChanged={yearOptionChanged} />
-            </div>
-            {isUKRegion() && (
-              <div>
-                <CheckBox
-                  value={yearOptions.Y13}
-                  text="Year 13"
-                  onValueChanged={yearOptionChanged}
-                />
-              </div>
-            )}
-            <div>
-              <CheckBox value={yearOptions.K} text="Kindy" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox
-                value={isAUSRegion() ? yearOptions.FY : yearOptions.R}
-                text="Rec/FY"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
+          <CCol sm={5}>
+            {displayAvailableYearLevels()}
             <div style={{ height: '40px' }}>
-              {/* <div style={{ height: '20px' }}></div> */}
               <Button height="35px" style={{ marginTop: '15px' }} onClick={selectAll}>
                 {selectAllToggle ? 'Select All' : 'Deselect All'}
               </Button>
             </div>
           </CCol>
-          <CCol sm={3} style={{ border: '1px dotted red' }}>
-            <div>
-              <CheckBox value={yearOptions.Y1} text="Year 1" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y2} text="Year 2" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y3} text="Year 3" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y4} text="Year 4" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y5} text="Year 5" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y6} text="Year 6" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y7} text="Year 7" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y8} text="Year 8" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y9} text="Year 9" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y10} text="Year 10" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y11} text="Year 11" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox value={yearOptions.Y12} text="Year 12" onValueChanged={yearOptionChanged} />
-            </div>
-            {isUKRegion() && (
-              <div>
-                <CheckBox
-                  value={yearOptions.Y13}
-                  text="Year 13"
-                  onValueChanged={yearOptionChanged}
-                />
-              </div>
-            )}
-            <div>
-              <CheckBox value={yearOptions.K} text="Kindy" onValueChanged={yearOptionChanged} />
-            </div>
-            <div>
-              <CheckBox
-                value={isAUSRegion() ? yearOptions.FY : yearOptions.R}
-                text="Rec/FY"
-                onValueChanged={yearOptionChanged}
-              />
-            </div>
-            <div style={{ height: '40px' }}>
-              {/* <div style={{ height: '20px' }}></div> */}
-              <Button height="35px" style={{ marginTop: '15px' }} onClick={selectAll}>
-                {selectAllToggle ? 'Select All' : 'Deselect All'}
-              </Button>
-            </div>
-          </CCol>
-          <CCol sm={6} style={{ border: '1px solid red' }}>
+          <CCol sm={7}>
             <div>
               <CheckBox
                 defaultValue={kindyOption}

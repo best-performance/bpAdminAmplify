@@ -26,6 +26,9 @@ const getSchoolStudentsByYear = /* GraphQL */ `
         student {
           wondeID
         }
+        yearLevel {
+          yearCode
+        }
       }
     }
   }
@@ -77,10 +80,11 @@ export async function getUploadedSchoolData(schoolID) {
 
     return {
       uploadedClassrooms: classrooms,
+      uploadeTeachers: teachers,
       uploadedStudents: students,
-      uploadedTeachers: teachers,
     }
   } catch (err) {
     console.log(err)
+    return false
   }
 }
