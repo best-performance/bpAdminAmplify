@@ -30,6 +30,7 @@ export async function saveSchool(
   }
   try {
     let response = await docClient.query(queryParams).promise()
+    console.log('response', response)
     if (response.Count > 0) {
       console.log('school already in School table')
       return { schoolID: response.Items[0].id } // the schoolID

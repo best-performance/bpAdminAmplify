@@ -144,8 +144,17 @@ function NewSchool() {
   }
 
   // Button callback to add WondeIDs to manually uploaded school
-  function AddWondeIDs() {
-    console.log('Add WondeIDs to manually uploaded school- not implemented yet')
+  async function AddWondeIDs(selectedSchool) {
+    // Do a final confirmation with the user
+    let confirmed = await confirm(
+      `<i>Add WondeIDs to ${selectedSchool.schoolName}</i>`,
+      `Confirm Add WondIDs`,
+    )
+    console.log(`Confirm add WondeIDs to ${selectedSchool.schoolName}`, confirmed)
+    if (!confirmed) return
+    console.log(
+      `Add WondeIDs to manually uploaded ${selectedSchool.schoolName} - not implemented yet`,
+    )
     return
   }
 
@@ -223,11 +232,11 @@ function NewSchool() {
   }, [applyFilterOptions, dataFilterPending])
 
   // This is for testing to delete all records from the Dynamo tables if they exist
-  async function deleteAllTables() {
+  async function deleteAllTables(selectedSchool) {
     // Do a final confirmation with the user
     let confirmed = await confirm(
-      '<i>Are you sure?</i>',
-      `Delete All Data from ${selectedSchool.schoolName}`,
+      `<i>Delete All Data from ${selectedSchool.schoolName}</i>`,
+      `Confirm Delete`,
     )
     console.log(`Confirm delete all data from ${selectedSchool.schoolName}`, confirmed)
     if (!confirmed) return
@@ -239,15 +248,14 @@ function NewSchool() {
 
   // Create a CSV from the filtered data and send to S3
   // Callback for conditional Button below
-  async function SendCSVToS3() {
+  async function SendCSVToS3(selectedSchool) {
     // Do a final confirmation with the user
     let confirmed = await confirm(
-      '<i>Are you sure?</i>',
-      `Send CSV data to S3 for school ${selectedSchool.schoolName}`,
+      `<i>Send ${selectedSchool.schoolName} CSV data to S3</i>`,
+      `Confirm Send CSV`,
     )
     console.log(`Confirm send CSV data to S3 for school ${selectedSchool.schoolName}`, confirmed)
     if (!confirmed) return
-
     setIsSendingCSVToS3(true) // loading indicator only
     console.log('loggedIn', loggedIn)
     let schoolName = loggedIn.schoolName
@@ -467,8 +475,8 @@ function NewSchool() {
 
     // Do a final confirmation with the user
     let confirmed = await confirm(
-      '<i>Are you sure?</i>',
-      `Upload data to ${selectedSchool.schoolName}`,
+      `<i>Upload ${selectedSchool.schoolName} data</i>`,
+      `Confirm Upload`,
     )
     console.log(`Confirm upload data to ${selectedSchool.schoolName}`, confirmed)
     if (!confirmed) return
@@ -1508,7 +1516,7 @@ function NewSchool() {
                 borderRadius: '5px',
               }}
               type="default"
-              onClick={deleteAllTables}
+              onClick={() => deleteAllTables(selectedSchool)}
             >
               {`Delete "${selectedSchool.schoolName}"`}
             </Button>
@@ -1523,36 +1531,32 @@ function NewSchool() {
                 borderRadius: '5px',
               }}
               type="default"
-              onClick={AddWondeIDs}
+              onClick={() => AddWondeIDs(selectedSchool)}
             >
               {`Add Wonde IDs to "${selectedSchool.schoolName}"`}
             </Button>
           )}
-          {isWondeSchoolDataLoaded &&
-            isDataFiltered &&
-            isUploaded &&
-            !isManuallyUploaded &&
-            filteredStudentClassrooms.length > 0 && (
-              <Button
-                stylingMode="contained"
-                style={{
-                  marginBottom: '10px',
-                  marginRight: '5px',
-                  padding: '3px',
-                  borderRadius: '5px',
-                }}
-                type="default"
-                onClick={saveSchoolCSVtoDynamoDB}
-              >
-                {`Upload "${selectedSchool.schoolName}"`}
-              </Button>
-            )}
+          {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
+            <Button
+              stylingMode="contained"
+              style={{
+                marginBottom: '10px',
+                marginRight: '5px',
+                padding: '3px',
+                borderRadius: '5px',
+              }}
+              type="default"
+              onClick={() => saveSchoolCSVtoDynamoDB(selectedSchool)}
+            >
+              {`Upload "${selectedSchool.schoolName}"`}
+            </Button>
+          )}
           {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
             <Button
               stylingMode="contained"
               style={{ marginBottom: '10px', padding: '3px', borderRadius: '5px' }}
               type="default"
-              onClick={SendCSVToS3}
+              onClick={() => SendCSVToS3(selectedSchool)}
             >
               {`Send CSV to S3 for "${selectedSchool.schoolName}"`}
             </Button>

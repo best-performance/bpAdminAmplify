@@ -24,93 +24,43 @@ export function OptionsPopup({
   const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
   const [coreSubjectOption, setCoreSubjectOption] = useState(parentCoreSubjectOption)
   const [yearOptions, setYearOptions] = useState(parentYearOptions)
-  const [selectAllToggle, setSelectAllToggle] = useState(false)
+  const [selectAllToggle, setSelectAllToggle] = useState(true)
 
   useEffect(() => {
     console.log('rendered', yearOptions)
   }, [yearOptions])
 
-  // this is fired if any year level option changes
+  // Fired if any year level option changes
   function yearOptionChanged(e) {
     if (e.event) {
       console.log('event', e)
       console.log(e.component._props.text, e.value)
       let yearOptionsCopy = { ...yearOptions }
-      if (e.component._props.text in yearOptionsCopy)
+      // The "in" operator below check if the object key exists
+      if (e.component._props.text in yearOptionsCopy) {
         yearOptionsCopy[e.component._props.text] = e.value
-      //   switch (e.component._props.text) {
-      //     case 'Y1':
-      //       yearOptionsCopy.Y1 = e.value
-      //       break
-      //     case 'Y2':
-      //       yearOptionsCopy.Y2 = e.value
-      //       break
-      //     case 'Y3':
-      //       yearOptionsCopy.Y3 = e.value
-      //       break
-      //     case 'Y4':
-      //       yearOptionsCopy.Y4 = e.value
-      //       break
-      //     case 'Y5':
-      //       yearOptionsCopy.Y5 = e.value
-      //       break
-      //     case 'Y6':
-      //       yearOptionsCopy.Y6 = e.value
-      //       break
-      //     case 'Y7':
-      //       yearOptionsCopy.Y7 = e.value
-      //       break
-      //     case 'Y8':
-      //       yearOptionsCopy.Y8 = e.value
-      //       break
-      //     case 'Y9':
-      //       yearOptionsCopy.Y9 = e.value
-      //       break
-      //     case 'Y10':
-      //       yearOptionsCopy.Y10 = e.value
-      //       break
-      //     case 'Y11':
-      //       yearOptionsCopy.Y11 = e.value
-      //       break
-      //     case 'Y12':
-      //       yearOptionsCopy.Y12 = e.value
-      //       break
-      //     case 'Y13':
-      //       yearOptionsCopy.Y13 = e.value
-      //       break
-      //     case 'K':
-      //       yearOptionsCopy.K = e.value
-      //       break
-      //     case 'FY':
-      //       yearOptionsCopy.FY = e.value
-      //       break
-      //     case 'R':
-      //       yearOptionsCopy.R = e.value
-      //       break
-      //     default:
-      //       break
-      //   }
-      setYearOptions(yearOptionsCopy)
+        setYearOptions(yearOptionsCopy)
+      }
     }
   }
 
-  // this is fired when the opption to remove Kindy duplicates changes
+  // Fired when the opption to remove Kindy duplicates changes
   function kindyOptionChanged(e) {
     setKindyOption(e.value)
     console.log(e.value)
   }
-  // this is fired when the kindy class name is changed
+  // Fired when the kindy class name is changed
   function kindyNameChange(e) {
     if (e.value.length >= 1) setKindyClassname(e.value)
     console.log()
   }
 
-  // this is fired when the opption to remove Kindy duplicates changes
+  // Fired when the opption to remove Kindy duplicates changes
   function coreSubjectOptionChanged(e) {
     setCoreSubjectOption(e.value)
     console.log(e.value)
   }
-  // this is fired when done and we want to pass the changes back to <NewSchool>
+  // Fired when done and we want to pass the changes back to <NewSchool>
   function applyFilters() {
     console.log('apply filters')
     setParentYearOptions(yearOptions)
@@ -127,8 +77,15 @@ export function OptionsPopup({
     setOptionsPopupVisible(false)
   }
 
-  // this is fired when selectAll or deselectall is presses
+  // this is fired when selectAll or deselectAll is pressed
   function selectAll(e) {
+    // let yearOptionsCopy = { ...yearOptions }
+    // // The "in" operator below check if the object key exists
+    // if (e.component._props.text in yearOptionsCopy) {
+    //   yearOptionsCopy[e.component._props.text] = e.value
+    //   setYearOptions(yearOptionsCopy)
+    // }
+
     let tickboxVal
     if (selectAllToggle) {
       tickboxVal = true
@@ -139,25 +96,15 @@ export function OptionsPopup({
       console.log('deselectAll')
       setSelectAllToggle(true)
     }
-    let yearOptionsCopy = {}
-    yearOptionsCopy.Y1 = tickboxVal
-    yearOptionsCopy.Y2 = tickboxVal
-    yearOptionsCopy.Y3 = tickboxVal
-    yearOptionsCopy.Y4 = tickboxVal
-    yearOptionsCopy.Y5 = tickboxVal
-    yearOptionsCopy.Y6 = tickboxVal
-    yearOptionsCopy.Y7 = tickboxVal
-    yearOptionsCopy.Y8 = tickboxVal
-    yearOptionsCopy.Y9 = tickboxVal
-    yearOptionsCopy.Y10 = tickboxVal
-    yearOptionsCopy.Y11 = tickboxVal
-    yearOptionsCopy.Y12 = tickboxVal
-    yearOptionsCopy.Y13 = tickboxVal
-    yearOptionsCopy.K = tickboxVal
-    yearOptionsCopy.FY = tickboxVal
-    yearOptionsCopy.R = tickboxVal
 
-    setYearOptions(yearOptionsCopy)
+    let yearOptionsNew = { ...yearOptions }
+    yearLevelStatusArray.forEach((item) => {
+      if (item.yearLevel in yearOptionsNew) {
+        yearOptionsNew[item.yearLevel] = tickboxVal
+      }
+    })
+
+    setYearOptions(yearOptionsNew)
   }
 
   // This function reads the input parameters and displays
@@ -170,13 +117,14 @@ export function OptionsPopup({
         <div key={v4()}>
           <span style={{ display: 'inline-block', width: '80px' }}>
             <CheckBox
-              value={yearOptions[item.yearLevel]}
+              value={item.isLoaded ? true : yearOptions[item.yearLevel]}
               text={item.yearLevel}
               onValueChanged={yearOptionChanged}
+              readOnly={item.isLoaded}
             />
           </span>
           <span>
-            <CheckBox value={item.isLoaded} />
+            <CheckBox value={item.isLoaded} readOnly={true} />
           </span>
         </div>
       )
@@ -194,7 +142,7 @@ export function OptionsPopup({
       title="Filter Options"
       container=".dx-viewport"
       width={550}
-      height={600}
+      height={320 + yearLevelStatusArray.length * 15}
     >
       <Position at="center" my="center" of={null} />
 

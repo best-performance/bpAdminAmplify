@@ -80,7 +80,7 @@ export async function getUploadedSchoolData(schoolID) {
 
     return {
       uploadedClassrooms: classrooms,
-      uploadeTeachers: teachers,
+      uploadedTeachers: teachers,
       uploadedStudents: students,
     }
   } catch (err) {
