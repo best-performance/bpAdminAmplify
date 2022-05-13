@@ -122,6 +122,7 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
 
 // read the students-classes-teachers for secondary and large primaries
 async function readStudentsClassesTeachers(wondeSchoolID) {
+  console.log('readStudentsClassesTeachers', wondeSchoolID)
   // first read the teachers who have classes
   let teachersMap = new Map()
   try {

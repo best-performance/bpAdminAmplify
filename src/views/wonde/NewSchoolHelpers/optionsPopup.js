@@ -5,10 +5,10 @@ import { Button } from 'devextreme-react/button'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import { CheckBox } from 'devextreme-react/check-box'
 import TextBox from 'devextreme-react/text-box'
-import { isAUSRegion } from '../CommonHelpers/featureToggles'
+import { v4 } from 'uuid'
 
 export function OptionsPopup({
-  yearStatusArray, // array of objects like {Y1: {isInSchool: true, IsLoaded :false}}
+  yearLevelStatusArray, // array of objects like {yearLevel: Y1, isLoaded:true}
   parentYearOptions, // an array of objects like {Y1: true}
   parentKindyOptions,
   parentKindyClassName,
@@ -110,7 +110,7 @@ export function OptionsPopup({
     setCoreSubjectOption(e.value)
     console.log(e.value)
   }
-  // this is fired when done and we want to pass teh changes back to <NewSchool>
+  // this is fired when done and we want to pass the changes back to <NewSchool>
   function applyFilters() {
     console.log('apply filters')
     setParentYearOptions(yearOptions)
@@ -160,47 +160,26 @@ export function OptionsPopup({
     setYearOptions(yearOptionsCopy)
   }
 
-  const yearStatusArrayTmp = [
-    { yearLevel: 'K', isInSchool: true, isLoaded: false },
-    { yearLevel: 'FY', isInSchool: true, isLoaded: false },
-    { yearLevel: 'R', isInSchool: true, isLoaded: false },
-    { yearLevel: 'Y1', isInSchool: true, isLoaded: false },
-    { yearLevel: 'Y2', isInSchool: true, isLoaded: true },
-    { yearLevel: 'Y3', isInSchool: true, isLoaded: false },
-    { yearLevel: 'Y4', isInSchool: true, isLoaded: true },
-    { yearLevel: 'Y5', isInSchool: true, isLoaded: false },
-    { yearLevel: 'Y6', isInSchool: true, isLoaded: false },
-    { yearLevel: 'Y7', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y8', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y9', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y10', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y11', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y12', isInSchool: false, isLoaded: false },
-    { yearLevel: 'Y13', isInSchool: false, isLoaded: false },
-  ]
-
   // This function reads the input parameters and displays
   // the available year levels, the loaded status and the option status
   function displayAvailableYearLevels() {
-    let retVal = yearStatusArrayTmp.map((item) => {
-      if (item.isInSchool) {
-        return (
-          <div>
-            <span style={{ display: 'inline-block', width: '80px' }}>
-              <CheckBox
-                value={yearOptions[item.yearLevel]}
-                text={item.yearLevel}
-                onValueChanged={yearOptionChanged}
-              />
-            </span>
-            <span>
-              <CheckBox value={item.isLoaded} />
-            </span>
-          </div>
-        )
-      } else {
-        return <></>
-      }
+    console.log('yearLevelStatusArray', yearLevelStatusArray)
+    console.log('yearOptions', yearOptions)
+    let retVal = yearLevelStatusArray.map((item) => {
+      return (
+        <div key={v4()}>
+          <span style={{ display: 'inline-block', width: '80px' }}>
+            <CheckBox
+              value={yearOptions[item.yearLevel]}
+              text={item.yearLevel}
+              onValueChanged={yearOptionChanged}
+            />
+          </span>
+          <span>
+            <CheckBox value={item.isLoaded} />
+          </span>
+        </div>
+      )
     })
     return retVal
   }

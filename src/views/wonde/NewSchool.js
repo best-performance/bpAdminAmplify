@@ -74,7 +74,6 @@ function NewSchool() {
   const [isWondeSchoolDataLoaded, setIsWondeSchoolDataLoaded] = useState(false) // set after the Wonde data is uploaded for selected school
   const [dataFilterPending, setDataFilterPending] = useState(false) // set after user accepts new filter options in the popup
   const [isDataFiltered, setIsDataFiltered] = useState(false) // Set after flter options are applied (by the useEffect)
-  const [selectedSchoolAvailableYearLevels, setSelectedSchoolAvailableYearLevels] = useState([])
 
   // Loading indicators for long DB operations
   const [isLoadingSchools, setIsLoadingSchools] = useState(false)
@@ -93,8 +92,8 @@ function NewSchool() {
   // This saves the raw data as loaded from Wonde. Note: yearCode is added by getStudentsFormWonde()
   const [wondeStudents, setWondeStudents] = useState([])
 
-  // These are arrays of students, teachers and classrooms already
-  // uploaded for the selected school - as read from DynamoDB
+  // This are polulated in getSchoolData().They are arrays of students, teachers and classrooms
+  // already uploaded for the selected school - as read from DynamoDB
   const [uploadedClassrooms, setUploadedClassrooms] = useState([])
   const [uploadedTeachers, setUploadedTeachers] = useState([])
   const [uploadedStudents, setUploadedStudents] = useState([])
@@ -110,6 +109,11 @@ function NewSchool() {
   const [yearLevelsLookup, setYearLevelsLoookup] = useState([])
   const [statesLookup, setStatesLookup] = useState([])
   const [learningAreasLookup, setLearningAreasLookup] = useState([])
+
+  // This is polulated in getSchoolData() and contains a list of
+  // yearlevels available from Wonde for ths selected school, and whether each
+  // year level is already uploaded to Wonde. It is passed to OptionsPopup()
+  const [yearLevelStatusArray, setYearLevelStatusArray] = useState([])
 
   // These variables control the CSV filtering
   const [yearOptions, setYearOptions] = useState({
@@ -369,6 +373,7 @@ function NewSchool() {
   async function getSchoolData(selectedSchool) {
     setTabIndex(0) // switch to the correct Wonde Data tab (unfltered)
     console.log('state', isUploaded, isManuallyUploaded)
+    console.log('selected School', selectedSchool)
     setIsDataFiltered(false)
     if (selectedSchool === {}) return
     setIsWondeSchoolDataLoaded(false)
@@ -376,66 +381,66 @@ function NewSchool() {
     setStudentClassrooms([]) //empty the Wonde data TabPanel item
     setFilteredStudentClassrooms([]) // empty the filtered data TabPanel item
 
-    // Get the students->classes->teachers
+    // Get the students->classes->teachers.
+    // TODO: rename getStudentsFromWonde() to getStudentClassroomsFormWOnde()
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
 
-    // Retrieve any data already uploaded for this school
-    let uploadedYearLevels = new Map()
-    if (selectedSchool.isUploaded && !selectedSchool.isManual) {
-      let { uploadedClassrooms, uploadeTeachers, uploadedStudents } = await getUploadedSchoolData(
-        selectedSchool.id,
-      )
-      // save then for later use
-      setUploadedClassrooms(uploadedClassrooms)
-      setUploadedTeachers(uploadeTeachers)
-      setUploadedStudents(uploadedStudents)
-
-      //make a unique list of uploaded year codes (year codes are K,Y1 etc)
-      uploadedStudents.forEach((student) => {
-        if (!uploadedYearLevels.get(!student.yearLevel.yearCode))
-          uploadedYearLevels.set(student.yearLevel.yearCode, student.yearLevel.yearCode)
-      })
-
-      let yearStatusArray = []
-      uploadedStudents.forEach((value, key) => {
-        yearStatusArray.push({
-          yearLevel: key,
-          isInSchool: true,
-          isLoaded: true,
-        })
-      })
-    } else {
-      // As good a place as any to clear the state variables
-      setUploadedClassrooms([])
-      setUploadedTeachers([])
-      setUploadedStudents([])
-    }
-
-    // Now we create the yearLevel object to pass to <OptionsPopop> so it knows
-    // which year levels are in the school and whether they are already loaded or not.
-    // Scan the data and make a Map of available year levels
+    // Scan the Wonde data and make a Map of available year levels
     let yearLevelMap = new Map()
     let yearLevelArray = []
     wondeStudentsTemp.forEach((classroomStudent) => {
       if (!yearLevelMap.get(classroomStudent.yearCode))
         if (!classroomStudent.yearCode.startsWith('U')) {
           // Add to the map unless is some unrecognised code (marked as U-xxx by getStudentsFromWonde())
-          yearLevelMap.set(classroomStudent.yearCode, classroomStudent.yearCode)
-          yearLevelArray.push(classroomStudent.yearCode)
+          let yearCode = classroomStudent.yearCode
+          yearLevelMap.set(yearCode, yearCode)
+          yearLevelArray.push(yearCode)
         }
     })
-    // sort by numberic year level
+    // Sort by numberic year level
     yearLevelArray.sort((a, b) => {
       return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' })
     })
-    let yearLevelObjectArray = []
-    yearLevelArray.forEach((yearLevel) => {
-      yearLevelObjectArray.push({ yearLevel: yearLevel, loaded: false })
+
+    // Retrieve any data (year levels) already uploaded for this school
+    // Note: uploadedClassrooms, uploadedeachers are used later when saving the school.
+    let uploadedYearLevels = new Map()
+    if (selectedSchool.isLoaded && !selectedSchool.isManual) {
+      let { uploadedClassrooms, uploadedTeachers, uploadedStudents } = await getUploadedSchoolData(
+        selectedSchool.id,
+      )
+      // save then for later use
+      setUploadedClassrooms(uploadedClassrooms)
+      setUploadedTeachers(uploadedTeachers)
+      setUploadedStudents(uploadedStudents)
+
+      //make a unique list of uploaded year codes (year codes are K,Y1 etc)
+      uploadedStudents.forEach((student) => {
+        if (!uploadedYearLevels.get(student.yearLevel.yearCode))
+          uploadedYearLevels.set(student.yearLevel.yearCode, student.yearLevel.yearCode)
+      })
+      console.log('uploadedYearLevels', uploadedYearLevels)
+    } else {
+      // As good a place as any to clear the state variables
+      setUploadedClassrooms([])
+      setUploadedTeachers([])
+      setUploadedStudents([])
+      setYearLevelStatusArray([])
+    }
+
+    // Combine Wonde and DynamoDB data to make a list of available yearLevels from Wonde
+    // indicating whether each year level is uploaded or not.
+    let yearLevelStatusArray = yearLevelArray.map((item) => {
+      let yearCode = item
+      if (!isNaN(parseInt(item))) yearCode = `Y${item}`
+      if (uploadedYearLevels.get(yearCode)) {
+        return { yearLevel: yearCode, isLoaded: true }
+      } else return { yearLevel: yearCode, isLoaded: false }
     })
-    // save in state variable
-    setSelectedSchoolAvailableYearLevels(yearLevelObjectArray)
-    console.log('yearLevelArray', yearLevelObjectArray)
+
+    console.log('yearLevelStatusArray', yearLevelStatusArray)
+    setYearLevelStatusArray(yearLevelStatusArray)
 
     // format as per csv uploader
     let formattedCSV = formatStudentClassrooms(
@@ -1447,7 +1452,7 @@ function NewSchool() {
         <CRow>
           {optionsPopupVisible ? (
             <OptionsPopup
-              availableYearLevels={selectedSchoolAvailableYearLevels}
+              yearLevelStatusArray={yearLevelStatusArray}
               parentYearOptions={yearOptions}
               parentKindyOptions={kinterDayClasses}
               parentKindyClassName={kinterDayClassName}
@@ -1474,7 +1479,7 @@ function NewSchool() {
                 borderRadius: '5px',
               }}
               type="default"
-              onClick={getSchoolData}
+              onClick={() => getSchoolData(selectedSchool)}
             >
               {`Get data for "${selectedSchool.schoolName}"`}
             </Button>
