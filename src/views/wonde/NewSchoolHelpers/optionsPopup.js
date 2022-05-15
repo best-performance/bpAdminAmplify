@@ -196,7 +196,7 @@ export function OptionsPopup({
                 onValueChanged={kindyNameChange}
                 label="Kindy classname to use"
                 height="50px"
-                hint="edit to change the name of kindy classroom"
+                hint="Edit to change the name of kindy classroom"
               />
             </div>
             <div style={{ height: '15px' }}></div>

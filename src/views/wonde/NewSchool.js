@@ -26,6 +26,8 @@ import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSp
 import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CSV file to bucket
 import { sendEmail } from './CommonHelpers/sendEmail'
 import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
+import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromDynamoDB'
+import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -243,7 +245,7 @@ function NewSchool() {
     setIsDeletingSchoolData(true) // loading indicator only
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
     setIsDeletingSchoolData(false) // loading indicator only
-    await getAllSchools() // refresh the display after deletion
+    await listAllSchools() // refresh the display after deletion
   }
 
   // Create a CSV from the filtered data and send to S3
@@ -289,32 +291,8 @@ function NewSchool() {
     // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
     console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
-    // console.log('selectedSchool', selectedSchool)
-    // if (selectedSchool.id) await getUploadedSchoolData(selectedSchool.id)
-    // else {
-    //   console.log('no school selected')
-    // }
+    addWondeIDs(selectedSchool)
   } // end of testFuntion()
-
-  //Function to get the list of Wonde schools already uploaded into DynamoDB
-  async function getEdComSchools() {
-    let credentials
-    try {
-      credentials = await Auth.currentCredentials()
-
-      AWS.config.update({
-        credentials: credentials,
-        region: getRegion(),
-      })
-      const docClient = new AWS.DynamoDB.DocumentClient()
-      let response
-      response = await docClient.scan({ TableName: SCHOOL_TABLE }).promise()
-      return response.Items
-    } catch (err) {
-      console.log(err)
-      return []
-    }
-  } // end getEdComSchools()
 
   // Utility to remove spaces and hyphens from string and convert to upper case
   function compressString(str) {
@@ -322,14 +300,14 @@ function NewSchool() {
   }
 
   // Function to get the list of available schools from Wonde
-  async function getAllSchools() {
+  async function listAllSchools() {
     setIsLoadingSchools(true) // loading indicator
     setSchools([])
     setSelectedSchool({ schoolName: 'none' })
     setIsWondeSchoolDataLoaded(false)
 
     // we need the uploaded schools also to indicate "loaded" on the UI
-    let edComSchools = await getEdComSchools()
+    let edComSchools = await GetAllSchoolsFromDynamoDB()
     console.log('EdComSchools', edComSchools)
 
     // Get all the schools from Wonde
@@ -390,8 +368,9 @@ function NewSchool() {
     setFilteredStudentClassrooms([]) // empty the filtered data TabPanel item
 
     // Get the students->classes->teachers.
-    // TODO: rename getStudentsFromWonde() to getStudentClassroomsFormWOnde()
+    // TODO: rename getStudentsFromWonde() to getStudentClassroomsFromWonde()
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
+    setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
 
     // Scan the Wonde data and make a Map of available year levels
@@ -400,7 +379,8 @@ function NewSchool() {
     wondeStudentsTemp.forEach((classroomStudent) => {
       if (!yearLevelMap.get(classroomStudent.yearCode))
         if (!classroomStudent.yearCode.startsWith('U')) {
-          // Add to the map unless is some unrecognised code (marked as U-xxx by getStudentsFromWonde())
+          // Add to the map unless is some unrecognised code
+          // (marked as U - xxx by getYearCode in getStudentsFromWonde())
           let yearCode = classroomStudent.yearCode
           yearLevelMap.set(yearCode, yearCode)
           yearLevelArray.push(yearCode)
@@ -1343,7 +1323,7 @@ function NewSchool() {
       console.log(err)
     } // end saving classroomStudents
     setIsSavingSchoolData(false) // loading indicator
-    await getAllSchools() // refresh the display after adding school data
+    await listAllSchools() // refresh the display after adding school data
   } // end saveSchoolCSVToDynamoDB()
 
   // changes the tab index using a state variable
@@ -1411,7 +1391,7 @@ function NewSchool() {
           stylingMode="contained"
           style={{ marginBottom: '10px', marginRight: '5px', padding: '3px', borderRadius: '5px' }}
           type="default"
-          onClick={getAllSchools}
+          onClick={listAllSchools}
         >
           List Wonde Schools
         </Button>

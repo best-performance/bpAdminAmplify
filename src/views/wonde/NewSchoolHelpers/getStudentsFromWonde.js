@@ -9,10 +9,7 @@ import { v4 } from 'uuid'
 // requirements so we are querying Wonde directly and filtering in browser
 // at least during development
 
-export async function getStudentsFromWonde(
-  wondeSchoolID,
-  setWondeStudents, // useState() set for wondeStudents
-) {
+export async function getStudentsFromWonde(wondeSchoolID) {
   let wondeStudentsTemp = [] // the data as received from Wonde
 
   switch (wondeSchoolID) {
@@ -31,7 +28,6 @@ export async function getStudentsFromWonde(
   }
 
   //console.log('wondeStudentsTemp', wondeStudentsTemp)
-  setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
   return { wondeStudentsTemp: wondeStudentsTemp }
 }
 
