@@ -16,6 +16,7 @@ const getTeachersBySchool = /* GraphQL */ `
         wondeID
         firstName
         lastName
+        email
       }
     }
   }
@@ -32,9 +33,12 @@ const getSchoolStudentsByYear = /* GraphQL */ `
       nextToken: $nextToken
     ) {
       items {
-        studentID
         student {
           wondeID
+          birthDate
+          firstName
+          lastName
+          id
         }
         yearLevel {
           yearCode
@@ -56,6 +60,7 @@ const getClassByYear = /* GraphQL */ `
       nextToken: $nextToken
     ) {
       items {
+        id
         className
         wondeID
       }
