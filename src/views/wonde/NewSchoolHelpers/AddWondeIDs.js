@@ -41,83 +41,72 @@ export async function addWondeIDs(selectedSchool) {
   // Make unique lists of Students, Classrooms and Teachers from the Wonde Data
   let uniqueWondeClassroomsMap = new Map()
   let uniqueWondeTeachersMap = new Map()
-  let uniqueWondeStudentsMap = new Map() // unique map with firstname,lastname,dob as key
-  let uniqueWondeStudentsMap2 = new Map() // unique map with WondeID as key
-  let uniqueWondeStudentsMap3 = new Map() // unique map with firstname,lastname as key
+  let uniqueWondeStudentsMap = new Map() // unique map with firstname,lastname as key
+  let duplicateWondeStudents = [] // an array of duplicate firstname,lastname pairs in Wonde
 
   wondeStudentsTemp.forEach((student) => {
-    // Make a unique list of students with wonde id as key
-    if (!uniqueWondeStudentsMap2.get(student.id)) {
-      uniqueWondeStudentsMap2.set(student.id, {
-        wondeID: student.id,
-        firstName: student.forename,
-        lastName: student.surname,
-        dob: student.date_of_birth.date,
-      })
-    }
     // Make a unique list of students with wonde firstname,lastname as key
-    if (!uniqueWondeStudentsMap3.get(compressString(student.forename + student.surname))) {
-      uniqueWondeStudentsMap3.set(compressString(student.forename + student.surname), {
-        wondeID: student.id,
-        firstName: student.forename,
-        lastName: student.surname,
-        dob: student.date_of_birth.date,
-      })
+    // If a duplicate if found remove the duplicate from the unique list and add
+    // both records to duplicateWondeStudents[]
+    let studentKey = compressString(student.forename + student.surname)
+    let foundStudent = uniqueWondeStudentsMap.get(studentKey)
+    let newStudent = {
+      // save anything that will help to identify the student later in DynamoDB
+      wondeID: student.id,
+      mis_id: student.mis_id,
+      firstName: student.forename,
+      middleName: student.middle_names ? student.middle_names : null,
+      lastName: student.surname,
+      yearCode: student.yearCode, // not a wonde attribute - put there by getStudentsFromWonde()
+      gender: student.gender,
+      dob: student.date_of_birth.date,
+    }
+    if (!foundStudent) {
+      // add to the unique map
+      uniqueWondeStudentsMap.set(studentKey, newStudent)
     } else {
-      console.log('duplicate name,surname found in Wonde', student.forename, student.surname)
+      // remove from unique map and add to duplicate array
+      uniqueWondeStudentsMap.delete(studentKey)
+      duplicateWondeStudents.push({ ...foundStudent, key: studentKey })
+      duplicateWondeStudents.push({ ...newStudent, key: studentKey })
+      console.log('Duplicate name,surname pair found in Wonde', student.forename, student.surname)
     }
-    // Make another unique list of students with firstname,lastname,birthday as key
-    let studentKey = compressString(
-      student.forename + student.surname + dayjs(student.date_of_birth.date).format('YYYY-MM-DD'),
-    )
-    if (student.surname === 'Dandoush') {
-      console.log('--------------------------------------Wonde', student)
-    }
-    if (!uniqueWondeStudentsMap.get(studentKey)) {
-      uniqueWondeStudentsMap.set(studentKey, {
-        // save anything that will help to identify the student later in DynamoDB
-        wondeID: student.id,
-        mis_id: student.mis_id,
-        firstName: student.forename,
-        middleName: student.middle_names ? student.middle_names : null,
-        lastName: student.surname,
-        yearCode: student.yearCode, // not a wonde attribute - put there by getStudentsFromWonde()
-        gender: student.gender,
-        dob: student.date_of_birth.date,
-      })
-      // Build the unique list of classrooms (hopefully classroom names are unique)
-      student.classes.data.forEach((classroom) => {
-        let classroomKey = compressString(classroom.name)
-        if (!uniqueWondeClassroomsMap.get(classroomKey)) {
-          uniqueWondeClassroomsMap.set(classroomKey, {
-            // save anything that will help to identify the student later in DynamoDB
-            wondeID: classroom.id,
-            mis_id: classroom.mis_id,
-            classroomName: classroom.name,
-          })
-          // Build the unique list of teachers (maybe add email as a better unique identifier)
-          classroom.employees.data.forEach((teacher) => {
-            let teacherKey = compressString(teacher.forename + teacher.surname)
-            if (!uniqueWondeTeachersMap.get(teacherKey)) {
-              uniqueWondeTeachersMap.set(teacherKey, {
-                wondeID: teacher.id,
-                mis_id: teacher.mis_id,
-                firstName: teacher.forename,
-                middleName: student.middle_names ? student.middle_names : null,
-                lastName: teacher.surname,
-              })
-            }
-          })
-        }
-      })
-    }
+
+    // Build the unique list of classrooms (hopefully classroom names are unique)
+    student.classes.data.forEach((classroom) => {
+      let classroomKey = compressString(classroom.name)
+      if (!uniqueWondeClassroomsMap.get(classroomKey)) {
+        uniqueWondeClassroomsMap.set(classroomKey, {
+          // save anything that will help to identify the student later in DynamoDB
+          wondeID: classroom.id,
+          mis_id: classroom.mis_id,
+          classroomName: classroom.name,
+        })
+        // Build the unique list of teachers (maybe add email as a better unique identifier)
+        classroom.employees.data.forEach((teacher) => {
+          let teacherKey = compressString(teacher.forename + teacher.surname)
+          if (!uniqueWondeTeachersMap.get(teacherKey)) {
+            uniqueWondeTeachersMap.set(teacherKey, {
+              wondeID: teacher.id,
+              mis_id: teacher.mis_id,
+              firstName: teacher.forename,
+              middleName: student.middle_names ? student.middle_names : null,
+              lastName: teacher.surname,
+            })
+          }
+        })
+      }
+    })
   })
 
   // 2 student maps have the same length if no name duplicates
+  console.log('uniqueWondeStudentsMap')
   console.dir(uniqueWondeStudentsMap)
-  console.dir(uniqueWondeStudentsMap2)
+  console.log('uniqueWondeClassroomsMap')
   console.dir(uniqueWondeClassroomsMap)
+  console.log('uniqueWondeTeachersMap')
   console.dir(uniqueWondeTeachersMap)
+  console.log('Duplicate firstname,lastname pairs in Wonde:', duplicateWondeStudents)
 
   /*******************************************
    *  Retrieve the DynamoDB data for this school
@@ -134,14 +123,63 @@ export async function addWondeIDs(selectedSchool) {
    *   Identify the corresponding unique record from Wonde
    *   Add the WondeID and mis_id of that record to the Elastik record
    ******************************************/
-  // Check if duplicates of firstName, lastName in Dynamo
+
+  // Make a unique list of students with DynamoDB students with firstname,lastname as key
+  // If a duplicate if found remove the duplicate from the unique list and add
+  // both records to duplicateWondeStudents[]
+
+  let duplicateDynamoStudents = []
   let uniqueDynamoStudentsMap = new Map()
   uploadedStudents.forEach((student) => {
-    let key = compressString(student.student.firstName + student.student.lastName)
-    if (!uniqueDynamoStudentsMap.get(key)) {
-      uniqueDynamoStudentsMap.set(key, {})
+    let newStudent = {
+      firstName: student.student.firstName,
+      lastName: student.student.lastName,
+      dob: student.student.birthDate,
+      id: student.student.id,
+    }
+    let studentKey = compressString(student.student.firstName + student.student.lastName)
+    let foundStudent = uniqueDynamoStudentsMap.get(studentKey)
+    if (!foundStudent) {
+      // add to the unique map
+      uniqueDynamoStudentsMap.set(studentKey, newStudent)
     } else {
-      console.log('Duplicate student name found', student)
+      // remove from unique map and add to duplicate array
+      uniqueDynamoStudentsMap.delete(studentKey)
+      duplicateDynamoStudents.push({ ...foundStudent, key: studentKey })
+      duplicateDynamoStudents.push({ ...newStudent, key: studentKey })
+      console.log(
+        'Duplicate name,surname pair found in DynamoDB',
+        student.student.firstName,
+        student.student.lastName,
+      )
+    }
+  })
+
+  // make the maps into arrays for simpler processing
+  const uniqueDynamoStudents = Array.from(uniqueDynamoStudentsMap.values())
+
+  uniqueDynamoStudents.forEach((student, index) => {
+    let studentKey = compressString(student.firstName + student.lastName)
+    let foundStudent = uniqueWondeStudentsMap.get(studentKey)
+    if (foundStudent) {
+      // compare the birthdates for fun, so we can update it if its wrong in Dynamo
+      if (
+        dayjs(foundStudent.dob).format('YYYY-MM-DD') !== dayjs(student.dob).format('YYYY-MM-DD')
+      ) {
+        console.log(
+          index,
+          'Birthdates no match:',
+          studentKey,
+          'Wonde:',
+          foundStudent.dob,
+          'DynamoDB',
+          student.dob,
+        )
+      }
+      student.wondeID = foundStudent.wondeID
+      student.mis_id = foundStudent.mis_id
+    } else {
+      console.log('DynamoDB Student not found in Wonde', foundStudent)
     }
   })
 
@@ -166,29 +204,9 @@ export async function addWondeIDs(selectedSchool) {
       console.log(`teacher ${teacher} not found`)
     }
   })
-
-  // check if we need to use DoB as a differentiator
-  if (uniqueWondeStudentsMap.size === uniqueWondeStudentsMap2.size) {
-    // There are no duplicate names
-    uploadedStudents.forEach((student) => {
-      if (student.student.lastName === 'Dandoush') {
-        console.log('-------------------------------------- Dynamo', student)
-        console.log('key', compressString(student.student.firstName + student.student.lastName))
-      }
-      let foundStudent = uniqueWondeStudentsMap3.get(
-        compressString(student.student.firstName + student.student.lastName),
-      )
-      if (foundStudent) {
-        student.student.wondeID = foundStudent.wondeID
-        student.student.mis_id = foundStudent.mis_id
-      } else {
-        console.log('Student not found', student)
-      }
-    })
-  } else {
-    console.log('There are duplicate students by name')
-  }
-  console.log('uploaded Classrooms with WondeIDs', uploadedClassrooms)
-  console.log('uploaded Teachers with WondeIDs', uploadedTeachers)
-  console.log('uploaded Students with WondeIDs', uploadedStudents)
+  console.log('uploaded Students raw', uploadedStudents)
+  console.log('Duplicate student firstname,lastname pairs in DynamoDB', duplicateDynamoStudents)
+  console.log('uploaded Classrooms with id, WondeIDs and mis_ids', uploadedClassrooms)
+  console.log('uploaded Teachers with with email, WondeIDs and mis_ids', uploadedTeachers)
+  console.log('Uniquely named Students with id, WondeIDs and mis_ids', uniqueDynamoStudents)
 }

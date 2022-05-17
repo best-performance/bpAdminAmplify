@@ -121,7 +121,7 @@ export async function getUploadedSchoolData(schoolID) {
       teachers = [...teachers, ...response.data.getTeachersBySchool.items]
       console.log('Teachers already uploaded', teachers)
       nextToken = response.data.getTeachersBySchool.nextToken
-      console.log('eachers nextToken', nextToken ? nextToken : 'Empty')
+      console.log('Teachers nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
 
     return {
