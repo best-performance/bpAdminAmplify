@@ -21,9 +21,10 @@ export function formatStudentClassrooms(
     let gender = getGender(student.gender)
 
     let dob
-    if (dayjs(student.date_of_birth.date).isValid())
+    // if the raw dob from Wonde is not valid, then substitute a placeholder
+    if (dayjs(student.date_of_birth.date).isValid()) {
       dob = dayjs(student.date_of_birth.date).format('DD/MM/YYYY')
-    else dob = '01/01/1999' // dummy placeholder
+    } else dob = '01/01/1999' // dummy placeholder
 
     // compose an email address - could be a duplicate but we only check at point of
     // creating the Cognito entry - which will scream if duplicate exists

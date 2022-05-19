@@ -7,12 +7,12 @@ import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import { confirm } from 'devextreme/ui/dialog' // confirmation dialog
 import { LoadPanel } from 'devextreme-react/load-panel' // loading indicator
 
-import dayjs from 'dayjs'
 //import _ from 'lodash'
 import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
 // Helper functions
+import { updateAWSCredentials } from './CommonHelpers/updateAWSCredentials'
 import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
 import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
@@ -28,6 +28,10 @@ import { sendEmail } from './CommonHelpers/sendEmail'
 import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
 import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromDynamoDB'
 import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
+
+import dayjs from 'dayjs'
+var customParseFormat = require('dayjs/plugin/customParseFormat')
+dayjs.extend(customParseFormat)
 
 // Note: We use env-cmd to read .env.local which contains environment variables copied from Amplify
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
@@ -280,16 +284,16 @@ function NewSchool() {
 
   async function testFunction() {
     console.log('testFuntion() invoked')
-    console.log('yearLevels', yearLevelsLookup)
-    console.log('countries', countriesLookup)
-    console.log('states', statesLookup)
-    console.log('learningAreas', learningAreasLookup)
+    // console.log('yearLevels', yearLevelsLookup)
+    // console.log('countries', countriesLookup)
+    // console.log('states', statesLookup)
+    // console.log('learningAreas', learningAreasLookup)
     console.log('environment variables available')
     console.log(`REGION ${process.env.REACT_APP_REGION}`) //
-    console.log(`USER_POOL_ID ${USER_POOL_ID}`) //
-    console.log(`USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`) //
-    // console.log(`ENDPOINT ${process.env.REACT_APP_ENDPOINT}`) //
-    console.log(`IDENTITY_POOL(_ID) ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
+    console.log(`EDCOMPANION COGNITO USER_POOL_ID ${USER_POOL_ID}`) //
+    console.log(`BPADMIN COGNITO USER_POOL_ID ${process.env.REACT_APP_USER_POOL_ID}`) //
+    console.log(`BPADMIN COGNITO USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`)
+    console.log(`BPADMIN COGNITO IDENTITY_POOL_ID ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
     addWondeIDs(selectedSchool)
   } // end of testFuntion()
@@ -349,7 +353,8 @@ function NewSchool() {
       setSelectedSchool(school)
       setIsUploaded(school.isLoaded)
       setIsManuallyUploaded(school.isManual)
-      console.log('school at 330', school)
+      setStudentClassrooms([])
+      setFilteredStudentClassrooms([])
     })
     setIsWondeSchoolDataLoaded(false)
   }, [])
@@ -392,7 +397,7 @@ function NewSchool() {
     })
 
     // Retrieve any data (year levels) already uploaded for this school
-    // Note: uploadedClassrooms, uploadedeachers are used later when saving the school.
+    // Note: uploadedClassrooms, uploadedTeachers are used later when saving the school.
     let uploadedYearLevels = new Map()
     if (selectedSchool.isLoaded && !selectedSchool.isManual) {
       let { uploadedClassrooms, uploadedTeachers, uploadedStudents } = await getUploadedSchoolData(
@@ -404,7 +409,10 @@ function NewSchool() {
       setUploadedStudents(uploadedStudents)
 
       //make a unique list of uploaded year codes (year codes are K,Y1 etc)
-      uploadedStudents.forEach((student) => {
+      uploadedStudents.forEach((student, index) => {
+        if (index === 0) {
+          console.log('************************', student)
+        }
         if (!uploadedYearLevels.get(student.yearLevel.yearCode))
           uploadedYearLevels.set(student.yearLevel.yearCode, student.yearLevel.yearCode)
       })
@@ -487,7 +495,7 @@ function NewSchool() {
         SCHOOL_WONDE_INDEX,
       )
     } catch (err) {
-      console.log(`Error saving school ${selectedSchool.wondeID}`, err)
+      console.log(`Error saving school ${selectedSchool.schoolName}`, err)
       return
     }
     let schoolID = response.schoolID // the EC id of the saved School
@@ -1032,9 +1040,10 @@ function NewSchool() {
 
           // Converting the original wonde values set for gender,dob to the ones required by the student table in dynamo
           let gender = uniqueStudentsArray[index].gender
-          let dob = '1999-01-01'
-          if (dayjs(uniqueStudentsArray[index].dob).isValid())
-            dob = dayjs(uniqueStudentsArray[index].dob).format('YYYY-MM-DD')
+
+          // All dobs here have been formatted as 'DD/MM/YYYY' or placeholder '01/01/1900'
+          // dayJS needs to know we are passing 'DD/MM/YYYY' format (needs custtomParseFormat installed)
+          let dob = dayjs(uniqueStudentsArray[index].dob, 'DD/MM/YYYY').format('YYYY-MM-DD')
 
           batchToWrite.push({
             PutRequest: {
@@ -1395,7 +1404,7 @@ function NewSchool() {
         >
           List Wonde Schools
         </Button>
-        {loggedIn.username === 'brendan' && (
+        {loggedIn.username === 'brendan' && false && (
           <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
             run testFunction()
           </Button>
@@ -1516,21 +1525,24 @@ function NewSchool() {
               {`Add Wonde IDs to "${selectedSchool.schoolName}"`}
             </Button>
           )}
-          {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
-            <Button
-              stylingMode="contained"
-              style={{
-                marginBottom: '10px',
-                marginRight: '5px',
-                padding: '3px',
-                borderRadius: '5px',
-              }}
-              type="default"
-              onClick={() => saveSchoolCSVtoDynamoDB(selectedSchool)}
-            >
-              {`Upload "${selectedSchool.schoolName}"`}
-            </Button>
-          )}
+          {isWondeSchoolDataLoaded &&
+            isDataFiltered &&
+            !isManuallyUploaded &&
+            filteredStudentClassrooms.length > 0 && (
+              <Button
+                stylingMode="contained"
+                style={{
+                  marginBottom: '10px',
+                  marginRight: '5px',
+                  padding: '3px',
+                  borderRadius: '5px',
+                }}
+                type="default"
+                onClick={() => saveSchoolCSVtoDynamoDB(selectedSchool)}
+              >
+                {`Upload "${selectedSchool.schoolName}"`}
+              </Button>
+            )}
           {isWondeSchoolDataLoaded && isDataFiltered && filteredStudentClassrooms.length > 0 && (
             <Button
               stylingMode="contained"

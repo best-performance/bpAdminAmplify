@@ -40,21 +40,18 @@ export async function saveSchool(
     return { schoolID: null }
   }
 
-  // Save the school since its not already in the database
-  let schoolID = v4() // random uuid generator
-  // locate the EdCompanion countryID
-
+  // locate the EdCompanion countryID and stateID
   let country = countriesLookup.find((country) => country.name === selectedSchool.country)
-
   const noCountry = countriesLookup.find((country) => country.name === 'NO COUNTRY')
-
   const noState = statesLookup.find((state) => state.name === 'NO STATE')
 
-  //console.log("Country:", country);
+  // Save the school since its not already in the database
+  let schoolID = v4() // random uuid generator
   const params = {
     TableName: tableName,
     Item: {
       id: schoolID, // this is the EdC id
+      MISID: selectedSchool.urn, // This is the schoolss urn (Not mis_id as named)
       wondeID: selectedSchool.wondeID, // not in EdC
       schoolName: selectedSchool.schoolName,
       // address: selectedSchool.address1, // not in EdC
