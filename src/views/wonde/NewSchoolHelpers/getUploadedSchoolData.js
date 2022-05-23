@@ -63,6 +63,18 @@ const getClassByYear = /* GraphQL */ `
         id
         className
         wondeID
+        teachers {
+          items {
+            email
+          }
+        }
+        yearLevels {
+          items {
+            yearLevel {
+              yearCode
+            }
+          }
+        }
       }
       nextToken
     }

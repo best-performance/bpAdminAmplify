@@ -104,6 +104,11 @@ function NewSchool() {
   const [uploadedTeachers, setUploadedTeachers] = useState([])
   const [uploadedStudents, setUploadedStudents] = useState([])
 
+  // These are to display students,teachers and classrooms from DynamoDB that cant be
+  // positively matched to records in Wonde
+  // Its populated in <AddWondeIDs>
+  const [unmatchedStudents, setUnmatchedStudents] = useState([])
+
   // This one is for the CSV Format-RAW tab (as per the standard upload spreadsheet)
   const [studentClassrooms, setStudentClassrooms] = useState([])
   // This one is for the CSV Format-Filtered tab (as per the standard upload spreadsheet)
@@ -150,7 +155,7 @@ function NewSchool() {
   }
 
   // Button callback to add WondeIDs to manually uploaded school
-  async function AddWondeIDs(selectedSchool) {
+  async function AddWondeIDs(selectedSchool, setUnmatchedStudents) {
     // Do a final confirmation with the user
     let confirmed = await confirm(
       `<i>Add WondeIDs to ${selectedSchool.schoolName}</i>`,
@@ -295,7 +300,7 @@ function NewSchool() {
     console.log(`BPADMIN COGNITO USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`)
     console.log(`BPADMIN COGNITO IDENTITY_POOL_ID ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
-    addWondeIDs(selectedSchool)
+    addWondeIDs(selectedSchool, setUnmatchedStudents)
   } // end of testFuntion()
 
   // Utility to remove spaces and hyphens from string and convert to upper case
@@ -355,6 +360,7 @@ function NewSchool() {
       setIsManuallyUploaded(school.isManual)
       setStudentClassrooms([])
       setFilteredStudentClassrooms([])
+      setUnmatchedStudents([])
     })
     setIsWondeSchoolDataLoaded(false)
   }, [])
@@ -1404,7 +1410,7 @@ function NewSchool() {
         >
           List Wonde Schools
         </Button>
-        {loggedIn.username === 'brendan' && false && (
+        {loggedIn.username === 'brendan' && (
           <Button style={{ marginBottom: '10px' }} stylingMode="outlined" onClick={testFunction}>
             run testFunction()
           </Button>
@@ -1641,6 +1647,30 @@ function NewSchool() {
               </CRow>
             </CContainer>
           </Item>
+          {unmatchedStudents.length > 0 && (
+            <Item title="Unmatched Students">
+              <CContainer>
+                <CRow>
+                  <DataGrid
+                    id="dataGrid"
+                    //keyExpr="wondeStudentId"
+                    showBorders={true}
+                    hoverStateEnabled={true}
+                    allowColumnReordering={true}
+                    columnAutoWidth={true}
+                    dataSource={unmatchedStudents}
+                  >
+                    <SearchPanel visible={true} />
+                    <Column caption="First Name" dataField="firstName" />
+                    <Column caption="Last Name" dataField="lastName" />
+                    <Column caption="DoB" dataField="birthDate" />
+                    <Column caption="Reason" dataField="reason" />
+                    <Column caption="DynamoDB student ID" dataField="id" />
+                  </DataGrid>
+                </CRow>
+              </CContainer>
+            </Item>
+          )}
         </TabPanel>
       </CRow>
     </CContainer>
