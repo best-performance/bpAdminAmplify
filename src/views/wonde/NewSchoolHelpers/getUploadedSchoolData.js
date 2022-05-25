@@ -96,10 +96,10 @@ export async function getUploadedSchoolData(schoolID) {
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
       classrooms = [...classrooms, ...response.data.getClassByYear.items]
-      console.log('Classrooms already uploaded', classrooms)
       nextToken = response.data.getClassByYear.nextToken
       console.log('Classrooms nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
+    console.log('Classrooms read from DynamoDB', classrooms)
 
     // get the students
     let students = [] // must be empty array to make it iterable
@@ -111,10 +111,10 @@ export async function getUploadedSchoolData(schoolID) {
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
       students = [...students, ...response.data.getSchoolStudentsByYear.items]
-      console.log('Students already uploaded', students)
       nextToken = response.data.getSchoolStudentsByYear.nextToken
       console.log('Students nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
+    console.log('Students read from DynamoDB', students)
 
     // get the teachers ()
     let teachers = []
@@ -131,10 +131,10 @@ export async function getUploadedSchoolData(schoolID) {
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
       teachers = [...teachers, ...response.data.getTeachersBySchool.items]
-      console.log('Teachers already uploaded', teachers)
       nextToken = response.data.getTeachersBySchool.nextToken
       console.log('Teachers nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
+    console.log('Teachers read from DynamoDB', teachers)
 
     return {
       uploadedClassrooms: classrooms,

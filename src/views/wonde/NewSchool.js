@@ -28,6 +28,7 @@ import { sendEmail } from './CommonHelpers/sendEmail'
 import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
 import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromDynamoDB'
 import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
+import { fixDobs } from './NewSchoolHelpers/fixDobs'
 
 import dayjs from 'dayjs'
 var customParseFormat = require('dayjs/plugin/customParseFormat')
@@ -300,7 +301,9 @@ function NewSchool() {
     console.log(`BPADMIN COGNITO USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`)
     console.log(`BPADMIN COGNITO IDENTITY_POOL_ID ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
-    addWondeIDs(selectedSchool, setUnmatchedStudents)
+    // addWondeIDs(selectedSchool, setUnmatchedStudents)
+    // test function to fix the dobs
+    fixDobs(selectedSchool)
   } // end of testFuntion()
 
   // Utility to remove spaces and hyphens from string and convert to upper case

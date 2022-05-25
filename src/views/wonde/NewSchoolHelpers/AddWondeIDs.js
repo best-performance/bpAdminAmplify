@@ -31,6 +31,11 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
   )
   if (matchingDynamoDBSchool) {
     console.log('Selected School found', matchingDynamoDBSchool)
+  } else {
+    // Should not reach here...
+    console.log('Exiting addWondeIDs()......')
+    console.log('Selected school not found in DynamoDB', selectedSchool.schoolName)
+    return
   }
 
   /*******************************************
@@ -38,7 +43,7 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
    *  and make unique lists, with firstname-surname keys
    ******************************************/
   let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID)
-  console.log('raw wonde data', wondeStudentsTemp)
+  console.log('Student->classrooms->teachers read from Wonde', wondeStudentsTemp)
 
   // Make unique lists of Students, Classrooms and Teachers from the Wonde Data
   let uniqueWondeClassroomsMap = new Map()
@@ -47,32 +52,43 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
   let duplicateWondeStudents = [] // an array of duplicate firstname,lastname pairs in Wonde
 
   wondeStudentsTemp.forEach((student) => {
-    // Make a unique list of Wonde students with firstname,lastname as key
-    // If a duplicate if found remove the duplicate from the unique list and add
-    // both records to duplicateWondeStudents[]
-    let studentKey = compressString(student.forename + student.surname)
-    let foundStudent = uniqueWondeStudentsMap.get(studentKey)
+    // Extract soem of the key fields to identfiy teh student and record the
+    // ids to be added to the matchin DynamoDB record
+    // Note: yearCode is set by getStudentsFromWonde() as 1,2,......12,13,FY etc
     let newStudent = {
-      // save anything that will help to identify the student later in DynamoDB
-      // Note: yearCode is set by getStudentsFromWonde() as 1,2,......12,13,FY etc
       wondeID: student.id,
       MISID: student.mis_id,
       firstName: student.forename,
       middleName: student.middle_names ? student.middle_names : null,
       lastName: student.surname,
-      yearCode: student.yearCode, // not a wonde attribute - put there by getStudentsFromWonde()
+      yearCode: student.yearCode, //put there by getStudentsFromWonde()
       gender: student.gender,
-      birthDate: student.date_of_birth.date,
+      birthDate: dayjs(student.date_of_birth.date).format('YYYY-MM-DD'),
     }
-    if (!foundStudent) {
-      // add to the unique map
-      uniqueWondeStudentsMap.set(studentKey, newStudent)
-    } else {
-      // remove from unique map and add to duplicate array
-      uniqueWondeStudentsMap.delete(studentKey)
-      duplicateWondeStudents.push({ ...foundStudent, key: studentKey })
+    // Make a unique list of Wonde students with (firstname,lastname,Dob) as key
+    // Check if the (firstname,lastname,dob) key is already in either the
+    // duplicate list or the uniques list. If so remove from the unique list and
+    // add to the duplicate list.
+    let studentKey = compressString(
+      newStudent.firstName + newStudent.lastName + newStudent.birthDate,
+    )
+    // If the student is already a duplicate, push it to the duplicate array
+    if (duplicateWondeStudents.find((student) => student.studentKey === studentKey)) {
       duplicateWondeStudents.push({ ...newStudent, key: studentKey })
-      console.log('Duplicate name,surname pair found in Wonde', student)
+      console.log('Duplicate Wonde student found in duplicate list', student)
+    } else {
+      // not in duplicate list so look for it in the unique list
+      let foundStudent = uniqueWondeStudentsMap.get(studentKey)
+      if (!foundStudent) {
+        // add to the unique map
+        uniqueWondeStudentsMap.set(studentKey, newStudent)
+      } else {
+        // remove from unique map and add to duplicate array
+        uniqueWondeStudentsMap.delete(studentKey)
+        duplicateWondeStudents.push({ ...foundStudent, key: studentKey })
+        duplicateWondeStudents.push({ ...newStudent, key: studentKey })
+        console.log('Duplicate Wonde student found in unique list', student)
+      }
     }
 
     // Build the unique list of classrooms
@@ -119,7 +135,7 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
   console.dir(uniqueWondeClassroomsMap)
   console.log('uniqueWondeTeachersMap')
   console.dir(uniqueWondeTeachersMap)
-  console.log('Duplicate student firstname,lastname pairs in Wonde:', duplicateWondeStudents)
+  console.log('Duplicate students in Wonde:', duplicateWondeStudents)
 
   /*******************************************
    *  Retrieve the DynamoDB data for this school
@@ -131,85 +147,43 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
     selectedSchool.id,
   )
 
-  // Note: uploaded DynamoDB students may not all be matched to a Wonde student for 3 reasons:
+  // Note: uploaded DynamoDB students may not all be matched to a Wonde student for 2 reasons:
   //   1) if the DynamoDB student has no matches in Wonde
-  //   2) if the DynamoDB student matches more than one record in Wonde and cant be resolved by DoB
-  //   3) if the DynamoDB student has the same name as another DynamoDB student
+  //   2) if the DynamoDB student has multiple matches in Wonde
+  //   3) If the DynamoDB student has multiples matches in Dynamo
   // So make 2 lists of students:
   //   First list has the dynamoDB students that are matched (uniqueDynamoStudentsMap)
   //   Second list has the dynamoDB students that are unmatched (unMatchedStudent[])
   // Need to display the unmatched list for the user - showing the reason.
 
-  /**
-   *    foundInWonde = false
-   *    unresolvedDuplicate = false
-   * 1) if the student is in uniqueWondeStudents
-   *       foundInWonde = true
-   *    else
-   *       if the student is in duplicateWondeStudents
-   *           if resolved by Dob
-   * 2)           foundInWonde = true
-   *           else
-   *              add to unmatched[] reason:"unmatched Wonde Duplicate"
-   *       else
-   *           add to unmatched[] reason: "not found in Wonde"
-   * 3) if (foundInWonde)
-   *       if student is already in uniqueDynamoDBStudents
-   *           add to unmatched[] reason: "DynamoDB Duplicate"
-   *       else
-   *           add to uniqueDynamoDBStudents
-   *           add the Wonde IDs etc
-   */
-
-  let unMatchedStudents = [] // an array of students that cant be matched as above
-  let uniqueDynamoStudentsMap = new Map()
-  uploadedStudents.forEach((student, index) => {
+  let unMatchedStudents = [] // DynamoDB students unmatched to WondeStudents
+  let uniqueDynamoStudentsMap = new Map() // DynamoDB students uniquely matched to WondeStudents
+  uploadedStudents.forEach((student) => {
     let newStudent = {
       firstName: student.student.firstName,
       lastName: student.student.lastName,
-      birthDate: student.student.birthDate,
+      birthDate: dayjs(student.student.birthDate).format('YYYY-MM-DD'),
       id: student.student.id,
     }
     // Try to find the DynamoDB record in either uniqueWondeStudents or duplicateWondeStudents
     let foundWondeStudent = null
-    let studentKey = compressString(student.student.firstName + student.student.lastName)
+    let studentKey = compressString(
+      newStudent.firstName + newStudent.lastName + newStudent.birthDate,
+    )
     // is the student in uniqueWondeStudentsMap?
     foundWondeStudent = uniqueWondeStudentsMap.get(studentKey)
     if (!foundWondeStudent) {
-      // check if the student is in duplicateWondeStudents[]
-      let foundInWondeDuplicates = duplicateWondeStudents.filter(
-        (duplicateStudent) => duplicateStudent.key === studentKey,
-      )
-      if (foundInWondeDuplicates.length <= 0) {
-        // not in either wonde lists so we can bail out
-        unMatchedStudents.push({ ...newStudent, key: studentKey, reason: 'Not in Wonde' })
+      // check if in the duplicates list
+      let reason
+      if (duplicateWondeStudents.find((student) => student.studentKey === studentKey)) {
+        reason = 'DynamoDB student has duplicates in Wonde'
       } else {
-        // its in the duplicate list so look for exactly one match
-        let doBMatches = foundInWondeDuplicates.filter((student) => {
-          if (
-            dayjs(student.birthDate).format('YYYY-MM-DD') ===
-            dayjs(newStudent.birthDate).format('YYYY-MM-DD')
-          ) {
-            return true
-          }
-          return false
-        })
-        if (doBMatches.length === 1) {
-          foundWondeStudent = doBMatches[0] // found a unique match on dob
-          console.log('Unique match on DoB found in duplicateWondeStudents', foundWondeStudent)
-        } else {
-          // is in the duplicate list but dobs dont match - so bail out
-          unMatchedStudents.push({
-            ...newStudent,
-            key: studentKey,
-            reason: 'Unmatched Duplicate in Wonde',
-          })
-        }
+        reason = 'DynamoDB student not found in Wonde'
       }
-    }
-    // if the student was found in Wonde can now check for duplicates in uniqueDynamoStudents
-    if (foundWondeStudent) {
-      // is the student already in uniqueDynamoDBMap?
+      unMatchedStudents.push({ ...newStudent, key: studentKey, reason: reason })
+    } else {
+      // The student is uniquely matched to a Wonde student
+      // Is the student already in uniqueDynamoDBMap?
       let foundDynamDBStudent = uniqueDynamoStudentsMap.get(studentKey)
       if (foundDynamDBStudent) {
         // Its a duplicate so remove from unique map
@@ -222,15 +196,8 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
         })
         unMatchedStudents.push({ ...newStudent, key: studentKey, reason: 'Duplicate in DynamoDB' })
       } else {
-        // compare the birthdates, and print them out if different (just for info)
-        let wondeDob = dayjs(foundWondeStudent.birthDate).format('YYYY-MM-DD')
-        let dynamoDBDob = dayjs(newStudent.birthDate).format('YYYY-MM-DD')
-        if (wondeDob !== dynamoDBDob) {
-          console.log(index, studentKey, 'Wonde DoB', wondeDob, 'dynamoDB', dynamoDBDob)
-        }
-        // Update the birthdates in case they were uploaded wrongly
+        // Add the WondeIDs to the student record for saving
         let wondeData = {
-          birthDate: wondeDob,
           MISID: foundWondeStudent.MISID,
           wondeID: foundWondeStudent.wondeID,
         }
@@ -245,11 +212,12 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
 
   // make the map into an array for simpler processing
   let uniqueDynamoStudents = Array.from(uniqueDynamoStudentsMap.values())
-
-  let uniqueDynamoClasses = Array.from(uniqueWondeClassroomsMap.values())
-  console.log('unique DynamoDB Classes Array', uniqueDynamoClasses)
+  console.log('Unique Dynamo Students with id, WondeIDs and MISID', uniqueDynamoStudents)
+  console.log('Unmatched students from DynamoDB', unMatchedStudents)
 
   // Match up Wonde and Dynamo Classrooms
+  let uniqueDynamoClasses = Array.from(uniqueWondeClassroomsMap.values())
+  console.log('unique DynamoDB Classes Array', uniqueDynamoClasses)
   uploadedClassrooms.forEach((classroom) => {
     let teacherEmail =
       classroom.teachers && classroom.teachers.items && classroom.teachers.items.length > 0
@@ -275,7 +243,6 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
 
   // Match up Wonde and Dynamo Teachers
   uploadedTeachers.forEach((teacher) => {
-    if (teacher.lastName === 'Walsh') console.log('+++++++Found teacher Walsh')
     let foundTeacher = uniqueWondeTeachersMap.get(
       compressString(teacher.firstName + teacher.lastName),
     )
@@ -287,11 +254,9 @@ export async function addWondeIDs(selectedSchool, setUnmatchedStudents) {
       console.log(`Teacher not found`, teacher)
     }
   })
-  console.log('Uploaded Students raw', uploadedStudents)
-  console.log('Unmatched students from DynamoDB', unMatchedStudents)
+
   console.log('Uploaded Unique Classrooms with id, WondeIDs and MISID', uploadedClassrooms)
   console.log('Uploaded Unique Teachers with with email, WondeIDs and MISIDs', uploadedTeachers)
-  console.log('Uploaded Unique Students with id, WondeIDs and MISID', uniqueDynamoStudents)
 
   /*************************************************************
    * Save the WondeIDs and MISIDs and fix student birthDates if wrong
