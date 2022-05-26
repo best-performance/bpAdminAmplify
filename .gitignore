@@ -16,11 +16,10 @@ amplify-copy.yml
 .DS_Store
 .idea
 .env.local
-.env.dev.UK.local
-.env.UK.local
+.env.devUK.local
+.env.prodUK.local
 .env.AU.local
-.env.prod.UK.local
-.env.dev.AUS.local
+.env.devAUS.local
 .env.development.local
 .env.test.local
 .env.production.local

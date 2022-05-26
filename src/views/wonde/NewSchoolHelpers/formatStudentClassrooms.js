@@ -46,8 +46,13 @@ export function formatStudentClassrooms(
       classroomPart.CwondeId = classroom.id // need to make unique list for upload
       classroomPart.Cmis_id = classroom.mis_id // need to make unique list for upload
       classroomPart.classroomName = classroom.name
-      // subject can be an object in the raw data, but we convert to a string in the filtered data
-      // and both of these cases pass here - hence the test.
+      // Notes on subject.
+      // formatStudentCalssrooms() can be called to process raw data from Wonde or
+      // to process filtered data after doOptionsFilteringGeneric()
+      // When processing raw data we try to fill in the subject as below
+      // When processing filtered data doOptionsFilteringGeneric() will have already
+      // filled in classroom.subject as a string - so that will pass here untouched.
+      // This explains why the code below is duplicated in doOptionsFilteringGeneric()
       // ALSO: "subject" is not part of the csv format, but used to get classroomLearningArea
       classroomPart.subject = ''
       if (classroom.subject) {
@@ -59,12 +64,6 @@ export function formatStudentClassrooms(
           }
         }
       }
-      // } else {
-      //   if (classroom.name.includes('Mathematics')) classroom.subject = 'Mathematics'
-      //   else if (classroom.name.includes('English')) classroom.subject = 'English'
-      //   else if (classroom.name.includes('Science')) classroom.subject = 'Science'
-      //   else if (classroom.name.includes('Technology')) classroom.subject = 'Technology'
-      // }
       classroomPart.classroomId = classroom.id
 
       // now process the teacher(s) - may be none, 1, multiple teachers per classroom

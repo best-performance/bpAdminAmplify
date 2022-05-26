@@ -383,7 +383,7 @@ function NewSchool() {
 
     // Get the students->classes->teachers.
     // TODO: rename getStudentsFromWonde() to getStudentClassroomsFromWonde()
-    let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID, setWondeStudents)
+    let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID)
     setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
 

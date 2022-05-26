@@ -1,4 +1,10 @@
 import _ from 'lodash'
+
+// Utility to remove spaces and hyphens from string and convert to upper case
+// Note compressString() duplicated in several modules
+function compressString(str) {
+  return str.replace(/'|\s/g, '').toUpperCase()
+}
 // This is a generic filtering function that should be OK for most schools
 export function doOptionsFilteringGeneric(
   wondeStudents, // as read by getStudentsFromWonde() BEFORE formatStudentClassrooms()
@@ -46,6 +52,7 @@ export function doOptionsFilteringGeneric(
             let subjectName = null
             // Try to find a subject so we can later add classroomLearningArea
             // If subject not stated explicitely, then classroom names could provide a hints
+            // Note: next tests are duplicated in formStudentClassrooms() - see notes there for why
             if (classroom.subject && classroom.subject.data && classroom.subject.data.name) {
               subjectName = classroom.subject.data.name
             } else if (classroom.subject && typeof classroom.subject === 'string') {
@@ -55,26 +62,30 @@ export function doOptionsFilteringGeneric(
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"
             if (subjectName) {
-              if (subjectName.includes('Mathematics') || subjectName.includes('Maths')) {
+              compressString(subjectName) // convert to upper case and remove spaces
+              if (
+                (subjectName.includes('MATHEMATIC') || subjectName.includes('MATH')) &&
+                subjectName.length < 20 //try to get rid of special math events that are not classes
+              ) {
                 classroom.subject = 'Mathematics'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('English')) {
+              } else if (subjectName.includes('ENGLISH')) {
                 classroom.subject = 'English'
                 filteredClasses.push(classroom)
               } else if (
-                subjectName.includes('Science') &&
-                !subjectName.includes('Domestic') &&
-                !subjectName.includes('Social')
+                subjectName.includes('SCIENCE') &&
+                !subjectName.includes('DOMESTIC') &&
+                !subjectName.includes('SOCIAL')
               ) {
-                classroom.subject = 'Science'
+                classroom.subject = 'SCIENCE'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('Biology')) {
+              } else if (subjectName.includes('BIOLOGY')) {
                 classroom.subject = 'Science (Bi)'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('Chemistry')) {
+              } else if (subjectName.includes('CHEMISTRY')) {
                 classroom.subject = 'Science (Ch)'
                 filteredClasses.push(classroom)
-              } else if (subjectName.includes('Physics')) {
+              } else if (subjectName.includes('PHYSICS')) {
                 classroom.subject = 'Science (Ph)'
                 filteredClasses.push(classroom)
               }
