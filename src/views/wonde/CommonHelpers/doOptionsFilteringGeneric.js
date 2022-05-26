@@ -62,7 +62,7 @@ export function doOptionsFilteringGeneric(
             // Some schools have Science but also Physics, chemistry, Biology
             // Traps here might be "Domestic Science" maybe also "English Literature"
             if (subjectName) {
-              compressString(subjectName) // convert to upper case and remove spaces
+              subjectName = compressString(subjectName) // convert to upper case and remove spaces
               if (
                 (subjectName.includes('MATHEMATIC') || subjectName.includes('MATH')) &&
                 subjectName.length < 20 //try to get rid of special math events that are not classes
@@ -77,7 +77,7 @@ export function doOptionsFilteringGeneric(
                 !subjectName.includes('DOMESTIC') &&
                 !subjectName.includes('SOCIAL')
               ) {
-                classroom.subject = 'SCIENCE'
+                classroom.subject = 'Science'
                 filteredClasses.push(classroom)
               } else if (subjectName.includes('BIOLOGY')) {
                 classroom.subject = 'Science (Bi)'
