@@ -104,6 +104,8 @@ function NewSchool() {
   const [uploadedClassrooms, setUploadedClassrooms] = useState([])
   const [uploadedTeachers, setUploadedTeachers] = useState([])
   const [uploadedStudents, setUploadedStudents] = useState([])
+  const [uploadedClassroomStudents, setUploadedClassroomStudents] = useState([])
+  const [uploadedClassroomTeachers, setUploadedClassroomTeachers] = useState([])
 
   // These are to display students,teachers and classrooms from DynamoDB that cant be
   // positively matched to records in Wonde
@@ -409,13 +411,19 @@ function NewSchool() {
     // Note: uploadedClassrooms, uploadedTeachers are used later when saving the school.
     let uploadedYearLevels = new Map()
     if (selectedSchool.isLoaded && !selectedSchool.isManual) {
-      let { uploadedClassrooms, uploadedTeachers, uploadedStudents } = await getUploadedSchoolData(
-        selectedSchool.id,
-      )
+      let {
+        uploadedClassrooms,
+        uploadedTeachers,
+        uploadedStudents,
+        uploadedClassroomStudents,
+        uploadedClassroomTeachers,
+      } = await getUploadedSchoolData(selectedSchool.id, true)
       // save then for later use
       setUploadedClassrooms(uploadedClassrooms)
       setUploadedTeachers(uploadedTeachers)
       setUploadedStudents(uploadedStudents)
+      setUploadedClassroomStudents(uploadedClassroomStudents)
+      setUploadedClassroomTeachers(uploadedClassroomTeachers)
 
       //make a unique list of uploaded year codes (year codes are K,Y1 etc)
       uploadedStudents.forEach((student, index) => {
@@ -431,6 +439,8 @@ function NewSchool() {
       setUploadedClassrooms([])
       setUploadedTeachers([])
       setUploadedStudents([])
+      setUploadedClassroomStudents([])
+      setUploadedClassroomTeachers([])
       setYearLevelStatusArray([])
     }
 
@@ -590,30 +600,30 @@ function NewSchool() {
     })
     // getUploadedSchoolData() called earlier, returned unique lists of
     // classrooms, students and teachers that were previously uploaded
-    if (selectedSchool.isLoaded) {
-      // Cull the 3 unique lists to remove classrooms, students and teachers already uploaded
-      uploadedClassrooms.forEach((uploadedClassroom) => {
-        let duplicateClassroom = uniqueClassroomsMap.get(uploadedClassroom.wondeID)
-        if (duplicateClassroom) {
-          console.log('Removing already uploaded classroom', uploadedClassroom)
-          uniqueClassroomsMap.delete(uploadedClassroom.wondeID)
-        }
-      })
-      uploadedStudents.forEach((uploadedStudent) => {
-        let duplicateStudent = uniqueStudentsMap.get(uploadedStudent.student.wondeID)
-        if (duplicateStudent) {
-          console.log('Removing already uploaded student', uploadedStudent)
-          uniqueStudentsMap.delete(uploadedStudent.student.wondeID)
-        }
-      })
-      uploadedTeachers.forEach((uploadedTeacher) => {
-        let duplicateTeacher = uniqueStudentsMap.get(uploadedTeacher.wondeID)
-        if (duplicateTeacher) {
-          console.log('Removing already uploaded teacher', uploadedTeacher)
-          uniqueStudentsMap.delete(uploadedTeacher.wondeID)
-        }
-      })
-    }
+    // if (selectedSchool.isLoaded) {
+    //   // Cull the 3 unique lists to remove classrooms, students and teachers already uploaded
+    //   uploadedClassrooms.forEach((uploadedClassroom) => {
+    //     let duplicateClassroom = uniqueClassroomsMap.get(uploadedClassroom.wondeID)
+    //     if (duplicateClassroom) {
+    //       console.log('Removing already uploaded classroom', uploadedClassroom)
+    //       uniqueClassroomsMap.delete(uploadedClassroom.wondeID)
+    //     }
+    //   })
+    //   uploadedStudents.forEach((uploadedStudent) => {
+    //     let duplicateStudent = uniqueStudentsMap.get(uploadedStudent.student.wondeID)
+    //     if (duplicateStudent) {
+    //       console.log('Removing already uploaded student', uploadedStudent)
+    //       uniqueStudentsMap.delete(uploadedStudent.student.wondeID)
+    //     }
+    //   })
+    //   uploadedTeachers.forEach((uploadedTeacher) => {
+    //     let duplicateTeacher = uniqueStudentsMap.get(uploadedTeacher.wondeID)
+    //     if (duplicateTeacher) {
+    //       console.log('Removing already uploaded teacher', uploadedTeacher)
+    //       uniqueStudentsMap.delete(uploadedTeacher.wondeID)
+    //     }
+    //   })
+    // }
 
     // make the maps into arrays for simpler processing
     const uniqueClassroomsArray = Array.from(uniqueClassroomsMap.values())
@@ -634,15 +644,24 @@ function NewSchool() {
 	        save classroomLearningArea
      */
 
+    // Make a new list of classrooms to upload that excluses classrooms already in Dynamo
+    let classroomsToUpload = []
+    uniqueClassroomsArray.forEach((classroom) => {
+      if (!uploadedClassrooms.find((classroomID) => classroomID === classroom.id)) {
+        classroomsToUpload.push(classroom)
+      }
+    })
+    console.log('classrooms to upload', classroomsToUpload)
+
     try {
-      console.time('Saved Classrooms') // measure how long it takes to save
+      console.time('Classrooms save time') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
-      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
-      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      let batchesCount = parseInt(classroomsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = classroomsToUpload.length % BATCH_SIZE // which could be 0
       // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
 
       // process each batch
-      let index = 0 //index to uniqueClassroomsArray
+      let index = 0 //index to classroomsToUpload
       const schoolYear = parseInt(dayjs().format('YYYY'))
       for (let i = 0; i < batchesCount; i++) {
         let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
@@ -651,7 +670,7 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           let id = v4() // leave this here
-          const className = uniqueClassroomsArray[index].className
+          const className = classroomsToUpload[index].className
           batchToWrite.push({
             PutRequest: {
               Item: {
@@ -661,8 +680,8 @@ function NewSchool() {
                 className: className,
                 schoolYear: schoolYear,
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
-                wondeID: uniqueClassroomsArray[index].wondeId, // not in EdC
-                MISID: uniqueClassroomsArray[index].mis_id, // not in EdC
+                wondeID: classroomsToUpload[index].wondeId, // not in EdC
+                MISID: classroomsToUpload[index].mis_id, // not in EdC
                 __typename: 'Classroom',
                 createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
                 updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
@@ -673,7 +692,7 @@ function NewSchool() {
               },
             },
           })
-          uniqueClassroomsArray[index].classroomID = id // Remember the dynamoDB id for use beloq
+          classroomsToUpload[index].classroomID = id // id for saving classroomLearningArea and classroomYearLevel
 
           index++
         } // end batch loop
@@ -687,33 +706,59 @@ function NewSchool() {
           break
         }
       } // end array loop
-      console.timeEnd('Saved Classrooms')
+      console.timeEnd('Classrooms save time')
     } catch (err) {
       console.log(err)
     } // end saving classrooms
 
     // -----------------------------------------------------------------------
-    // Now make a classroomTeacherArray for records to save in classroomTeachers
+    // Now make a classroomTeacherArray of records to save in classroomTeachers
     // NB: Must be run AFTER classrooms are saved
-    // We already have classroomTeachersFromCSV[] constructed above
-    // as an array of {CwondeID,email} objects
-    // now shape the array into {classroomId, email} objects for EdC
+    // classroomTeachersFromCSV[] constructed above, has as an array of {CwondeID,email} objects
+    // From that we remove all records found in uploadedClassroomTeachers
+    // Then we use the CWondeID to locate the classroomID
+    // Search classroomToUpload[] by CWondeID for classrooms just uploaded
+    // Search uploadedClassrooms[] by wondeID for previouly uploaded classrooms
+    // Make a new classroomTeachersArray of (classroomID,email) objects
 
-    // this new version works when new yearLevels are being added
     console.log('classroomTeachersFromCSV', classroomTeachersFromCSV)
     console.log('uniqueClassroomsArray', uniqueClassroomsArray)
+    // remove all records from classroomTeachersFromCSV[] that are found in uploadedClassroomTeachers
     let classroomTeachersArray = []
     classroomTeachersFromCSV.forEach((classroomTeacher) => {
-      let foundClassroom = uniqueClassroomsArray.find((uniqueClassroom) => {
-        return uniqueClassroom.wondeId === classroomTeacher.CwondeId
-      })
-      // Classroom may not exist in the uniqueClassroomsArray[] so check
-      if (foundClassroom) {
-        classroomTeachersArray.push({
-          classroomID: foundClassroom.classroomID,
-          email: classroomTeacher.email,
+      if (
+        !uploadedClassroomTeachers.find((uploadedClassroomTeacher) => {
+          return (
+            uploadedClassroomTeacher.email === classroomTeacher.email &&
+            uploadedClassroomTeacher.classroom.wondeID === uploadedClassroomTeacher.CWondeId
+          )
         })
+      ) {
+        classroomTeachersArray.push(classroomTeachersArray)
       }
+    })
+    // Locate classroomIDs to match each wondeID in classroomTeachersArray[]
+    classroomTeachersArray.forEach((classroomTeacher) => {
+      // first search classroomsToUpload[] - they are already uploaded
+      let foundClassroom = classroomsToUpload.find(
+        (classroomToUpload) => classroomTeacher.CWondeId === classroomToUpload.wondeID,
+      )
+      if (!foundClassroom) {
+        // now serach in the uploadedClassrooms
+        foundClassroom = uploadedClassrooms.find(
+          (uploadedClassroom) => classroomTeacher.CWondeId === uploadedClassroom.wondeID,
+        )
+      }
+      if (foundClassroom) {
+        classroomTeacher.classroomID = foundClassroom.id // the classroomID from DynamoDB
+      } else {
+        // A classroomID should always be found
+        console.log(
+          'Should not reach here - no matching classroomID for classroomTeacher',
+          classroomTeacher,
+        )
+      }
+      return
     })
 
     console.log('classroomTeachersArray', classroomTeachersArray)
@@ -728,10 +773,10 @@ function NewSchool() {
     // Classrooms saves - next save classroomYearLevels
     console.log('saving ClassroomYearLevels')
     try {
-      console.time('Saved ClassroomYearLevels') // measure how long it takes to save
+      console.time('ClassroomYearLevels save time') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
-      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
-      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      let batchesCount = parseInt(classroomsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = classroomsToUpload.length % BATCH_SIZE // which could be 0
       // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
 
       // process each batch
@@ -744,9 +789,9 @@ function NewSchool() {
         for (let n = 0; n < batchSize; n++) {
           // get the yearCode for this classroom
           // Note yearCode must look like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
-          let yearCode = uniqueClassroomsArray[index].yearCode
-          if (!isNaN(parseInt(uniqueClassroomsArray[index].yearCode)))
-            yearCode = `Y${uniqueClassroomsArray[index].yearCode}`
+          let yearCode = classroomsToUpload[index].yearCode
+          if (!isNaN(parseInt(classroomsToUpload[index].yearCode)))
+            yearCode = `Y${classroomsToUpload[index].yearCode}`
 
           // lookup the yearLevelID for this yearCode
           let yearLevelRecord = yearLevelsLookup.find((o) => yearCode === o.yearCode)
@@ -756,7 +801,7 @@ function NewSchool() {
             PutRequest: {
               Item: {
                 id: v4(), // this is the EdC id generated locally
-                classroomID: uniqueClassroomsArray[index].classroomID, // as poked in when saving the classroom
+                classroomID: classroomsToUpload[index].classroomID, // as poked in when saving the classroom
                 schoolID: schoolID, // not in Wonde - generated above when saving the school
                 yearLevelID: yearLevelRecord.id,
                 __typename: 'ClassroomYearLevel',
@@ -775,7 +820,7 @@ function NewSchool() {
           break
         }
       } // end array loop
-      console.timeEnd('Saved ClassroomYearLevels')
+      console.timeEnd('ClassroomYearLevels save time')
     } catch (err) {
       console.log(err)
       return { result: false, msg: err.message } // abandon ship
@@ -788,14 +833,12 @@ function NewSchool() {
           add to classroomYearLevel
 	        add to classroomLearningArea *
      */
-    //  new
-    //  next save classroomLearningArea
     console.log('saving ClassroomLearningAreas')
     try {
-      console.time('Saved ClassroomLearningAreas') // measure how long it takes to save
+      console.time('ClassroomLearningAreas save time') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
-      let batchesCount = parseInt(uniqueClassroomsArray.length / BATCH_SIZE) + 1 // allow for remainder
-      let lastBatchSize = uniqueClassroomsArray.length % BATCH_SIZE // which could be 0
+      let batchesCount = parseInt(classroomsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = classroomsToUpload.length % BATCH_SIZE // which could be 0
       // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
 
       // process each batch
@@ -807,7 +850,7 @@ function NewSchool() {
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
           // Extract the subject/areaName from the uniqueClassroom record
-          let areaName = uniqueClassroomsArray[index].subject // subject will be defined at least as "-"
+          let areaName = classroomsToUpload[index].subject // subject will be defined at least as "-"
           // If its "Science (Ch)" or similar then make it "Science"
           if (areaName && areaName.startsWith('Science')) areaName = 'Science'
           // lookup the learningAreaID in the lookuptable
@@ -822,7 +865,7 @@ function NewSchool() {
               PutRequest: {
                 Item: {
                   id: v4(), // this is the EdC id generated locally
-                  classroomID: uniqueClassroomsArray[index].classroomID, // as poked in saving the classroom
+                  classroomID: classroomsToUpload[index].classroomID, // as poked in saving the classroom
                   learningAreaID: learningAreaRecord.id,
                   __typename: 'ClassroomLearningArea',
                   createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
@@ -841,7 +884,7 @@ function NewSchool() {
           break
         }
       } // end array loop
-      console.timeEnd('Saved ClassroomLearningAreas')
+      console.timeEnd('ClassroomLearningAreas save time')
     } catch (err) {
       console.log(err)
       return { result: false, msg: err.message } // abandon ship
