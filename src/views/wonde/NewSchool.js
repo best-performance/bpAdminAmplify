@@ -156,7 +156,7 @@ function NewSchool() {
   }
 
   // Button callback to add WondeIDs to manually uploaded school
-  async function AddWondeIDs(selectedSchool, setUnmatchedStudents) {
+  async function AddWondeIDs(selectedSchool) {
     // Do a final confirmation with the user
     let confirmed = await confirm(
       `<i>Add WondeIDs to ${selectedSchool.schoolName}</i>`,
@@ -247,7 +247,7 @@ function NewSchool() {
   async function deleteAllTables(selectedSchool) {
     // Do a final confirmation with the user
     let confirmed = await confirm(
-      `<i>Delete All Data from ${selectedSchool.schoolName}</i>`,
+      `<i>Delete All data from ${selectedSchool.schoolName}</i>`,
       `Confirm Delete`,
     )
     console.log(`Confirm delete all data from ${selectedSchool.schoolName}`, confirmed)
@@ -303,7 +303,7 @@ function NewSchool() {
 
     // addWondeIDs(selectedSchool, setUnmatchedStudents)
     // test function to fix the dobs
-    fixDobs(selectedSchool)
+    // fixDobs(selectedSchool)
   } // end of testFuntion()
 
   // Utility to remove spaces and hyphens from string and convert to upper case
@@ -420,7 +420,7 @@ function NewSchool() {
       //make a unique list of uploaded year codes (year codes are K,Y1 etc)
       uploadedStudents.forEach((student, index) => {
         if (index === 0) {
-          console.log('************************', student)
+          console.log('***Sample student from DynamoDB****', student)
         }
         if (!uploadedYearLevels.get(student.yearLevel.yearCode))
           uploadedYearLevels.set(student.yearLevel.yearCode, student.yearLevel.yearCode)
@@ -530,6 +530,7 @@ function NewSchool() {
         // If the classroom is "new" then we save its teachers
         // to be avaialble later to create the classroomTeachers table
         for (let n = 0; n < 4; n++) {
+          // Make ClassroomTeachers - Wonde Classroom ID to be later swopped for Dynamo classroom ID
           let wondeId = `T${n + 1} WondeId`
           let emailKey = `teacher${n + 1} email`
           if (row[wondeId] !== '-') {
@@ -540,6 +541,7 @@ function NewSchool() {
           }
         }
         uniqueClassroomsMap.set(row.CwondeId, {
+          // Make a unique list of classrooms
           wondeId: row.CwondeId, // not in EdC
           className: row.classroomName,
           yearCode: row.yearCode,
@@ -586,10 +588,8 @@ function NewSchool() {
         })
       }
     })
-    // If some of the selected yearlevels are already loaded, then we have to
-    // remove them from the unique lists, so we dont try to upload them again
-    // getUploadedSchoolData() returns unique lists of classrooms, students and teachers
-    // that are already uploaded
+    // getUploadedSchoolData() called earlier, returned unique lists of
+    // classrooms, students and teachers that were previously uploaded
     if (selectedSchool.isLoaded) {
       // Cull the 3 unique lists to remove classrooms, students and teachers already uploaded
       uploadedClassrooms.forEach((uploadedClassroom) => {
@@ -629,9 +629,9 @@ function NewSchool() {
     /**
      * Save the classrooms
      * For each classroom
-          add to classrooms *
-          add to classroomYearLevel
-	        add to classroomLearningArea
+          save classrooms *
+          save classroomYearLevel
+	        save classroomLearningArea
      */
 
     try {
@@ -673,7 +673,7 @@ function NewSchool() {
               },
             },
           })
-          uniqueClassroomsArray[index].classroomID = id // add the generated EC id for use below
+          uniqueClassroomsArray[index].classroomID = id // Remember the dynamoDB id for use beloq
 
           index++
         } // end batch loop
@@ -699,22 +699,7 @@ function NewSchool() {
     // as an array of {CwondeID,email} objects
     // now shape the array into {classroomId, email} objects for EdC
 
-    // let classroomTeachersArrayOld = classroomTeachersFromCSV.map((row) => {
-    //   let classroom = uniqueClassroomsArray.find((classroom) => {
-    //     return classroom.wondeId === row.CwondeId
-    //   })
-    //   return {
-    //     classroomID: classroom.classroomID,
-    //     email: row.email,
-    //   }
-    // })
-
     // this new version works when new yearLevels are being added
-
-    // artificially add classroomID to uniqueClassroomsArray (REMOVE LATER)
-    // uniqueClassroomsArray.forEach((classroom) => {
-    //   classroom.classroomID = v4()
-    // })
     console.log('classroomTeachersFromCSV', classroomTeachersFromCSV)
     console.log('uniqueClassroomsArray', uniqueClassroomsArray)
     let classroomTeachersArray = []
