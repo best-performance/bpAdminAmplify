@@ -91,6 +91,12 @@ const getStudentsByClassroom = /* GraphQL */ `
         classroomID
         studentID
       }
+      classroom {
+        wondeID
+      }
+      student {
+        wondeID
+      }
       nextToken
     }
   }
@@ -104,6 +110,9 @@ const getClassTeachers = /* GraphQL */ `
       items {
         classroomID
         email
+      }
+      classroom {
+        wondeID
       }
       nextToken
     }
