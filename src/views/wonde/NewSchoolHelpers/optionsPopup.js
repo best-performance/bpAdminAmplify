@@ -13,6 +13,8 @@ export function OptionsPopup({
   parentKindyOptions,
   parentKindyClassName,
   parentCoreSubjectOption,
+  parentSaveToCognitoOption,
+  setParentSaveToCognitoOption,
   setOptionsPopupVisible,
   setParentYearOptions,
   setParentKinterDayClasses,
@@ -24,6 +26,7 @@ export function OptionsPopup({
   const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
   const [coreSubjectOption, setCoreSubjectOption] = useState(parentCoreSubjectOption)
   const [yearOptions, setYearOptions] = useState(parentYearOptions)
+  const [saveToCognitoOption, setSaveToCognitoOption] = useState(parentSaveToCognitoOption)
   const [selectAllToggle, setSelectAllToggle] = useState(true)
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export function OptionsPopup({
     }
   }
 
-  // Fired when the opption to remove Kindy duplicates changes
+  // Fired when the option to remove Kindy duplicates changes
   function kindyOptionChanged(e) {
     setKindyOption(e.value)
     console.log(e.value)
@@ -56,6 +59,12 @@ export function OptionsPopup({
   }
 
   // Fired when the opption to remove Kindy duplicates changes
+  function saveToCognitoOptionChanged(e) {
+    setSaveToCognitoOption(e.value)
+    console.log(e.value)
+  }
+
+  // Fired when the option to save students to Congito changes
   function coreSubjectOptionChanged(e) {
     setCoreSubjectOption(e.value)
     console.log(e.value)
@@ -67,6 +76,7 @@ export function OptionsPopup({
     setParentKinterDayClassName(kindyClassname)
     setParentKinterDayClasses(kindyOption)
     setParentCoreSubjectOption(coreSubjectOption)
+    setParentSaveToCognitoOption(saveToCognitoOption)
     setParentDataFilterPending(true)
     setOptionsPopupVisible(false)
   }
@@ -205,6 +215,13 @@ export function OptionsPopup({
                 defaultValue={coreSubjectOption}
                 text="Core subject classrooms only"
                 onValueChanged={coreSubjectOptionChanged}
+              />
+            </div>
+            <div>
+              <CheckBox
+                defaultValue={saveToCognitoOption}
+                text="Save Students to Cognito"
+                onValueChanged={saveToCognitoOptionChanged}
               />
             </div>
           </CCol>

@@ -1,8 +1,11 @@
-const { API } = require('aws-amplify')
-const { updateAWSCredentials } = require('../CommonHelpers/updateAWSCredentials')
+import { API } from 'aws-amplify'
+import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials'
+import _ from 'lodash'
 
 // Query to get all teachers in the selected school
-// Despite its name this is a query on table User
+// Despite its name
+//     this is a query on table User
+//     its also used to retrieve students in Table Users with userType = "Student"
 const getTeachersBySchool = /* GraphQL */ `
   query GetTeachersBySchool($userType: String, $userSchoolID: ID, $limit: Int, $nextToken: String) {
     getTeachersBySchool(
@@ -85,17 +88,17 @@ const getClassByYear = /* GraphQL */ `
 // This is a query on table ClassroomStudent which is indexed on classroomID
 // It has to be called for every classroomID
 const getStudentsByClassroom = /* GraphQL */ `
-  query GetStudentsByClassroom($classroomID: String, $limit: Int, $nextToken: String) {
+  query GetStudentsByClassroom($classroomID: ID, $limit: Int, $nextToken: String) {
     getStudentsByClassroom(classroomID: $classroomID, limit: $limit, nextToken: $nextToken) {
       items {
         classroomID
         studentID
-      }
-      classroom {
-        wondeID
-      }
-      student {
-        wondeID
+        classroom {
+          wondeID
+        }
+        student {
+          wondeID
+        }
       }
       nextToken
     }
@@ -105,15 +108,16 @@ const getStudentsByClassroom = /* GraphQL */ `
 // This is a query on table ClassroomTeacher which is indexed on classroomID
 // It has to be called for every classroomID
 const getClassTeachers = /* GraphQL */ `
-  query GetClassTeachers($classroomID: String, $limit: Int, $nextToken: String) {
+  query GetClassTeachers($classroomID: ID, $limit: Int, $nextToken: String) {
     getClassTeachers(classroomID: $classroomID, limit: $limit, nextToken: $nextToken) {
       items {
         classroomID
         email
+        classroom {
+          wondeID
+        }
       }
-      classroom {
-        wondeID
-      }
+
       nextToken
     }
   }
@@ -141,9 +145,11 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
         variables: { schoolYear: 2022, schoolID: schoolID, limit: 400, nextToken: nextToken },
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
-      classrooms = [...classrooms, ...response.data.getClassByYear.items]
+      response.data.getClassByYear.items.forEach((classroom) => {
+        classrooms.push(_.cloneDeep(classroom))
+      })
       nextToken = response.data.getClassByYear.nextToken
-      console.log('Classrooms nextToken', nextToken ? nextToken : 'Empty')
+      //console.log('Classrooms nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
     console.log('Classrooms read from DynamoDB', classrooms)
 
@@ -155,9 +161,11 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
         variables: { schoolYear: 2022, schoolID: schoolID, limit: 400, nextToken: nextToken },
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
-      students = [...students, ...response.data.getSchoolStudentsByYear.items]
+      response.data.getSchoolStudentsByYear.items.forEach((student) => {
+        students.push(_.cloneDeep(student))
+      })
       nextToken = response.data.getSchoolStudentsByYear.nextToken
-      console.log('Students nextToken', nextToken ? nextToken : 'Empty')
+      //console.log('Students nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
     console.log('Students read from DynamoDB', students)
 
@@ -174,9 +182,11 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
         },
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
-      teachers = [...teachers, ...response.data.getTeachersBySchool.items]
+      response.data.getTeachersBySchool.items.forEach((teacher) => {
+        teachers.push(_.cloneDeep(teacher))
+      })
       nextToken = response.data.getTeachersBySchool.nextToken
-      console.log('Teachers nextToken', nextToken ? nextToken : 'Empty')
+      //console.log('Teachers nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
     console.log('Teachers read from DynamoDB', teachers)
   } catch (err) {
@@ -206,15 +216,18 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
         },
         authMode: 'AMAZON_COGNITO_USER_POOLS',
       })
-      studentUsers = [...studentUsers, ...response.data.getTeachersBySchool.items]
+      response.data.getTeachersBySchool.items.forEach((studentUser) => {
+        studentUsers.push(_.cloneDeep(studentUser))
+      })
       nextToken = response.data.getTeachersBySchool.nextToken
       console.log('StudentUsers nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
-    console.log('StudentUsers read from DynamoDB', teachers)
+
+    console.log('StudentUsers read from DynamoDB', studentUsers)
 
     // get the all classroomStudents
     // For every ClassroomID, run appsyn query getStudentsByClassroom
-    classrooms.forEach(async (classroom) => {
+    let studentPromises = classrooms.map(async (classroom) => {
       nextToken = null
       do {
         response = await API.graphql({
@@ -226,17 +239,23 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS',
         })
-        classroomStudents = [...classroomStudents, ...response.data.getStudentsByClassroom.items]
+        //console.log('classroomStudent', classroom.id, response)
+        response.data.getStudentsByClassroom.items.forEach((classroomStudent) => {
+          classroomStudents.push({
+            classroomWondeID: classroomStudent.classroom.wondeID,
+            studentWondeID: classroomStudent.student.wondeID,
+          })
+        })
         nextToken = response.data.getStudentsByClassroom.nextToken
-        console.log('ClassroomStudents nextToken', nextToken ? nextToken : 'Empty')
+        //console.log('ClassroomStudents nextToken', nextToken ? nextToken : 'Empty')
       } while (nextToken != null)
     })
-
+    await Promise.all(studentPromises)
     console.log('ClassroomStudents read from DynamoDB', classroomStudents)
 
     // get the all classroomTeachers
     // For every ClassroomID, run appsyn query getClassroomTeachers
-    classrooms.forEach(async (classroom) => {
+    let teacherPromises = classrooms.map(async (classroom) => {
       nextToken = null
       do {
         response = await API.graphql({
@@ -248,11 +267,18 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
           },
           authMode: 'AMAZON_COGNITO_USER_POOLS',
         })
-        classroomTeachers = [...classroomTeachers, ...response.data.classroomTeachers.items]
-        nextToken = response.data.classroomTeachers.nextToken
-        console.log('ClassroomTeachers nextToken', nextToken ? nextToken : 'Empty')
+        //console.log('classroomTeachers', classroom.id, response)
+        response.data.getClassTeachers.items.forEach((classroomTeacher) => {
+          classroomTeachers.push({
+            classroomWondeID: classroomTeacher.classroom.wondeID,
+            email: classroomTeacher.email,
+          })
+        })
+        nextToken = response.data.getClassTeachers.nextToken
+        //console.log('ClassroomTeachers nextToken', nextToken ? nextToken : 'Empty')
       } while (nextToken != null)
     })
+    await Promise.all(teacherPromises)
 
     console.log('ClassroomTeachers read from DynamoDB', classroomTeachers)
 

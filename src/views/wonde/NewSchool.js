@@ -124,7 +124,7 @@ function NewSchool() {
   const [statesLookup, setStatesLookup] = useState([])
   const [learningAreasLookup, setLearningAreasLookup] = useState([])
 
-  // This is polulated in getSchoolData() and contains a list of
+  // This is populated in getSchoolData() and contains a list of
   // yearlevels available from Wonde for ths selected school, and whether each
   // year level is already uploaded to Wonde. It is passed to OptionsPopup()
   const [yearLevelStatusArray, setYearLevelStatusArray] = useState([])
@@ -151,6 +151,7 @@ function NewSchool() {
   const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
   const [coreSubjectOption, setCoreSubjectOption] = useState(false)
+  const [saveToCognitoOption, setSaveToCognitoOption] = useState(false) // true to save the students to Cognito/Users
 
   function getFilterOptions() {
     console.log('get filter options')
@@ -258,6 +259,15 @@ function NewSchool() {
     await deleteSchoolDataFromDynamoDB(selectedSchool.wondeID)
     setIsDeletingSchoolData(false) // loading indicator only
     await listAllSchools() // refresh the display after deletion
+    // data deleted from dynamoDB so clear the arrays
+    setUploadedClassrooms([])
+    setUploadedTeachers([])
+    setUploadedStudents([])
+    setUploadedClassroomStudents([])
+    setUploadedClassroomTeachers([])
+    setYearLevelStatusArray([])
+    setStudentClassrooms([])
+    setFilteredStudentClassrooms([])
   }
 
   // Create a CSV from the filtered data and send to S3
@@ -303,6 +313,8 @@ function NewSchool() {
     console.log(`BPADMIN COGNITO USER_POOL_CLIENT_ID ${process.env.REACT_APP_USER_POOL_CLIENT_ID}`)
     console.log(`BPADMIN COGNITO IDENTITY_POOL_ID ${process.env.REACT_APP_IDENTITY_POOL_ID}`)
 
+    // console.log('uploaded classroomStudents', uploadedClassroomStudents)
+    // console.log('uploaded classroomTeachers', uploadedClassroomTeachers)
     // addWondeIDs(selectedSchool, setUnmatchedStudents)
     // test function to fix the dobs
     // fixDobs(selectedSchool)
@@ -384,7 +396,6 @@ function NewSchool() {
     setFilteredStudentClassrooms([]) // empty the filtered data TabPanel item
 
     // Get the students->classes->teachers.
-    // TODO: rename getStudentsFromWonde() to getStudentClassroomsFromWonde()
     let { wondeStudentsTemp } = await getStudentsFromWonde(selectedSchool.wondeID)
     setWondeStudents(wondeStudentsTemp) // save the raw response in case needed
     console.log('Unformatted, Unfiltered Students from Wonde', wondeStudentsTemp)
@@ -410,7 +421,9 @@ function NewSchool() {
     // Retrieve any data (year levels) already uploaded for this school
     // Note: uploadedClassrooms, uploadedTeachers are used later when saving the school.
     let uploadedYearLevels = new Map()
+    console.log('Before retrieving DynamoData for selected school', selectedSchool)
     if (selectedSchool.isLoaded && !selectedSchool.isManual) {
+      console.log('Retrieving DynamoData for selected school')
       let {
         uploadedClassrooms,
         uploadedTeachers,
@@ -466,7 +479,7 @@ function NewSchool() {
     console.log('Formatted, Unfiltered StudentClassrooms from Wonde', formattedCSV)
     setIsWondeSchoolDataLoaded(true)
     setIsLoadingStudents(false) // loading indicator
-  }
+  } // end getSchoolData()
 
   /**
    * *********************************************************
@@ -525,10 +538,6 @@ function NewSchool() {
     let uniqueTeachersMap = new Map()
     let uniqueStudentsMap = new Map()
 
-    // This map is used to store the teachers emails and the cognito username.
-    // Later, based on the email, the userId will be updated properly.
-    let teacherCognitoUserNames = new Map()
-
     // This array will be later used to create the classroomTeachers table
     let classroomTeachersFromCSV = []
 
@@ -545,7 +554,7 @@ function NewSchool() {
           let emailKey = `teacher${n + 1} email`
           if (row[wondeID] !== '-') {
             classroomTeachersFromCSV.push({
-              CwondeId: row.CwondeId, // later we swap this for the EdC classroom id
+              wondeID: row.CwondeId, // later we swap this for the EdC classroom id
               email: row[emailKey],
             })
           }
@@ -606,6 +615,7 @@ function NewSchool() {
     console.log('uniqueClassroomsArray', uniqueClassroomsArray)
     console.log('uniqueTeachersArray', uniqueTeachersArray)
     console.log('uniqueStudentsArray', uniqueStudentsArray)
+    console.log('classroomTeachersFromCSV', classroomTeachersFromCSV)
 
     //console.log(learningAreasLookup)
 
@@ -674,7 +684,7 @@ function NewSchool() {
           index++
         } // end batch loop
 
-        console.log(`writing batch ${i} batchsize ${batchToWrite.length}`)
+        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`)
         let response = await batchWrite(batchToWrite, CLASSROOM_TABLE)
         console.log(response)
 
@@ -684,64 +694,10 @@ function NewSchool() {
         }
       } // end array loop
       console.timeEnd('Classrooms save time')
+      console.log('No of classrooms uploaded:', classroomsToUpload.length)
     } catch (err) {
       console.log(err)
     } // end saving classrooms
-
-    // -----------------------------------------------------------------------
-    // Now make a classroomTeacherArray of records to save in classroomTeachers
-    // NB: Must be run AFTER classrooms are saved
-    // We also want to exclude ClassroomTeachers records that already exist
-    // We also need to add ClassroomTeachers records where the classroom or teacher already
-    // exists from a previous upload
-    // classroomTeachersFromCSV[] as {CwondId,email}is the source of requsted classroomTeachers
-    // uploadedClassroomTeachers[] as {classroom.wondeID,emai} is whats uploaded
-    // Need to generate classroomTeachersArray[] an array of {classroomID,email}
-
-    console.log('classroomTeachersFromCSV', classroomTeachersFromCSV)
-    console.log('uniqueClassroomsArray', uniqueClassroomsArray)
-
-    let classroomTeachersArray = []
-    // remove all records from classroomTeachersFromCSV[] that were previously uploaded
-    classroomTeachersFromCSV.forEach((classroomTeacher) => {
-      if (
-        !uploadedClassroomTeachers.find((uploadedClassroomTeacher) => {
-          return (
-            uploadedClassroomTeacher.email === classroomTeacher.email &&
-            uploadedClassroomTeacher.classroom.wondeID === classroomTeacher.CWondeId
-          )
-        })
-      ) {
-        // next try to locate the classroomID in uploadedClassrooms[] from a previous upload
-        let classroomID = null
-        let foundClassroom = uploadedClassrooms.find(
-          (uploadedClassroom) => classroomTeacher.CWondeId === uploadedClassroom.wondeID,
-        )
-        if (foundClassroom) {
-          classroomID = foundClassroom.classroomID // the classroomID from DynamoDB
-        } else {
-          // next try to locate the classroomID in classroomsToUpload (uploaded by now)
-          foundClassroom = classroomsToUpload.find(
-            (classroomToUpload) => classroomTeacher.CWondeId === classroomToUpload.classroomID,
-          )
-          if (foundClassroom) {
-            classroomID = foundClassroom.classroomID // the classroomID from DynamoDB
-          } else {
-            // A classroomID should always be found
-            console.log(
-              'Should not reach here - no matching classroomID for classroomTeacher',
-              classroomTeacher,
-            )
-          }
-          if (classroomID) {
-            classroomTeachersArray.push({ classroomID: classroomID, email: classroomTeacher.email })
-          }
-        }
-      }
-    })
-
-    console.log('classroomTeachersArray', classroomTeachersArray)
-    // -----------------------------------------------------------------------
 
     /**
      * Save the classrooms
@@ -808,7 +764,6 @@ function NewSchool() {
 
     /**
      * Save the classrooms
-     * For each classroom
           save classrooms
           save classroomYearLevel
 	        save classroomLearningArea *
@@ -870,22 +825,81 @@ function NewSchool() {
       return { result: false, msg: err.message } // abandon ship
     } // end save classrommLearningArea
 
+    // -----------------------------------------------------------------------
+    // Now make a classroomTeacherArray of records to save in classroomTeachers
+    // NB: Must be run AFTER classrooms are saved
+    // We also want to exclude ClassroomTeachers records that already exist
+    // We also need to add ClassroomTeachers records where the classroom or teacher already
+    // exists from a previous upload
+    // classroomTeachersFromCSV[] as {CwondId,email}is the source of requsted classroomTeachers
+    // uploadedClassroomTeachers[] as {classroom.wondeID,emai} is whats uploaded
+    // Need to generate classroomTeachersArray[] an array of {classroomID,email}
+
+    console.log('classroomTeachersFromCSV', classroomTeachersFromCSV)
+    console.log('uniqueClassroomsArray', uniqueClassroomsArray)
+
+    let classroomTeachersArray = []
+    // remove all records from classroomTeachersFromCSV[] that were previously uploaded
+    classroomTeachersFromCSV.forEach((CSVclassroomTeacher) => {
+      if (
+        !uploadedClassroomTeachers.find((uploadedClassroomTeacher) => {
+          return (
+            uploadedClassroomTeacher.email === CSVclassroomTeacher.email &&
+            uploadedClassroomTeacher.classroomWondeID === CSVclassroomTeacher.wondeID
+          )
+        })
+      ) {
+        let classroomID = null
+        // next try to locate the classroomID in uploadedClassrooms[] from a previous upload
+        let foundClassroom = uploadedClassrooms.find(
+          (uploadedClassroom) => CSVclassroomTeacher.wondeID === uploadedClassroom.wondeID,
+        )
+        if (foundClassroom) {
+          classroomID = foundClassroom.id
+        } else {
+          // next try to locate the classroomID in classroomsToUpload (uploaded by now)
+          foundClassroom = classroomsToUpload.find(
+            (classroomToUpload) => CSVclassroomTeacher.wondeID === classroomToUpload.wondeID,
+          )
+          if (foundClassroom) {
+            classroomID = foundClassroom.classroomID
+          }
+        }
+        if (classroomID) {
+          classroomTeachersArray.push({
+            classroomID: classroomID,
+            email: CSVclassroomTeacher.email,
+          })
+        } else {
+          // A classroomID should always be found
+          console.log(
+            'Should not reach here - no matching classroomID for CSVclassroomTeacher',
+            CSVclassroomTeacher,
+          )
+        }
+      }
+    })
+
+    console.log('classroomTeachersArray', classroomTeachersArray)
+    // -----------------------------------------------------------------------
+
+    // Make teachersToUpload[] array that excludes teachers already in Dynamo
+    let teachersToUpload = []
+    uniqueTeachersArray.forEach((uniqueTeacher) => {
+      if (
+        !uploadedTeachers.find((uploadedTeacher) => uploadedTeacher.email === uniqueTeacher.email)
+      ) {
+        teachersToUpload.push(uniqueTeacher)
+      }
+    })
+    console.log('Teachers to upload', teachersToUpload)
+
     /**
      * Save the teachers
      *   save Cognito *
      *   save user
      *   save classroomTeacher
      */
-    // Make a new list of teachers to upload that excludes teachers already in Dynamo
-    let teachersToUpload = []
-    uniqueTeachersArray.forEach((teacher) => {
-      if (!uploadedTeachers.find((uploadedTeacher) => uploadedTeacher.email === teacher.email)) {
-        teachersToUpload.push(teacher)
-      }
-    })
-    console.log('Teachers to upload', teachersToUpload)
-
-    // Save the teachers in teachersToUpload[]
     try {
       console.time('Cognito teachers save time')
 
@@ -898,15 +912,16 @@ function NewSchool() {
             console.log(
               `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
             )
-          } else {
-            teacherCognitoUserNames.set(teacher.email, result.username)
           }
+          teachersToUpload[i].username = result.username // remember the username returned by Cognito or FAILED
         } else {
           console.log(`Teacher has no email so not saved to Cognito`, teacher)
         }
       }
       console.timeEnd('Cognito teachers save time')
-    } catch (err) {}
+    } catch (err) {
+      console.log('error saving teachers to Cognito', err)
+    } // end saving teachers to Cognito
 
     /**
      * Save the teachers
@@ -934,13 +949,12 @@ function NewSchool() {
 
         let batchToWrite = []
         for (let n = 0; n < batchSize; n++) {
-          let userId = teacherCognitoUserNames.get(teachersToUpload[index].email)
-          // if there is no userId returned by the cognito teacher map, then the record is not created in the user table
-          if (!userId) continue
+          // if there is no userId returned by the cognito, then the record is not created in the user table
+          if (teachersToUpload[index].username === FAILED) continue
           batchToWrite.push({
             PutRequest: {
               Item: {
-                userId, // username returned by Cognito
+                userId: teachersToUpload[index].username,
                 firstName: teachersToUpload[index].firstName,
                 lastName: teachersToUpload[index].lastName,
                 email: teachersToUpload[index].email,
@@ -958,11 +972,9 @@ function NewSchool() {
               },
             },
           })
-          ///uniqueTeachersArray[index].userID = id // save the ID for the ClassroomTeachers tables
           index++
         } // end batch loop
 
-        //console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
         let response = await batchWrite(batchToWrite, USER_TABLE)
         //console.log(response);
 
@@ -1037,18 +1049,20 @@ function NewSchool() {
 
     //Save the Students
     //  save student *
-    //  save Cognito (Not implemented)
-    //  save user    (Fix the error with UserID)
+    //  save Cognito
+    //  save user
     //  save schoolStudent
     //  save classroomStudent
 
     // Make a new list of students to upload that excludes students already in Dynamo
     let studentsToUpload = []
-    uniqueStudentsArray.forEach((student) => {
+    uniqueStudentsArray.forEach((uniqueStudent) => {
       if (
-        !uploadedStudents.find((uploadedStudent) => uploadedStudent.wondeID === student.CWondeId)
+        !uploadedStudents.find(
+          (uploadedStudent) => uploadedStudent.student.wondeID === uniqueStudent.wondeID,
+        )
       ) {
-        studentsToUpload.push(student)
+        studentsToUpload.push(uniqueStudent)
       }
     })
     console.log('Students to upload', studentsToUpload)
@@ -1128,153 +1142,127 @@ function NewSchool() {
       console.log(err)
     } // end saving students
 
-    // -----------------------------------------------------------------------
-    // Now make a classroomStudentArray for records to save in classroomStudents
-    // NB: Run AFTER Classrooms and Students are saved so the ClassroomID and StudentID are available
-    // We also want to exclude ClassroomStudent records that already exist
-    // We also need to add ClassroomSTudent records where the classroom and or student
-    // already exist in DynamoDB from a previous upload.
-    // filteredStudentClassrooms[] is the source of requested classroomStudent records {CWondeId, SWondeId}
-    // uploadedClassroomStudents[] as {classroom.wondeID,sudent.wondID} is whats uploaded
-
-    let classroomStudentsArray = [] // this needs to end up as an array of {classroomID,studentID}
-
-    // Remove all records from filteredStudentClassrooms[] that were previously uploaded
-    filteredStudentClassrooms.forEach((row) => {
-      if (
-        // if the classroomStudent is already uploaded then we skip it
-        !setUploadedClassroomStudents.find((uploadedClassroom) => {
-          return (
-            row.CWondeId === uploadedClassroom.classroom.wondeID &&
-            row.CWondeId === uploadedClassroom.student.wondeID
-          )
-        })
-      ) {
-        let classroomID = null
-        let studentID = null
-        // next try to locate the classroom in classroomsToUpload[] which are uploaded by now
-        let foundClassroom = classroomsToUpload.find(
-          (classroom) => classroom.wondeID === row.CWondeId,
-        )
-        if (!foundClassroom) {
-          // next try to locate the classroom in uploadedClassrooms[] which were saved in a previous upload
-          foundClassroom = uploadedClassrooms.find((classroom) => classroom.id === row.CWondeId)
-        }
-        if (foundClassroom) {
-          classroomID = foundClassroom.id // as saved earlier
-        } else {
-          console.log('Should not reach here Classroom wondeID not found', row)
-        }
-        // next try to locate the student in studentsToUpload[] which are uploaded by now
-        let foundStudent = studentsToUpload.find((student) => student.wondeID === row.SWondeId)
-        if (foundStudent) {
-          studentID = foundStudent.studentID
-        } else {
-          // next try to locate the classroom in uploadedStudents[] which were saved in a previous upload
-          foundStudent = uploadedStudents.find((student) => student.student.id === row.CWondeId)
-          if (foundStudent) {
-            studentID = foundStudent.student.id // as saved earlier
-          } else {
-            console.log('Should not reach here, student wondeID not found', row)
-          }
-        }
-        if (studentID && classroomID) {
-          classroomStudentsArray.push({ classroomID: classroomID, studentID: studentID })
-        }
-      }
-    })
-
-    console.log('classroomStudentsArray', classroomStudentsArray)
-    // ------------------------------------------------------------------------------
-
     //Save the Students
-    //  save student *
-    //  save Cognito (Not implemented)
-    //  save user    (Fix the error with UserID)
+    //  save student
+    //  save Cognito *    conditional on saveToCognito = true
+    //  save user
     //  save schoolStudent
     //  save classroomStudent
-    try {
-      console.time('Student Users save time') // measure how long it takes to save
+    if (saveToCognitoOption) {
+      try {
+        console.time('Cognito students save time')
 
-      // Note: Student email addresses were added in formatStudentClassrooms()
-      // email address is set as firstnamelastname@schoolname with all spaces removed
-
-      // check for name clashes - ie duplicate email addresses and report
-      let uniqueStudentNames = new Map()
-      studentsToUpload.forEach((student) => {
-        if (!uniqueStudentNames.get(`${student.firstName}${student.lastName}`))
-          uniqueStudentNames.set(`${student.firstName}${student.lastName}`)
-        else console.log(`${student.firstName}${student.lastName} is duplicated`)
-      })
-
-      // we have an array of items to batchWrite() in batches of up BATCH_SIZE
-      let batchesCount = parseInt(studentsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
-      let lastBatchSize = studentsToUpload.length % BATCH_SIZE // which could be 0
-      // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
-
-      console.log('Students Users batchesCount', batchesCount)
-      console.log('Students Users lastBatchSize', lastBatchSize)
-
-      // process each batch
-      let index = 0 //index in the studentList array
-      for (let i = 0; i < batchesCount; i++) {
-        let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
-        if (batchSize === 0) break // must have been an even no of batches
-
-        let batchToWrite = []
-        for (let n = 0; n < batchSize; n++) {
-          //console.log('yearLevelRecord', yearLevelRecord)
-          let id = v4() // WRONG I THINK, Should be the username returned by Cognito (see teacher)
-          batchToWrite.push({
-            PutRequest: {
-              Item: {
-                userId: id, // WRONG I THINK, Should be the username returned by Cognito (see teacher)
-                firstName: studentsToUpload[index].firstName,
-                lastName: studentsToUpload[index].lastName,
-                email: studentsToUpload[index].email,
-                userGroup: 'Users',
-                userType: 'Student', // or could be "Educator"
-                userSchoolID: schoolID,
-                wondeID: studentsToUpload[index].wondeID, // of the student
-                MISID: studentsToUpload[index].mis_id, // not in EdC
-                enabled: false, // login enabled or not
-                dbType: 'user',
-                __typename: 'User',
-                createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
-                updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
-                // fields not added lastSignIn
-              },
-            },
-          })
-          index++
-        } // end batch loop
-
-        // console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
-        let response = await batchWrite(batchToWrite, USER_TABLE)
-        //console.log(response);
-
-        if (!response.result) {
-          console.log(`exiting at index ${index}`)
-          break
+        for (let i = 0; i < studentsToUpload.length; i++) {
+          let student = studentsToUpload[i]
+          if (student.email) {
+            console.log('Saving student to Cognito', student)
+            let result = await addNewCognitoUser(student.email, USER_POOL_ID)
+            if (result.username === FAILED) {
+              console.log(
+                `Failed to create Cognito ${student.email} for ${student.firstName} ${student.lastName} `,
+              )
+            }
+            studentsToUpload[i].username = result.username // remember the username returned by Cognito or FAILED
+          } else {
+            console.log(`Student has no email so not saved to Cognito`, student)
+          }
         }
-      } // end array loop
-      console.timeEnd('Student Users save time')
-    } catch (err) {
-      console.log(err)
-    } // end saving student User
+        console.timeEnd('Cognito students save time')
+      } catch (err) {
+        console.log('error saving students to Cognito', err)
+      } // end saving students to Cognito}
+    }
 
     //Save the Students
     //  save student
-    //  save Cognito (Not implemented)
-    //  save user    (Fix the error with UserID)
+    //  save Cognito
+    //  save user *       conditional on saveToCognito = true
+    //  save schoolStudent
+    //  save classroomStudent
+    if (saveToCognitoOption) {
+      try {
+        console.time('Student Users save time') // measure how long it takes to save
+
+        // Note: Student email addresses were added in formatStudentClassrooms()
+        // email address is set as firstnamelastname@schoolname with all spaces removed
+
+        // check for name clashes - ie duplicate email addresses and report
+        let uniqueStudentNames = new Map()
+        studentsToUpload.forEach((student) => {
+          if (!uniqueStudentNames.get(`${student.firstName}${student.lastName}`))
+            uniqueStudentNames.set(`${student.firstName}${student.lastName}`)
+          else console.log(`${student.firstName}${student.lastName} is duplicated`)
+        })
+
+        // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+        let batchesCount = parseInt(studentsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
+        let lastBatchSize = studentsToUpload.length % BATCH_SIZE // which could be 0
+        // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
+
+        console.log('Students Users batchesCount', batchesCount)
+        console.log('Students Users lastBatchSize', lastBatchSize)
+
+        // process each batch
+        let index = 0 //index in the studentList array
+        for (let i = 0; i < batchesCount; i++) {
+          let batchSize = batchesCount === i + 1 ? lastBatchSize : BATCH_SIZE
+          if (batchSize === 0) break // must have been an even no of batches
+
+          let batchToWrite = []
+          for (let n = 0; n < batchSize; n++) {
+            //console.log('yearLevelRecord', yearLevelRecord)
+            let id = v4() // WRONG I THINK, Should be the username returned by Cognito (see teacher)
+            batchToWrite.push({
+              PutRequest: {
+                Item: {
+                  userId: id, // WRONG I THINK, Should be the username returned by Cognito (see teacher)
+                  firstName: studentsToUpload[index].firstName,
+                  lastName: studentsToUpload[index].lastName,
+                  email: studentsToUpload[index].email,
+                  userGroup: 'Users',
+                  userType: 'Student', // or could be "Educator"
+                  userSchoolID: schoolID,
+                  wondeID: studentsToUpload[index].wondeID, // of the student
+                  MISID: studentsToUpload[index].mis_id, // not in EdC
+                  enabled: false, // login enabled or not
+                  dbType: 'user',
+                  __typename: 'User',
+                  createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                  updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
+                  // fields not added lastSignIn
+                },
+              },
+            })
+            index++
+          } // end batch loop
+
+          // console.log(`writing batch ${i} batchsize ${batchToWrite.length}`);
+          let response = await batchWrite(batchToWrite, USER_TABLE)
+          //console.log(response);
+
+          if (!response.result) {
+            console.log(`exiting at index ${index}`)
+            break
+          }
+        } // end array loop
+        console.timeEnd('Student Users save time')
+      } catch (err) {
+        console.log(err)
+      } // end saving student User
+    }
+
+    //Save the Students
+    //  save student
+    //  save Cognito
+    //  save user
     //  save schoolStudent *
     //  save classroomStudent
 
     try {
       console.time('Saved SchoolStudents') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
-      let batchesCount = parseInt(uniqueStudentsArray.length / BATCH_SIZE) + 1 // allow for remainder
-      let lastBatchSize = uniqueStudentsArray.length % BATCH_SIZE // which could be 0
+      let batchesCount = parseInt(studentsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
+      let lastBatchSize = studentsToUpload.length % BATCH_SIZE // which could be 0
       // eg is 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
 
       console.log('SchoolStudents batchesCount', batchesCount)
@@ -1290,9 +1278,9 @@ function NewSchool() {
         for (let n = 0; n < batchSize; n++) {
           // find the yearCode for this student
           // Note yearCode looks like "Y0" to "Y12", Y0 = "FY", other = "K" (kindy)
-          let yearCode = uniqueStudentsArray[index].yearCode
-          if (!isNaN(parseInt(uniqueStudentsArray[index].yearCode)))
-            yearCode = `Y${uniqueStudentsArray[index].yearCode}`
+          let yearCode = studentsToUpload[index].yearCode
+          if (!isNaN(parseInt(studentsToUpload[index].yearCode)))
+            yearCode = `Y${studentsToUpload[index].yearCode}`
 
           // lookup the yearLevelID that matches the yearCode
           let yearLevelRecord = yearLevelsLookup.find((o) => yearCode === o.yearCode)
@@ -1301,9 +1289,9 @@ function NewSchool() {
           let id = v4()
           let schoolYear = parseInt(dayjs().format('YYYY'))
           let yearLevelID = yearLevelRecord.id
-          let firstName = uniqueStudentsArray[index].firstName
-          let lastName = uniqueStudentsArray[index].lastName
-          let studentID = uniqueStudentsArray[index].studentID
+          let firstName = studentsToUpload[index].firstName
+          let lastName = studentsToUpload[index].lastName
+          let studentID = studentsToUpload[index].studentID
           batchToWrite.push({
             PutRequest: {
               Item: {
@@ -1344,10 +1332,76 @@ function NewSchool() {
       console.log(err)
     } // end saving schoolStudents
 
+    // -----------------------------------------------------------------------
+    // Now make a classroomStudentArray for records to save in classroomStudents
+    // NB: Run AFTER Classrooms and Students are saved so the ClassroomID and StudentID are available
+    // We also want to exclude ClassroomStudent records that already exist
+    // We also need to add ClassroomSTudent records where the classroom and or student
+    // already exist in DynamoDB from a previous upload.
+    // filteredStudentClassrooms[] is the source of requested classroomStudent records {CwondeId, SwondeId}
+    // uploadedClassroomStudents[] as {classroom.wondeID,sudent.wondID} is whats uploaded
+
+    let classroomStudentsArray = [] // this needs to end up as an array of {classroomID,studentID}
+
+    // Remove all records from filteredStudentClassrooms[] that were previously uploaded
+    filteredStudentClassrooms.forEach((row) => {
+      if (
+        // if the classroomStudent is already uploaded then we skip it
+        !uploadedClassroomStudents.find((uploadedClassroom) => {
+          return (
+            row.CwondeId === uploadedClassroom.classroomWondeID &&
+            row.SwondeId === uploadedClassroom.studentWondeID
+          )
+        })
+      ) {
+        let classroomID = null
+        let studentID = null
+        // next try to locate the classroom in classroomsToUpload[] (now uploaded)
+        let foundClassroom = classroomsToUpload.find(
+          (classroomToUpload) => classroomToUpload.wondeID === row.CwondeId,
+        )
+        if (!foundClassroom) {
+          // next try to locate the classroom in uploadedClassrooms[] which were saved in a previous upload
+          foundClassroom = uploadedClassrooms.find(
+            (uploadedClassroom) => uploadedClassroom.wondeID === row.CwondeId,
+          )
+        }
+        if (foundClassroom) {
+          classroomID = foundClassroom.id // as saved earlier
+        } else {
+          console.log('Should not reach here Classroom wondeID not found', row)
+        }
+        // next try to locate the student in studentsToUpload[] (now uploaded)
+        let foundStudent = studentsToUpload.find(
+          (studentToUpload) => studentToUpload.wondeID === row.SwondeId,
+        )
+        if (foundStudent) {
+          studentID = foundStudent.studentID
+        } else {
+          // next try to locate the classroom in uploadedStudents[] which were saved in a previous upload
+          foundStudent = uploadedStudents.find(
+            (uploadedStudent) => uploadedStudent.student.wondeID === row.SwondeId,
+          )
+          if (foundStudent) {
+            studentID = foundStudent.student.id // as saved earlier
+          } else {
+            console.log('Should not reach here, student wondeID not found', row)
+          }
+        }
+        if (studentID && classroomID) {
+          classroomStudentsArray.push({ classroomID: classroomID, studentID: studentID })
+        }
+      }
+    })
+
+    console.log('classroomStudentsArray', classroomStudentsArray)
+
+    // ------------------------------------------------------------------------------
+
     //Save the Students
     //  save student
-    //  save Cognito (Not implemented)
-    //  save user   (Fix the error with UserID)
+    //  save Cognito
+    //  save user
     //  save schoolStudent
     //  save classroomStudent *
 
@@ -1520,6 +1574,8 @@ function NewSchool() {
               parentKindyOptions={kinterDayClasses}
               parentKindyClassName={kinterDayClassName}
               parentCoreSubjectOption={coreSubjectOption}
+              parentSaveToCognitoOption={saveToCognitoOption}
+              setParentSaveToCognitoOption={setSaveToCognitoOption}
               setParentCoreSubjectOption={setCoreSubjectOption}
               setOptionsPopupVisible={setOptionsPopupVisible}
               setParentYearOptions={setYearOptions}
