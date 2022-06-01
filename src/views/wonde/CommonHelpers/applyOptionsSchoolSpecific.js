@@ -31,6 +31,7 @@ export function applyOptionsSchoolSpecific(
   mergePrimaryClassesOption,
   selectedSchool, // the school being processed
 ) {
+  console.log(selectedSchool)
   // apply school-Specific filters
   switch (selectedSchool.wondeID) {
     case 'A5960542': // Wonde ANZ Testing School (AU)
