@@ -150,9 +150,11 @@ function NewSchool() {
   })
   const [kinterDayClasses, setKinterDayClasses] = useState(false) // false = dont include Mon-AM, Mon-PM etc
   const [kinterDayClassName, setKinterDayClassName] = useState('K-Mon-Fri') // string to use in place of Mon-AM etc
-  const [coreSubjectOption, setCoreSubjectOption] = useState(false)
+  const [coreSubjectOption, setCoreSubjectOption] = useState(false) // rue if core subject only required
   const [saveToCognitoOption, setSaveToCognitoOption] = useState(false) // true to save the students to Cognito/Users
+  const [mergePrimaryClassesOption, setMergePrimaryClassesOption] = useState(false) // set to merge primary classes with teh same teacher
 
+  // Trigger opening the options popup
   function getFilterOptions() {
     console.log('get filter options')
     setOptionsPopupVisible(true)
@@ -218,6 +220,7 @@ function NewSchool() {
       kinterDayClasses,
       kinterDayClassName,
       coreSubjectOption,
+      mergePrimaryClassesOption,
       selectedSchool,
     )
     let formattedFilteredCSV = formatStudentClassrooms(
@@ -233,6 +236,7 @@ function NewSchool() {
     kinterDayClasses,
     kinterDayClassName,
     coreSubjectOption,
+    mergePrimaryClassesOption,
     selectedSchool,
   ])
 
@@ -296,10 +300,8 @@ function NewSchool() {
     setIsSendingCSVToS3(false) // loading indicator only
   }
 
-  // TEST FUNCTION FOR experimentation TO BE REMOVED LATER
-  // There is  UI button that will run the function
-  // Any sort of test function here is acceptable
-
+  // TEST FUNCTION FOR as a dev aid TO BE REMOVED LATER
+  // Appears only if Brendan Curtin is logged in
   async function testFunction() {
     console.log('testFuntion() invoked')
     // console.log('yearLevels', yearLevelsLookup)
@@ -1395,7 +1397,6 @@ function NewSchool() {
     })
 
     console.log('classroomStudentsArray', classroomStudentsArray)
-
     // ------------------------------------------------------------------------------
 
     //Save the Students
@@ -1575,12 +1576,14 @@ function NewSchool() {
               parentKindyClassName={kinterDayClassName}
               parentCoreSubjectOption={coreSubjectOption}
               parentSaveToCognitoOption={saveToCognitoOption}
-              setParentSaveToCognitoOption={setSaveToCognitoOption}
-              setParentCoreSubjectOption={setCoreSubjectOption}
-              setOptionsPopupVisible={setOptionsPopupVisible}
+              parentMergePrimaryClassesOption={mergePrimaryClassesOption}
               setParentYearOptions={setYearOptions}
-              setParentKinterDayClassName={setKinterDayClassName}
               setParentKinterDayClasses={setKinterDayClasses}
+              setParentKinterDayClassName={setKinterDayClassName}
+              setParentCoreSubjectOption={setCoreSubjectOption}
+              setParentSaveToCognitoOption={setSaveToCognitoOption}
+              setParentMergePrimaryClassesOption={setMergePrimaryClassesOption}
+              setOptionsPopupVisible={setOptionsPopupVisible}
               setParentDataFilterPending={setDataFilterPending}
             ></OptionsPopup>
           ) : null}

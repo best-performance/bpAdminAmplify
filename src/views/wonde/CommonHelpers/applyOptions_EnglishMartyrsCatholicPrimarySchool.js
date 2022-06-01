@@ -6,6 +6,7 @@ export function applyOptions_EnglishMartyrsCatholicPrimarySchool(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_EnglishMartyrsCatholicPrimarySchool()')
   console.log('Wonde list of changes to Filter[0]', wondeStudents[0])
@@ -50,6 +51,7 @@ export function applyOptions_EnglishMartyrsCatholicPrimarySchool(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_EnglishMartyrsCatholicPrimarySchool()

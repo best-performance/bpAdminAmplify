@@ -7,6 +7,7 @@ export function applyOptions_wonde_ANZ(
   kinterDayClasses, // set if we want to remove Kintergarten AM,PM classes
   kinterDayClassName,
   coreSubjectOption, // set if we only include core subjects
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_wonde_ANZ()')
 
@@ -52,6 +53,7 @@ export function applyOptions_wonde_ANZ(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_wonde_ANZ()

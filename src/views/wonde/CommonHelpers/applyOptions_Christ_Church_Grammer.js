@@ -7,6 +7,7 @@ export function applyOptions_Christ_Church_Grammer(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_Christ_Church_Grammer()')
 
@@ -50,6 +51,7 @@ export function applyOptions_Christ_Church_Grammer(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_Christ_Church_Grammer()

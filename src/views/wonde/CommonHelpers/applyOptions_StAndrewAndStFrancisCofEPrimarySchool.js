@@ -6,6 +6,7 @@ export function applyOptions_StAndrewAndStFrancisCofEPrimarySchool(
   kinterDayClasses, // true if compressing Kindy Classes
   kinterDayClassName, // use this classroom name style if compressing Kindy Classes
   coreSubjectOption, // true if accpting classes with core subjects only
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_StAndrewAndStFrancisCofEPrimarySchool()')
 
@@ -50,6 +51,7 @@ export function applyOptions_StAndrewAndStFrancisCofEPrimarySchool(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_StAndrewAndStFrancisCofEPrimarySchool()

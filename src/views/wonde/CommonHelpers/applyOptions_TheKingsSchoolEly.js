@@ -7,6 +7,7 @@ export function applyOptions_TheKingsSchoolEly(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_TheKingsSchoolEly()')
 
@@ -49,6 +50,7 @@ export function applyOptions_TheKingsSchoolEly(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_TheKingsSchoolEly()

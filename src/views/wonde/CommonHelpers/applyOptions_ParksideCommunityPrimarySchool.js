@@ -11,6 +11,7 @@ export function applyOptions_ParksideCommunityPrimarySchool(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_ParksideCommunityPrimarySchool()')
 
@@ -54,6 +55,7 @@ export function applyOptions_ParksideCommunityPrimarySchool(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_ParksideCommunityPrimarySchool()

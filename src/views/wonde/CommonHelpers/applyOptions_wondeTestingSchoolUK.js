@@ -7,6 +7,7 @@ export function applyOptions_wondeTestingSchoolUK(
   kinterDayClasses, // set if we want to remove Kintergarten AM,PM classes
   kinterDayClassName,
   coreSubjectOption, // set if we only include core subjects
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_wondeTestingSchoolUK()')
 
@@ -48,6 +49,7 @@ export function applyOptions_wondeTestingSchoolUK(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_wonde_ANZ()

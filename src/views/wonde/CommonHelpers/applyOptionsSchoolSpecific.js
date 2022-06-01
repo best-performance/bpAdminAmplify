@@ -28,6 +28,7 @@ export function applyOptionsSchoolSpecific(
   kinterDayClasses,
   kinterDayClassName,
   coreSubjectOption,
+  mergePrimaryClassesOption,
   selectedSchool, // the school being processed
 ) {
   // apply school-Specific filters
@@ -39,6 +40,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A605175766': //Christ Church Grammar School (AU)
       return applyOptions_Christ_Church_Grammer(
@@ -47,6 +49,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1930499544': // Wonde Testing School (UK)
       return applyOptions_wondeTestingSchoolUK(
@@ -55,6 +58,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1895992081': //	St Andrew and St Francis CofE Primary School (UK)
       return applyOptions_StAndrewAndStFrancisCofEPrimarySchool(
@@ -63,6 +67,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1802201454': //	St Monica's Catholic Primary School (UK)
       return applyOptions_StMonicaCatholicPrimarySchool(
@@ -71,6 +76,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A809309573': //Claires Court Schools (UK)
       return applyOptions_Claires_Court_School(
@@ -79,6 +85,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1732060724': //	St Mark's Primary School (UK)
       return applyOptions_StMarkPrimarySchool(
@@ -87,6 +94,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A23570669': // Parkside Community Primary School (UK)
       return applyOptions_ParksideCommunityPrimarySchool(
@@ -95,6 +103,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A901324615': //Our Lady Star of the Sea Catholic Primary School (UK)
       return applyOptions_OurLadyStarOfTheSeaCatholicPrimarySchool(
@@ -103,6 +112,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1102074985': //English Martyrs' Catholic Primary School (UK)
       return applyOptions_EnglishMartyrsCatholicPrimarySchool(
@@ -111,6 +121,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A1084772819': //	St Peter's Church of England Primary School (UK)
       return applyOptions_StPeterChurchOfEnglandPrimarySchool(
@@ -119,6 +130,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A509965888': //	Mayville Primary School (UK)
       return applyOptions_MayvillePrimarySchool(
@@ -127,6 +139,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     case 'A111084749': //	The King's School Ely (UK)
       return applyOptions_TheKingsSchoolEly(
@@ -135,6 +148,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
     default:
       return applyOptions_DefaultSchool(
@@ -143,6 +157,7 @@ export function applyOptionsSchoolSpecific(
         kinterDayClasses,
         kinterDayClassName,
         coreSubjectOption,
+        mergePrimaryClassesOption,
       )
   }
 }

@@ -7,6 +7,7 @@ export function applyOptions_StMarkPrimarySchool(
   kinterDayClasses, // true if compressing Kindy Classes
   kinterDayClassName, // use this classroom name style if compressing Kindy Classes
   coreSubjectOption, // true if accpting classes with core subjects only
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_StMarkPrimarySchool()')
 
@@ -51,6 +52,7 @@ export function applyOptions_StMarkPrimarySchool(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_StMarkPrimarySchool()

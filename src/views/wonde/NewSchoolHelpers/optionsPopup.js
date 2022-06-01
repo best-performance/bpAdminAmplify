@@ -1,3 +1,7 @@
+/**
+ * This popop allows the use to select options for uploading Wonde data to
+ * DynamoDB
+ */
 /* eslint-disable react/prop-types */
 import React, { useEffect, useState } from 'react'
 import { Popup, Position, ToolbarItem } from 'devextreme-react/popup'
@@ -8,30 +12,53 @@ import TextBox from 'devextreme-react/text-box'
 import { v4 } from 'uuid'
 
 export function OptionsPopup({
+  // option values passed in by parent
+  // Explanations in applyFilters() below
   yearLevelStatusArray, // array of objects like {yearLevel: Y1, isLoaded:true}
   parentYearOptions, // an array of objects like {Y1: true}
   parentKindyOptions,
   parentKindyClassName,
   parentCoreSubjectOption,
   parentSaveToCognitoOption,
-  setParentSaveToCognitoOption,
-  setOptionsPopupVisible,
+  parentMergePrimaryClassesOption,
+  // Parents set functions for its state variables
   setParentYearOptions,
   setParentKinterDayClasses,
   setParentKinterDayClassName,
   setParentCoreSubjectOption,
+  setParentSaveToCognitoOption,
+  setParentMergePrimaryClassesOption,
+  setOptionsPopupVisible,
   setParentDataFilterPending,
 }) {
   const [kindyOption, setKindyOption] = useState(parentKindyOptions)
   const [kindyClassname, setKindyClassname] = useState(parentKindyClassName)
   const [coreSubjectOption, setCoreSubjectOption] = useState(parentCoreSubjectOption)
+  const [mergePrimaryClassesOption, setMergePrimaryClassesOption] = useState(
+    parentMergePrimaryClassesOption,
+  )
   const [yearOptions, setYearOptions] = useState(parentYearOptions)
   const [saveToCognitoOption, setSaveToCognitoOption] = useState(parentSaveToCognitoOption)
   const [selectAllToggle, setSelectAllToggle] = useState(true)
 
+  // useEffect() Just for debugging - can be commented out
   useEffect(() => {
     console.log('rendered', yearOptions)
   }, [yearOptions])
+
+  // Fired when done and we want to pass the changes back to <NewSchool>
+  // set the state variables in <NewSchool> and closes the popup
+  function applyFilters() {
+    console.log('apply filters')
+    setParentYearOptions(yearOptions) // which years levels you want to upload
+    setParentKinterDayClassName(kindyClassname) // set the name you want for merged kindy classes
+    setParentKinterDayClasses(kindyOption) // set if you want to merge kindy classes
+    setParentCoreSubjectOption(coreSubjectOption) // set if you only want core subject classes
+    setParentSaveToCognitoOption(saveToCognitoOption) // set of you want to save students to Cognito
+    setParentMergePrimaryClassesOption(mergePrimaryClassesOption) // set of you want to merge primary classes with same teacher
+    setParentDataFilterPending(true)
+    setOptionsPopupVisible(false)
+  }
 
   // Fired if any year level option changes
   function yearOptionChanged(e) {
@@ -69,16 +96,10 @@ export function OptionsPopup({
     setCoreSubjectOption(e.value)
     console.log(e.value)
   }
-  // Fired when done and we want to pass the changes back to <NewSchool>
-  function applyFilters() {
-    console.log('apply filters')
-    setParentYearOptions(yearOptions)
-    setParentKinterDayClassName(kindyClassname)
-    setParentKinterDayClasses(kindyOption)
-    setParentCoreSubjectOption(coreSubjectOption)
-    setParentSaveToCognitoOption(saveToCognitoOption)
-    setParentDataFilterPending(true)
-    setOptionsPopupVisible(false)
+
+  function mergePrimaryClassesOptionChanged(e) {
+    setMergePrimaryClassesOption(e.value)
+    console.log(e.value)
   }
 
   // this is fired when done and cancelling with no changes
@@ -89,13 +110,6 @@ export function OptionsPopup({
 
   // this is fired when selectAll or deselectAll is pressed
   function selectAll(e) {
-    // let yearOptionsCopy = { ...yearOptions }
-    // // The "in" operator below check if the object key exists
-    // if (e.component._props.text in yearOptionsCopy) {
-    //   yearOptionsCopy[e.component._props.text] = e.value
-    //   setYearOptions(yearOptionsCopy)
-    // }
-
     let tickboxVal
     if (selectAllToggle) {
       tickboxVal = true
@@ -127,10 +141,11 @@ export function OptionsPopup({
         <div key={v4()}>
           <span style={{ display: 'inline-block', width: '80px' }}>
             <CheckBox
-              value={item.isLoaded ? true : yearOptions[item.yearLevel]}
+              //value={item.isLoaded ? true : yearOptions[item.yearLevel]}
+              value={yearOptions[item.yearLevel]}
               text={item.yearLevel}
               onValueChanged={yearOptionChanged}
-              readOnly={item.isLoaded}
+              //readOnly={item.isLoaded}
             />
           </span>
           <span>
@@ -217,6 +232,15 @@ export function OptionsPopup({
                 onValueChanged={coreSubjectOptionChanged}
               />
             </div>
+            <div style={{ height: '15px' }}></div>
+            <div>
+              <CheckBox
+                defaultValue={mergePrimaryClassesOption}
+                text="Merge primary classes with same teacher"
+                onValueChanged={mergePrimaryClassesOptionChanged}
+              />
+            </div>
+            <div style={{ height: '15px' }}></div>
             <div>
               <CheckBox
                 defaultValue={saveToCognitoOption}

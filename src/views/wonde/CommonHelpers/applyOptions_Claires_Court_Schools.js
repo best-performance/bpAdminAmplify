@@ -7,6 +7,7 @@ export function applyOptions_Claires_Court_School(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_Claires_Court_Schools()')
 
@@ -50,6 +51,7 @@ export function applyOptions_Claires_Court_School(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_Claires_Court_School()

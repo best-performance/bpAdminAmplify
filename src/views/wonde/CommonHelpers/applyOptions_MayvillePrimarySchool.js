@@ -7,6 +7,7 @@ export function applyOptions_MayvillePrimarySchool(
   kinterDayClasses,
   kinterDayClassName, // use this classroom name style if compressing classes
   coreSubjectOption,
+  mergePrimaryClassesOption,
 ) {
   console.log('in applyOptions_MayvillePrimarySchool()')
 
@@ -49,6 +50,7 @@ export function applyOptions_MayvillePrimarySchool(
     kinterDayClasses,
     kinterDayClassName, // use this classroom name style if compressing classes
     coreSubjectOption,
+    mergePrimaryClassesOption,
   )
   return filteredList
 } // end function applyOptions_MayvillePrimarySchool()
