@@ -44,14 +44,14 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         Authorization: getToken(),
       },
     })
-    // put in a random email if there is no email supplied
+    // make a map of (teacher.id, email)
     response.data.data.forEach((teacher) => {
       let id = v4()
       let teacherEmail
       if (teacher.contact_details && teacher.contact_details.data.emails.email) {
         teacherEmail = teacher.contact_details.data.emails.email
       } else {
-        teacherEmail = `${id}@placeholder.com`
+        teacherEmail = `${id}@placeholder.com` // insert placeholder if no email supplied
       }
       teachersMap.set(teacher.id, teacherEmail)
     })
@@ -116,7 +116,7 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
   //return []
 }
 
-// read the students-classes-teachers for secondary and large primaries
+// read the students-classes-teachers for secondary schools and large primary schools
 async function readStudentsClassesTeachers(wondeSchoolID) {
   console.log('readStudentsClassesTeachers', wondeSchoolID)
   // first read the teachers who have classes
@@ -130,14 +130,15 @@ async function readStudentsClassesTeachers(wondeSchoolID) {
         Authorization: getToken(),
       },
     })
-    //console.log('teachers', response.data.data)
+
+    // make a map of (teacher.id, email)
     response.data.data.forEach((teacher) => {
       let id = v4()
       let teacherEmail
       if (teacher.contact_details && teacher.contact_details.data.emails.email) {
         teacherEmail = teacher.contact_details.data.emails.email
       } else {
-        teacherEmail = `${id}@placeholder.com`
+        teacherEmail = `${id}@placeholder.com` // insert placeholder if no email supplied
       }
       teachersMap.set(teacher.id, teacherEmail)
     })

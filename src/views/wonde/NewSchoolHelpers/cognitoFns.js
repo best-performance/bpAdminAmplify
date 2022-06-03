@@ -6,7 +6,7 @@ import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 // Frank's original code had a global CognitoIdentityServiceProvider object
 // but thats not suitable for React, so create a new one in each function
 
-// To make call we have to retrieve the credentials of the current logged
+// To make call we have to retrieve the credentials of the current logged user
 //
 // let credentials = await Auth.currentCredentials()
 // then

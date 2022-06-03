@@ -2,7 +2,15 @@ import React, { useEffect, useState, useCallback, useContext } from 'react'
 import loggedInContext from 'src/loggedInContext'
 import { CContainer, CCol, CRow } from '@coreui/react'
 import Button from 'devextreme-react/button'
-import { DataGrid, Selection, SearchPanel, Column, Export } from 'devextreme-react/data-grid'
+import {
+  DataGrid,
+  FilterRow,
+  Selection,
+  ColumnChooser,
+  SearchPanel,
+  Column,
+  Export,
+} from 'devextreme-react/data-grid'
 import TabPanel, { Item } from 'devextreme-react/tab-panel'
 import { confirm } from 'devextreme/ui/dialog' // confirmation dialog
 import { LoadPanel } from 'devextreme-react/load-panel' // loading indicator
@@ -371,6 +379,33 @@ function NewSchool() {
     }
   }
 
+  // function to clear the options to their default values
+  function clearOptions() {
+    setYearOptions({
+      Y1: false,
+      Y2: false,
+      Y3: false,
+      Y4: false,
+      Y5: false,
+      Y6: false,
+      Y7: false,
+      Y8: false,
+      Y9: false,
+      Y10: false,
+      Y11: false,
+      Y12: false,
+      Y13: false,
+      K: false,
+      R: false,
+      FY: false,
+    })
+    setKinterDayClasses(false)
+    setKinterDayClassName('K-Mon-Fri')
+    setCoreSubjectOption(false)
+    setSaveToCognitoOption(false)
+    setMergePrimaryClassesOption(false)
+  }
+
   // this is executed if we select a school from the list of schools
   const selectSchool = useCallback((e) => {
     e.component.byKey(e.currentSelectedRowKeys[0]).done((school) => {
@@ -380,6 +415,7 @@ function NewSchool() {
       setStudentClassrooms([])
       setFilteredStudentClassrooms([])
       setUnmatchedStudents([])
+      clearOptions() // clear the popup options.
     })
     setIsWondeSchoolDataLoaded(false)
   }, [])
@@ -961,7 +997,7 @@ function NewSchool() {
                 lastName: teachersToUpload[index].lastName,
                 email: teachersToUpload[index].email,
                 userGroup: 'Users',
-                userType: 'Educator', // or could be "Student"
+                userType: 'Educator', // "Student" if a student
                 enabled: false, // login enabled or not
                 userSchoolID: schoolID, // not in Wonde - generated above when saving the school
                 wondeID: teachersToUpload[index].wondeID, // not in EdC
@@ -1212,17 +1248,17 @@ function NewSchool() {
 
           let batchToWrite = []
           for (let n = 0; n < batchSize; n++) {
-            //console.log('yearLevelRecord', yearLevelRecord)
-            let id = v4() // WRONG I THINK, Should be the username returned by Cognito (see teacher)
+            // if there is no userId returned by the cognito, then the record is not created in the user table
+            if (studentsToUpload[index].username === FAILED) continue
             batchToWrite.push({
               PutRequest: {
                 Item: {
-                  userId: id, // WRONG I THINK, Should be the username returned by Cognito (see teacher)
+                  userId: studentsToUpload[index].username,
                   firstName: studentsToUpload[index].firstName,
                   lastName: studentsToUpload[index].lastName,
                   email: studentsToUpload[index].email,
                   userGroup: 'Users',
-                  userType: 'Student', // or could be "Educator"
+                  userType: 'Student', // "Educator" if teacher
                   userSchoolID: schoolID,
                   wondeID: studentsToUpload[index].wondeID, // of the student
                   MISID: studentsToUpload[index].mis_id, // not in EdC
@@ -1545,8 +1581,29 @@ function NewSchool() {
                 allowColumnReordering={true}
                 columnAutoWidth={true}
                 dataSource={schools}
+                height="350px"
               >
                 <Selection mode="single" />
+                <FilterRow visible={true} />
+                <Column caption="School Name" dataField="schoolName" />
+                <Column caption="Address 1" dataField="address1" allowFiltering={false} />
+                <Column caption="Address 2" dataField="address2" allowFiltering={false} />
+                <Column caption="Town" dataField="town" allowFiltering={false} />
+                <Column caption="Country" dataField="country" allowFiltering={false} />
+                <Column caption="Uploaded" dataField="isLoaded" />
+                <Column caption="Manual" dataField="isManual" />
+                <Column
+                  caption="WondeID"
+                  dataField="wondeID"
+                  allowFiltering={false}
+                  visibile={loggedIn.username === 'brendan'}
+                />
+                <Column
+                  caption="dynamoDB ID"
+                  dataField="id"
+                  allowFiltering={false}
+                  visible={loggedIn.username === 'brendan'}
+                />
               </DataGrid>
             )}
           </CCol>

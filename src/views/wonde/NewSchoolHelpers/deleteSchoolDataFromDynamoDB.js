@@ -292,7 +292,10 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('D5 - Deleting Classroom records')
   await deleteAll(classroomRecords, CLASSROOM_TABLE, 'id')
 
-  // Deleting cognito users for teachers
+  // Note: When saving, the Cognito record the User record is only saved if the
+  // Cognito save was successful and a username returned. This username is saved in
+  // the User record.
+  // Cognito records have to be deleted one by one.
   console.log('D6a - Deleting Cognito users for teachers')
   for (let i = 0; i < teacherUserRecords.length; i++) {
     await deleteUser(teacherUserRecords[i].userId, USER_POOL_ID)
@@ -307,11 +310,18 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('D8a - Deleting Student records records')
   await deleteAll(studentRecords, STUDENT_TABLE, 'id')
 
-  // Deleting cognito users for students
-  // console.log('D8b - Deleting Cognito users for students')
-  // for (let i = 0; i < studentUsersRecords.length; i++) {
-  //   await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
-  // }
+  // Note: When saving, the Cognito record the User record is only saved if the
+  // Cognito save was successful and a username returned. This username is saved in
+  // the User record.
+  // Its possible that User records were saved in earlier versions with a dummy username
+  // especially for students and no Cognito record saved.
+  // This means there may be errors when trying the delete the
+  // corresponding Cognito records.
+  // Cognito records have to be deleted one by one.
+  console.log('D8b - Deleting Cognito users for students')
+  for (let i = 0; i < studentUsersRecords.length; i++) {
+    await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
+  }
 
   console.log('D9 - Deleting student Users records')
   await deleteAll(studentUsersRecords, USER_TABLE, 'email')
