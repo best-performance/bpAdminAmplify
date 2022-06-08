@@ -27,7 +27,7 @@ import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassro
 import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
 import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './NewSchoolHelpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser } from './NewSchoolHelpers/cognitoFns'
+import { addNewCognitoUser, addUserToGroup } from './NewSchoolHelpers/cognitoFns'
 import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
@@ -945,13 +945,21 @@ function NewSchool() {
         let teacher = teachersToUpload[i]
         if (teacher.email) {
           console.log('Saving teacher to Cognito', teacher)
-          let result = await addNewCognitoUser(teacher.email, USER_POOL_ID)
-          if (result.username === FAILED) {
+          let addTeacherResult = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+          if (addTeacherResult.username === FAILED) {
             console.log(
               `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
             )
+          } else {
+            // add the teacher to the "Users" Group so they can log in
+            let addToUserGroupResult = await addUserToGroup(
+              addTeacherResult.username,
+              'Users',
+              USER_POOL_ID,
+            )
+            console.log('addToUserGroupResult', addToUserGroupResult)
           }
-          teachersToUpload[i].username = result.username // remember the username returned by Cognito or FAILED
+          teachersToUpload[i].username = addTeacherResult.username // remember the username returned by Cognito or FAILED
         } else {
           console.log(`Teacher has no email so not saved to Cognito`, teacher)
         }
@@ -1194,13 +1202,21 @@ function NewSchool() {
           let student = studentsToUpload[i]
           if (student.email) {
             console.log('Saving student to Cognito', student)
-            let result = await addNewCognitoUser(student.email, USER_POOL_ID)
-            if (result.username === FAILED) {
+            let addStudentResult = await addNewCognitoUser(student.email, USER_POOL_ID)
+            if (addStudentResult.username === FAILED) {
               console.log(
                 `Failed to create Cognito ${student.email} for ${student.firstName} ${student.lastName} `,
               )
+            } else {
+              // add the student to the "Users" Group so they can log in
+              let addToUserGroupResult = await addUserToGroup(
+                addStudentResult.username,
+                'Users',
+                USER_POOL_ID,
+              )
+              console.log('addToUserGroupResult', addToUserGroupResult)
             }
-            studentsToUpload[i].username = result.username // remember the username returned by Cognito or FAILED
+            studentsToUpload[i].username = addStudentResult.username // remember the username returned by Cognito or FAILED
           } else {
             console.log(`Student has no email so not saved to Cognito`, student)
           }

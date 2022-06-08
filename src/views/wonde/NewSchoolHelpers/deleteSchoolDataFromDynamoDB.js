@@ -276,29 +276,32 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   )
 
   // After retrieving each table's data, they should be deleted in the following order
-  console.log('D1 - Deleting ClassroomYearLevel records)')
+  console.log(`D1 - Deleting ClassroomYearLevel records:(${classroomYearLevelRecords.length})`)
   await deleteAll(classroomYearLevelRecords, CLASSROOM_YEARLEVEL_TABLE, 'id')
 
   //New
-  console.log('D2 - Deleting ClassroomLearningArea records')
+  console.log(
+    `D2 - Deleting ClassroomLearningArea records:(${classroomLearningAreaRecords.length})`,
+  )
   await deleteAll(classroomLearningAreaRecords, CLASSROOM_LEARNINGAREA_TABLE, 'id')
 
-  console.log('D3 - Deleting ClassroomTeacher records')
+  console.log(`D3 - Deleting ClassroomTeacher records:(${classroomTeacherRecords.length})`)
   await deleteAll(classroomTeacherRecords, CLASSROOM_TEACHER_TABLE, 'id')
 
-  console.log('D4 - Deleting classroomStudent records')
+  console.log(`D4 - Deleting classroomStudent records:(${classroomStudentRecords.length})`)
   await deleteAll(classroomStudentRecords, CLASSROOM_STUDENT_TABLE, 'id')
 
-  console.log('D5 - Deleting Classroom records')
+  console.log(`D5 - Deleting Classroom records:(${classroomRecords.length})`)
   await deleteAll(classroomRecords, CLASSROOM_TABLE, 'id')
 
   // Note: When saving, the Cognito record the User record is only saved if the
   // Cognito save was successful and a username returned. This username is saved in
   // the User record.
   // Cognito records have to be deleted one by one.
-  console.log('D6a - Deleting Cognito users for teachers')
+  console.log(`D6a - Deleting Cognito users for teachers(${teacherUserRecords.length})`)
   for (let i = 0; i < teacherUserRecords.length; i++) {
     await deleteUser(teacherUserRecords[i].userId, USER_POOL_ID)
+    console.log(`deleting `)
   }
 
   console.log('D6b - Deleting teacher User records')
