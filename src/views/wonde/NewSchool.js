@@ -1547,7 +1547,7 @@ function NewSchool() {
       )
     if (isSavingSchoolData)
       return (
-        <LoadPanel visible={true} message={`Saving WOnde data to "${selectedSchool.schoolName}"`} />
+        <LoadPanel visible={true} message={`Saving Wonde data to "${selectedSchool.schoolName}"`} />
       )
     if (isDeletingSchoolData)
       return (
