@@ -11,8 +11,6 @@ export function applyOptions_DefaultSchool(
 ) {
   console.log('in applyOptions_wonde_ANZ()')
 
-  // If a school uptake these parameters are set by the UI
-  // After that the chosen options are remembered here (ugly)
   if (yearOptions === null) {
     yearOptions = {
       Y1: true,

@@ -27,40 +27,61 @@ import { updateAWSCredentials } from '../CommonHelpers/updateAWSCredentials.js'
 
 const FAILED = 'failed'
 
-export async function addNewCognitoUser(username, userPoolId) {
+// When adding a student to Cognito we set a default password and make it permanent
+// so the student does not have to change password and remember it
+export async function addNewStudentCognitoUser(
+  email, // the student's email
+  userPoolId,
+  studentFirstName,
+  studentLastName,
+) {
   await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
 
-  const params = {
-    UserPoolId: userPoolId,
-    Username: username,
-    MessageAction: 'SUPPRESS', // don't send a confirmation email
-    UserAttributes: [
-      { Name: 'email', Value: username },
-      {
-        Name: 'email_verified',
-        Value: 'true',
-      },
-    ],
-    ForceAliasCreation: false,
-    TemporaryPassword: `Password${new Date().getFullYear().toString().slice(2)}!`,
-  }
-
   try {
-    const result = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
+    // set the params for the adminCreate user
+    let params = {
+      UserPoolId: userPoolId,
+      Username: email,
+      MessageAction: 'SUPPRESS', // don't send a confirmation email
+      UserAttributes: [
+        { Name: 'email', Value: email },
+        {
+          Name: 'email_verified',
+          Value: 'true',
+        },
+        {
+          Name: 'name' /* required */,
+          Value: `${studentFirstName} ${studentLastName}`,
+        },
+      ],
+      ForceAliasCreation: false,
+      TemporaryPassword: `Student${new Date().getFullYear().toString().slice(2)}!`,
+    }
+    const { User } = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
+    // if the call fails Cognito throws and exception so if we reach here we can assume all is good
+    // So we can go ahead and set the password fianlly
+    params = {
+      UserPoolId: userPoolId,
+      Username: User.Username,
+      Password: `Student${new Date().getFullYear().toString().slice(2)}`,
+      Permanent: true,
+    }
+    await cognitoIdentityServiceProvider.adminSetUserPassword(params).promise()
+    // again if we reach here all is good.
     return {
-      username: result.User.Username,
+      username: User.Username,
     }
   } catch (err) {
     // it can fail because the user already exists
     if (err.code === 'UsernameExistsException') {
       const params = {
         UserPoolId: userPoolId,
-        Username: username,
+        Username: email,
       }
       try {
-        const result = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
-        return { username: result.Username }
+        const { Username } = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
+        return { username: Username }
       } catch (err) {
         console.error('error getting existing user for adding', params, err)
         return { username: FAILED }
@@ -72,6 +93,63 @@ export async function addNewCognitoUser(username, userPoolId) {
     }
   }
 }
+
+// When adding a teacher to Cognito we set a default password and force them to change it
+export async function addNewTeacherCognitoUser(
+  email,
+  userPoolId,
+  teacherFirstName,
+  teacherLastName,
+) {
+  await updateAWSCredentials()
+  const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
+
+  try {
+    let params = {
+      UserPoolId: userPoolId,
+      Username: email,
+      MessageAction: 'SUPPRESS', // don't send a confirmation email
+      UserAttributes: [
+        { Name: 'email', Value: email },
+        {
+          Name: 'email_verified',
+          Value: 'true',
+        },
+        {
+          Name: 'name' /* required */,
+          Value: `${teacherFirstName} ${teacherLastName}`,
+        },
+      ],
+      ForceAliasCreation: false,
+      TemporaryPassword: `Password${new Date().getFullYear().toString().slice(2)}!`,
+    }
+    const { User } = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
+    return {
+      username: User.Username,
+    }
+  } catch (err) {
+    // it can fail because the user already exists
+    if (err.code === 'UsernameExistsException') {
+      const params = {
+        UserPoolId: userPoolId,
+        Username: email,
+      }
+      try {
+        const { Username } = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
+        // no need to set the final password as the teacher is required to do that herself.
+        return { username: Username }
+      } catch (err) {
+        console.error('error getting existing user for adding', params, err)
+        return { username: FAILED }
+      }
+    } else {
+      // or can fail for some other unknown reason
+      console.error('error adding new user', err)
+      return { username: FAILED }
+    }
+  }
+}
+
 export async function getCognitoUser(Username, userPoolId) {
   await updateAWSCredentials()
   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
@@ -325,3 +403,50 @@ export async function signUserOut(username, userPoolId) {
     throw err
   }
 }
+
+// // This may not be used any more (check and delete as appropriate)
+// export async function addNewCognitoUser(username, userPoolId) {
+//   await updateAWSCredentials()
+//   const cognitoIdentityServiceProvider = new CognitoIdentityServiceProvider()
+
+//   const params = {
+//     UserPoolId: userPoolId,
+//     Username: username,
+//     MessageAction: 'SUPPRESS', // don't send a confirmation email
+//     UserAttributes: [
+//       { Name: 'email', Value: username },
+//       {
+//         Name: 'email_verified',
+//         Value: 'true',
+//       },
+//     ],
+//     ForceAliasCreation: false,
+//     TemporaryPassword: `Password${new Date().getFullYear().toString().slice(2)}!`,
+//   }
+
+//   try {
+//     const result = await cognitoIdentityServiceProvider.adminCreateUser(params).promise()
+//     return {
+//       username: result.User.Username,
+//     }
+//   } catch (err) {
+//     // it can fail because the user already exists
+//     if (err.code === 'UsernameExistsException') {
+//       const params = {
+//         UserPoolId: userPoolId,
+//         Username: username,
+//       }
+//       try {
+//         const result = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
+//         return { username: result.Username }
+//       } catch (err) {
+//         console.error('error getting existing user for adding', params, err)
+//         return { username: FAILED }
+//       }
+//     } else {
+//       // or can fail for some other unknown reason
+//       console.error('error adding new user', err)
+//       return { username: FAILED }
+//     }
+//   }
+// }

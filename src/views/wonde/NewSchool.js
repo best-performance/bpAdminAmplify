@@ -6,7 +6,6 @@ import {
   DataGrid,
   FilterRow,
   Selection,
-  ColumnChooser,
   SearchPanel,
   Column,
   Export,
@@ -20,14 +19,17 @@ import { Auth } from 'aws-amplify'
 import AWS from 'aws-sdk'
 import { v4 } from 'uuid'
 // Helper functions
-import { updateAWSCredentials } from './CommonHelpers/updateAWSCredentials'
 import { getAllSchoolsFromWonde } from './NewSchoolHelpers/getAllSchoolsFromWonde'
 import { getStudentsFromWonde } from './NewSchoolHelpers/getStudentsFromWonde'
 import { formatStudentClassrooms } from './NewSchoolHelpers/formatStudentClassrooms'
 import { OptionsPopup } from './NewSchoolHelpers/optionsPopup'
 import { saveSchool } from './NewSchoolHelpers/saveSchool' // save it if it does not already exist in table School
 import { deleteSchoolDataFromDynamoDB } from './NewSchoolHelpers/deleteSchoolDataFromDynamoDB'
-import { addNewCognitoUser, addUserToGroup } from './NewSchoolHelpers/cognitoFns'
+import {
+  addNewStudentCognitoUser,
+  addNewTeacherCognitoUser,
+  addUserToGroup,
+} from './NewSchoolHelpers/cognitoFns'
 import { batchWrite } from './NewSchoolHelpers/batchWrite'
 import { getRegion, getToken, getURL } from './CommonHelpers/featureToggles'
 import { applyOptionsSchoolSpecific } from './CommonHelpers/applyOptionsSchoolSpecific' // for filtering the CSV data
@@ -35,6 +37,8 @@ import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CS
 import { sendEmail } from './CommonHelpers/sendEmail'
 import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
 import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromDynamoDB'
+// These are functions that may be called from the "test" button that appears if Brendan is logged in
+// dont delete
 import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
 import { fixDobs } from './NewSchoolHelpers/fixDobs'
 
@@ -46,6 +50,8 @@ dayjs.extend(customParseFormat)
 // In production, the environment variables will be loaded automatically by the build script in amplify.yml
 // For local starts, the amplify.yml script is not activated, so instead we use "> npm run start:local"
 // This first runs the env-cmd that loads the environment variables prior to the main start script
+
+const UNKNOWN = 'unknown'
 
 //Lookup tables
 const COUNTRY_TABLE = process.env.REACT_APP_COUNTRY_TABLE
@@ -497,12 +503,14 @@ function NewSchool() {
 
     // Combine Wonde and DynamoDB data to make a list of available yearLevels from Wonde
     // indicating whether each year level is uploaded or not.
-    let yearLevelStatusArray = yearLevelArray.map((item) => {
+    let yearLevelStatusArray = []
+    yearLevelArray.forEach((item) => {
       let yearCode = item
+      if (yearCode === UNKNOWN) return // set by getYearCode() from getStudentsFromWonde()
       if (!isNaN(parseInt(item))) yearCode = `Y${item}`
       if (uploadedYearLevels.get(yearCode)) {
-        return { yearLevel: yearCode, isLoaded: true }
-      } else return { yearLevel: yearCode, isLoaded: false }
+        yearLevelStatusArray.push({ yearLevel: yearCode, isLoaded: true })
+      } else yearLevelStatusArray.push({ yearLevel: yearCode, isLoaded: false })
     })
 
     console.log('yearLevelStatusArray', yearLevelStatusArray)
@@ -945,7 +953,12 @@ function NewSchool() {
         let teacher = teachersToUpload[i]
         if (teacher.email) {
           console.log('Saving teacher to Cognito', teacher)
-          let addTeacherResult = await addNewCognitoUser(teacher.email, USER_POOL_ID)
+          let addTeacherResult = await addNewTeacherCognitoUser(
+            teacher.email,
+            USER_POOL_ID,
+            teacher.firstName,
+            teacher.lastName,
+          )
           if (addTeacherResult.username === FAILED) {
             console.log(
               `Failed to create Cognito ${teacher.email} for ${teacher.firstName} ${teacher.lastName} `,
@@ -1202,7 +1215,12 @@ function NewSchool() {
           let student = studentsToUpload[i]
           if (student.email) {
             console.log('Saving student to Cognito', student)
-            let addStudentResult = await addNewCognitoUser(student.email, USER_POOL_ID)
+            let addStudentResult = await addNewStudentCognitoUser(
+              student.email,
+              USER_POOL_ID,
+              student.firstName,
+              student.lastName,
+            )
             if (addStudentResult.username === FAILED) {
               console.log(
                 `Failed to create Cognito ${student.email} for ${student.firstName} ${student.lastName} `,
@@ -1974,19 +1992,3 @@ export default NewSchool
  *
  *
  */
-// try to locate a non-existant email
-// not bothering to try-catch these Cognito calls
-// let response = await getCognitoUser('randomJunk@northpol.com', USER_POOL_ID)
-// if (response === FAILED) console.log('email (randomJunk@northpol.com) does not exist')
-// else {
-//   console.log(response)
-// }
-// try to locate a known email
-// response = await getCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-// if (response === FAILED) console.log('email (EltonLu@ChristChurchGrammarSchool) does not exist')
-// else {
-//   console.log(response) // should print the users details
-// }
-
-// let result = await addNewCognitoUser('EltonLu@ChristChurchGrammarSchool', USER_POOL_ID)
-// console.log('result after adding the user', result)

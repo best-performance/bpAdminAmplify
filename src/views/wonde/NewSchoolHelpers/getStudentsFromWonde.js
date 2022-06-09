@@ -17,6 +17,23 @@ export async function getStudentsFromWonde(wondeSchoolID) {
     case 'A1802201454': /* St Monica's Catholic Primary School */
     case 'A1732060724': /* St Marks Primary School */
     case 'A1084772819': /* Mayville Primary School */
+    case 'A1642105405': {
+      //"Danes Hill" - This school has groups for years FY and Y1 and
+      // classes for Y2-8
+      let wondeStudentsTempGroups = await readStudentsGroupsTeachers(wondeSchoolID)
+      let wondeStudentsTempClasses = await readStudentsClassesTeachers(wondeSchoolID)
+      wondeStudentsTempGroups.forEach((student) => {
+        // if any of these use the groups data
+        if (student.yearCode === '1' || student.yearCode === 'FY' || student.yearCode === 'R')
+          wondeStudentsTemp.push(student)
+      })
+      wondeStudentsTempClasses.forEach((student) => {
+        // if not any of teh above use the classes data
+        if (!(student.yearCode === '1' || student.yearCode === 'FY' || student.yearCode === 'R'))
+          wondeStudentsTemp.push(student)
+      })
+      break
+    }
     case 'A509965888': {
       /* St Peter's Church of England Primary School */
       wondeStudentsTemp = await readStudentsGroupsTeachers(wondeSchoolID)

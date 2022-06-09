@@ -141,7 +141,6 @@ export function OptionsPopup({
         <div key={v4()}>
           <span style={{ display: 'inline-block', width: '80px' }}>
             <CheckBox
-              //value={item.isLoaded ? true : yearOptions[item.yearLevel]}
               value={yearOptions[item.yearLevel]}
               text={item.yearLevel}
               onValueChanged={yearOptionChanged}
