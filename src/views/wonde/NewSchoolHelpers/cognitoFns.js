@@ -81,6 +81,7 @@ export async function addNewStudentCognitoUser(
       }
       try {
         const { Username } = await cognitoIdentityServiceProvider.adminGetUser(params).promise()
+        console.log('User already exists in Cognito, so not adding again', email)
         return { username: Username }
       } catch (err) {
         console.error('error getting existing user for adding', params, err)

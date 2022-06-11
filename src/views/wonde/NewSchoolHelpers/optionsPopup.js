@@ -85,13 +85,13 @@ export function OptionsPopup({
     console.log()
   }
 
-  // Fired when the opption to remove Kindy duplicates changes
+  // Fired when the option to save students to Congito changes
   function saveToCognitoOptionChanged(e) {
     setSaveToCognitoOption(e.value)
-    console.log(e.value)
+    console.log('savetoCognitoOption:', e.value)
   }
 
-  // Fired when the option to save students to Congito changes
+  // Fired when the option to pass only core subject classes changes
   function coreSubjectOptionChanged(e) {
     setCoreSubjectOption(e.value)
     console.log(e.value)
