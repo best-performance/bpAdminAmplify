@@ -1329,7 +1329,7 @@ function NewSchool() {
     //  save student
     //  save Cognito
     //  save user
-    //  save schoolStudent *
+    //  save schoolStudent *  TODO - fille in userID
     //  save classroomStudent
 
     try {
@@ -1385,7 +1385,7 @@ function NewSchool() {
                 'schoolYear#yearLevelID': `${schoolYear}#${yearLevelID}`,
                 'schoolYear#yearLevelID#firstName': `${schoolYear}#${yearLevelID}#${firstName}`,
                 'schoolYear#yearLevelID#lastName': `${schoolYear}#${yearLevelID}#${lastName}`,
-                // fields not added: userId: '' - will be filled when student gets a login (its id not email!)
+                userId: studentsToUpload[index].username,
               },
             },
           })
