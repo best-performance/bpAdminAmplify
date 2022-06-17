@@ -37,7 +37,8 @@ import { CSVUploader } from './NewSchoolHelpers/CSVUploader' // for uploading CS
 import { sendEmail } from './CommonHelpers/sendEmail'
 import { getUploadedSchoolData } from './NewSchoolHelpers/getUploadedSchoolData'
 import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromDynamoDB'
-// These are functions that may be called from the "test" button that appears if Brendan is logged in
+// These functions are system utitities intended to be executed "run test function()" button
+// that appears if Brendan is logged in
 // dont delete
 import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
 import { fixDobs } from './NewSchoolHelpers/fixDobs'
@@ -535,8 +536,8 @@ function NewSchool() {
    */
   async function saveSchoolCSVtoDynamoDB(selectedSchool) {
     // Note: Can only reach here if school has not already been uploaded manually
-    // School can either be not uploaded yet or has been uploaded already via BPAdmin
-    // and now user wants to upload additional years
+    // We can be either loading the school from scratch or adding additional years
+    // Its OK to load the same year repeatedly if new students, teachers etc have been added to Wonde
     // The UI state machine only exposes the "save school data" button when appropriate
 
     // Do a final confirmation with the user
@@ -562,11 +563,14 @@ function NewSchool() {
      * SaveSchool() will either save the school and return the schooldID as saved
      * or will return the schoolID of the school if already saved
      */
-
+    // TODO: Save school needs to set the enableStudentLogin bit to true, depending on the
+    // savetoCognitoOption bit. Right now its forced to false, until the dynamoDB trigger on saves
+    // to SChool tbale is disabled.
     let response = {}
     try {
       response = await saveSchool(
         selectedSchool,
+        saveToCognitoOption, // true if students are to be allowed to login
         countriesLookup,
         statesLookup,
         SCHOOL_TABLE,
@@ -1214,7 +1218,7 @@ function NewSchool() {
         for (let i = 0; i < studentsToUpload.length; i++) {
           let student = studentsToUpload[i]
           if (student.email) {
-            console.log('Saving student to Cognito', student)
+            console.log(`Saving student to Cognito ${i}`, student)
             let addStudentResult = await addNewStudentCognitoUser(
               student.email,
               USER_POOL_ID,
@@ -1251,7 +1255,12 @@ function NewSchool() {
     //  save user *       conditional on saveToCognito = true
     //  save schoolStudent
     //  save classroomStudent
-    if (saveToCognitoOption) {
+
+    // TODO Urgent
+    // check all student emails for uniqueness in Cognito, by looking up the email in table User
+    // If it exists, add 1 to the end and try again. Keep incrementing until its not found.
+    //if (saveToCognitoOption) {
+    if (false) {
       try {
         console.time('Student Users save time') // measure how long it takes to save
 
@@ -1327,7 +1336,7 @@ function NewSchool() {
     //  save student
     //  save Cognito
     //  save user
-    //  save schoolStudent *
+    //  save schoolStudent *  TODO - fille in userID
     //  save classroomStudent
 
     try {
@@ -1383,7 +1392,7 @@ function NewSchool() {
                 'schoolYear#yearLevelID': `${schoolYear}#${yearLevelID}`,
                 'schoolYear#yearLevelID#firstName': `${schoolYear}#${yearLevelID}#${firstName}`,
                 'schoolYear#yearLevelID#lastName': `${schoolYear}#${yearLevelID}#${lastName}`,
-                // fields not added: userId: '' - will be filled when student gets a login (its id not email!)
+                userId: studentsToUpload[index].username,
               },
             },
           })
@@ -1413,35 +1422,65 @@ function NewSchool() {
     // filteredStudentClassrooms[] is the source of requested classroomStudent records {CwondeId, SwondeId}
     // uploadedClassroomStudents[] as {classroom.wondeID,sudent.wondID} is whats uploaded
 
+    console.log('filteredStudentClassrooms[]', filteredStudentClassrooms)
+    /**
+     *CwondeId: "A1391001079"
+      SwondeId: "A1101487641"
+     */
+    console.log('uploadedClassroomStudents[]', uploadedClassroomStudents) //empty
+    console.log('classroomsToUpload[]', classroomsToUpload)
+    /**
+     * className: "3E/En3"
+      classroomID: "f9ecffff-75ed-48e0-a7b0-a3c5deacc648"
+      mis_id: "28232"
+      subject: "English"
+      wondeID: "A1391001079"
+     */
+    console.log('uploadedClassrooms[]', uploadedClassrooms) //empty
+    console.log('studentsToUpload[]', studentsToUpload)
+    /**
+     * dob: "03/05/2014"
+        studentID: "e54520c0-5c6d-4bcb-bed8-2c5613b2d7cf"
+        wondeID: "A1101487641"
+        yearCode: "3"
+     */
+    console.log('uploadedStudents[]', uploadedStudents)
+
     let classroomStudentsArray = [] // this needs to end up as an array of {classroomID,studentID}
 
     // Remove all records from filteredStudentClassrooms[] that were previously uploaded
-    filteredStudentClassrooms.forEach((row) => {
+    filteredStudentClassrooms.forEach((row, index) => {
+      // objective here is to make {classroomID,studentID} pairs
+      let classroomID = null
+      let studentID = null
       if (
         // if the classroomStudent is already uploaded then we skip it
-        !uploadedClassroomStudents.find((uploadedClassroom) => {
+        !uploadedClassroomStudents.find((uploadedClassroomStudent) => {
           return (
-            row.CwondeId === uploadedClassroom.classroomWondeID &&
-            row.SwondeId === uploadedClassroom.studentWondeID
+            row.CwondeId === uploadedClassroomStudent.classroomWondeID &&
+            row.SwondeId === uploadedClassroomStudent.studentWondeID
           )
         })
       ) {
-        let classroomID = null
-        let studentID = null
-        // next try to locate the classroom in classroomsToUpload[] (now uploaded)
+        // next try to locate the classroom in classroomsToUpload[] (uploaded above)
         let foundClassroom = classroomsToUpload.find(
           (classroomToUpload) => classroomToUpload.wondeID === row.CwondeId,
         )
-        if (!foundClassroom) {
+        if (foundClassroom) {
+          classroomID = foundClassroom.classroomID // as saved earlier
+          console.log('found classroomID in classroomsToUpload', classroomID, index)
+        } else {
           // next try to locate the classroom in uploadedClassrooms[] which were saved in a previous upload
           foundClassroom = uploadedClassrooms.find(
             (uploadedClassroom) => uploadedClassroom.wondeID === row.CwondeId,
           )
-        }
-        if (foundClassroom) {
-          classroomID = foundClassroom.id // as saved earlier
-        } else {
-          console.log('Should not reach here Classroom wondeID not found', row)
+          if (foundClassroom) {
+            classroomID = foundClassroom.id // as saved earlier
+            console.log('found classroomID in uploadeClassrooms', classroomID, index)
+          } else {
+            console.log('Should not reach here Classroom wondeID not found', row)
+            return
+          }
         }
         // next try to locate the student in studentsToUpload[] (now uploaded)
         let foundStudent = studentsToUpload.find(
@@ -1449,6 +1488,7 @@ function NewSchool() {
         )
         if (foundStudent) {
           studentID = foundStudent.studentID
+          console.log('found studentID in studentsToUpload', studentID, index)
         } else {
           // next try to locate the classroom in uploadedStudents[] which were saved in a previous upload
           foundStudent = uploadedStudents.find(
@@ -1456,13 +1496,18 @@ function NewSchool() {
           )
           if (foundStudent) {
             studentID = foundStudent.student.id // as saved earlier
+            console.log('found studentID in uploadedStudents', studentID, index)
           } else {
             console.log('Should not reach here, student wondeID not found', row)
+            return
           }
         }
+        console.log('studentID && classroomID', studentID && classroomID, studentID, classroomID)
         if (studentID && classroomID) {
           classroomStudentsArray.push({ classroomID: classroomID, studentID: studentID })
         }
+      } else {
+        console.log('StudentClassroom is already uploaded')
       }
     })
 

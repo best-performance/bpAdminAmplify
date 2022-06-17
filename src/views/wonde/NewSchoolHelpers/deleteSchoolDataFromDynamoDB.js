@@ -301,7 +301,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log(`D6a - Deleting Cognito users for teachers(${teacherUserRecords.length})`)
   for (let i = 0; i < teacherUserRecords.length; i++) {
     await deleteUser(teacherUserRecords[i].userId, USER_POOL_ID)
-    console.log(`deleting `)
+    console.log(`deleting teacher from Cognito: ${i}`)
   }
 
   console.log('D6b - Deleting teacher User records')
@@ -324,6 +324,7 @@ export async function deleteSchoolDataFromDynamoDB(wondeID) {
   console.log('D8b - Deleting Cognito users for students')
   for (let i = 0; i < studentUsersRecords.length; i++) {
     await deleteUser(studentUsersRecords[i].userId, USER_POOL_ID)
+    console.log(`deleting student from Cognito: ${i}`)
   }
 
   console.log('D9 - Deleting student Users records')

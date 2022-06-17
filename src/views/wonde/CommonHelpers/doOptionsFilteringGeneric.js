@@ -90,7 +90,7 @@ export function doOptionsFilteringGeneric(
   let wondeStudentsCloned = _.cloneDeep(wondeStudents)
   console.log('cloned student classroom', wondeStudentsCloned)
   wondeStudentsCloned.forEach((student) => {
-    let filteredClasses = []
+    let filteredClasses = [] // for this student
     // make a useable year code to compare with yearOptions[yearCode]
     let yearCode = student.yearCode
     let studentYear = parseInt(yearCode)
@@ -104,7 +104,7 @@ export function doOptionsFilteringGeneric(
     }
     student.classes.data.forEach((classroom) => {
       // remove duplicate Kindy classes based on Mon-AM etc
-      // for now we remove all duplicate classrooms
+      // only Kindy and only if the kinterDayClasses option is set
       if (yearCode === 'K') {
         if (kinterDayClasses) {
           // Then only save if its the first classroom for that student
@@ -178,26 +178,36 @@ export function doOptionsFilteringGeneric(
     }) // end Classrooms.foreach()
 
     // is this a primary class with mergePrimaryClasses set?
-    if (isPrimary(yearCode) && mergePrimaryClassesOption && filteredClasses.length > 0) {
+    // Some schools have no teachers and we cant merge these
+    if (isPrimary(yearCode) && mergePrimaryClassesOption && filteredClasses.length > 1) {
       // merge the classes into groups with common teachers
-      // find the number of unique teachers
       console.log('Classes to merge', filteredClasses)
       let uniqueTeachersMap = new Map()
+      let allClassesHaveTeachers = true
       filteredClasses.forEach((filteredClass) => {
-        // for now assume just one teacher (need to expand this)
-        // also assuming .employees exists! Need to check this espeecially for groups
-        let teacherID = filteredClass.employees.data[0].id
-        if (!uniqueTeachersMap.get(teacherID)) uniqueTeachersMap.set(teacherID, teacherID)
+        // We will only merge if all classes for the student have the same teacher
+        // and all classes have a teacher
+        if (
+          filteredClass.employees &&
+          filteredClass.employees.data &&
+          filteredClass.employees.data.length > 0
+        ) {
+          let teacherID = filteredClass.employees.data[0].id
+          if (!uniqueTeachersMap.get(teacherID)) uniqueTeachersMap.set(teacherID, teacherID)
+        } else allClassesHaveTeachers = false // only needs to be set once
       })
-      if (uniqueTeachersMap.size === 1) {
-        let mergedClass = _.cloneDeep(filteredClasses[0])
-        mergedClass.name = yearCode
-        mergedClass.subject = 'All'
-        filteredClasses = [] // empty the array
-        filteredClasses.push(mergedClass) // add the merged one back in
-        console.log('Merged Class', mergedClass)
+      if (allClassesHaveTeachers) {
+        if (uniqueTeachersMap.size === 1) {
+          let mergedClass = _.cloneDeep(filteredClasses[0])
+          mergedClass.name = yearCode
+          mergedClass.subject = 'All'
+          filteredClasses = [] // empty the array
+          filteredClasses.push(mergedClass) // add the merged one back in
+          console.log('Merged Class', mergedClass)
+        }
       }
-    }
+    } // end code to merge classes with the same teacher
+
     // does the student have at least one class
     if (student.classes.data.length > 0) {
       student.classes.data = filteredClasses
