@@ -536,8 +536,8 @@ function NewSchool() {
    */
   async function saveSchoolCSVtoDynamoDB(selectedSchool) {
     // Note: Can only reach here if school has not already been uploaded manually
-    // School can either be not uploaded yet or has been uploaded already via BPAdmin
-    // and now user wants to upload additional years
+    // We can be either loading the school from scratch or adding additional years
+    // Its OK to load the same year repeatedly if new students, teachers etc have been added to Wonde
     // The UI state machine only exposes the "save school data" button when appropriate
 
     // Do a final confirmation with the user
@@ -563,7 +563,9 @@ function NewSchool() {
      * SaveSchool() will either save the school and return the schooldID as saved
      * or will return the schoolID of the school if already saved
      */
-
+    // TODO: Save school needs to set the enableStudentLogin bit to true, depending on the
+    // savetoCognitoOption bit. Right now its forced to false, until the dynamoDB trigger on saves
+    // to SChool tbale is disabled.
     let response = {}
     try {
       response = await saveSchool(
@@ -1253,7 +1255,12 @@ function NewSchool() {
     //  save user *       conditional on saveToCognito = true
     //  save schoolStudent
     //  save classroomStudent
-    if (saveToCognitoOption) {
+
+    // TODO Urgent
+    // check all student emails for uniqueness in Cognito, by looking up the email in table User
+    // If it exists, add 1 to the end and try again. Keep incrementing until its not found.
+    //if (saveToCognitoOption) {
+    if (false) {
       try {
         console.time('Student Users save time') // measure how long it takes to save
 

@@ -245,6 +245,7 @@ export function OptionsPopup({
                 defaultValue={saveToCognitoOption}
                 text="Save Students to Cognito"
                 onValueChanged={saveToCognitoOptionChanged}
+                disabled={true}
               />
             </div>
           </CCol>

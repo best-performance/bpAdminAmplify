@@ -62,7 +62,7 @@ export async function saveSchool(
       // town: selectedSchool.town, // not in EdC
       motto: `May the force be with the students of ${selectedSchool.schoolName}`, // not in Wonde
       dummy: 'school',
-      studentLoginEnabled: false,
+      studentLoginEnabled: false, // TODO In future version this will be set to saveToCognitoOption
       __typename: 'School', // used hard coded as tableName may change with env
       createdAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
       updatedAt: `${dayjs(new Date()).format('YYYY-MM-DDTHH:mm:ss.SSS')}Z`,
