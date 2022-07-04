@@ -20,4 +20,4 @@ export async function GetAllSchoolsFromDynamoDB() {
     console.log(err)
     return []
   }
-} // end getEdComSchools()
+} // end GetAllSchoolsFromDynamoDB()

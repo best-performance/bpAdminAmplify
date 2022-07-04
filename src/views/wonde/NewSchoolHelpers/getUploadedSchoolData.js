@@ -15,6 +15,7 @@ const getTeachersBySchool = /* GraphQL */ `
       nextToken: $nextToken
     ) {
       items {
+        userId
         userType
         wondeID
         firstName
@@ -37,12 +38,18 @@ const getSchoolStudentsByYear = /* GraphQL */ `
       nextToken: $nextToken
     ) {
       items {
+        userId
         student {
           wondeID
           birthDate
           firstName
           lastName
           id
+        }
+        user {
+          items {
+            email
+          }
         }
         yearLevel {
           yearCode
@@ -66,6 +73,7 @@ const getClassByYear = /* GraphQL */ `
       items {
         id
         className
+        classType
         wondeID
         teachers {
           items {
@@ -84,7 +92,7 @@ const getClassByYear = /* GraphQL */ `
     }
   }
 `
-// Query to get all classroomStudents (for a qiven classroomID)
+// Query to get all classroomStudents (for a given classroomID)
 // This is a query on table ClassroomStudent which is indexed on classroomID
 // It has to be called for every classroomID
 const getStudentsByClassroom = /* GraphQL */ `
@@ -104,7 +112,7 @@ const getStudentsByClassroom = /* GraphQL */ `
     }
   }
 `
-// Query to get all classroomTeachers (for a qiven classroomID)
+// Query to get all classroomTeachers (for a given classroomID)
 // This is a query on table ClassroomTeacher which is indexed on classroomID
 // It has to be called for every classroomID
 const getClassTeachers = /* GraphQL */ `
@@ -128,11 +136,11 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
   // read the classroom, students and User(teacher) tables from DynamoDB
   // must be all be empty arrays to make them iterable
   let classrooms = []
-  let teachers = []
+  let teachers = [] // Users with dbType "Educator"
   let students = []
+  let studentUsers = [] // Users with dbType "Student"
   let classroomTeachers = [] // only filled if withAssignments exists or true
   let classroomStudents = [] // only filled if withAssignments exists or true
-  let studentUsers = [] // only filled if withAssignments exists or true
   let nextToken // used for paging all appsync queries
   let response // used for all appsyn query responses below
 
@@ -189,20 +197,7 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
       //console.log('Teachers nextToken', nextToken ? nextToken : 'Empty')
     } while (nextToken != null)
     console.log('Teachers read from DynamoDB', teachers)
-  } catch (err) {
-    console.log(err)
-    return false
-  }
-  // exit here unless we also need the classroomAsignments
-  if (!withAssignments) {
-    return {
-      uploadedClassrooms: classrooms,
-      uploadedTeachers: teachers,
-      uploadedStudents: students,
-    }
-  }
 
-  try {
     // get the all students in the User table for this school
     nextToken = null
     do {
@@ -224,7 +219,22 @@ export async function getUploadedSchoolData(schoolID, withAssignments) {
     } while (nextToken != null)
 
     console.log('StudentUsers read from DynamoDB', studentUsers)
+  } catch (err) {
+    console.log(err)
+    return false
+  }
 
+  // exit here unless we also need the classroomAsignments
+  if (!withAssignments) {
+    return {
+      uploadedClassrooms: classrooms,
+      uploadedTeachers: teachers,
+      uploadedStudents: students,
+      uploadedStudentUsers: studentUsers,
+    }
+  }
+
+  try {
     // get the all classroomStudents
     // For every ClassroomID, run appsyn query getStudentsByClassroom
     let studentPromises = classrooms.map(async (classroom) => {

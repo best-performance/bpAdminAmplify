@@ -332,7 +332,7 @@ function NewSchool() {
 
     // console.log('uploaded classroomStudents', uploadedClassroomStudents)
     // console.log('uploaded classroomTeachers', uploadedClassroomTeachers)
-    // addWondeIDs(selectedSchool, setUnmatchedStudents)
+    addWondeIDs(selectedSchool)
     // test function to fix the dobs
     // fixDobs(selectedSchool)
   } // end of testFuntion()
@@ -351,7 +351,10 @@ function NewSchool() {
 
     // we need the uploaded schools also to indicate "loaded" on the UI
     let edComSchools = await GetAllSchoolsFromDynamoDB()
-    console.log('EdComSchools', edComSchools)
+    // console.log('EdComSchools', edComSchools, edComSchools.length)
+    // edComSchools.forEach((school) => {
+    //   console.log('school name', school.schoolName)
+    // })
 
     // Get all the schools from Wonde
     let schools = await getAllSchoolsFromWonde(getURL(), getToken())
@@ -693,6 +696,8 @@ function NewSchool() {
     try {
       console.time('Classrooms save time') // measure how long it takes to save
       // we have an array of items to batchWrite() in batches of up BATCH_SIZE
+      // Note: parseInt() is supposed to work on strings but if passed a number like 15.7 it will round it down
+      // presumably converting 15.7 to a string and then doings its thing (math.Floor() is probably better)
       let batchesCount = parseInt(classroomsToUpload.length / BATCH_SIZE) + 1 // allow for remainder
       let lastBatchSize = classroomsToUpload.length % BATCH_SIZE // which could be 0
       // eg if 88 records thats 4 batches with lastBatch size 13 (3x25+13 = 88)
