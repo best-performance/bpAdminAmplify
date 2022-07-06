@@ -13,10 +13,6 @@ export async function getStudentsFromWonde(wondeSchoolID) {
   let wondeStudentsTemp = [] // the data as received from Wonde
 
   switch (wondeSchoolID) {
-    // these listed schools all use groups instead of classes (small primary schools)
-    case 'A1802201454': /* St Monica's Catholic Primary School */
-    case 'A1732060724': /* St Marks Primary School */
-    case 'A1084772819': /* Mayville Primary School */
     case 'A1642105405': {
       //"Danes Hill" - This school has groups for years FY and Y1 and
       // classes for Y2-8
@@ -34,6 +30,10 @@ export async function getStudentsFromWonde(wondeSchoolID) {
       })
       break
     }
+    // these listed schools all use groups instead of classes (small primary schools)
+    case 'A1802201454': /* St Monica's Catholic Primary School */
+    case 'A1732060724': /* St Marks Primary School */
+    case 'A1084772819': /* Mayville Primary School */
     case 'A509965888': {
       /* St Peter's Church of England Primary School */
       wondeStudentsTemp = await readStudentsGroupsTeachers(wondeSchoolID)
@@ -52,6 +52,7 @@ export async function getStudentsFromWonde(wondeSchoolID) {
 async function readStudentsGroupsTeachers(wondeSchoolID) {
   // first read the teachers who have groups
   let teachersMap = new Map()
+  let teachersMap2 = new Map()
   try {
     let URL = `${getURL()}/${wondeSchoolID}/employees/?has_group=true&include=contact_details,groups&per_page=200`
     let response = await axios({
@@ -61,6 +62,7 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         Authorization: getToken(),
       },
     })
+    console.log('Teachers who are in groups:', response.data.data)
     // make a map of (teacher.id, email)
     response.data.data.forEach((teacher) => {
       let id = v4()
@@ -71,12 +73,18 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         teacherEmail = `${id}@placeholder.com` // insert placeholder if no email supplied
       }
       teachersMap.set(teacher.id, teacherEmail)
+      //we need teacherMap2 to create emails from names below if needed when addings WondeIDs if AddWondeIDs.js
+      teachersMap2.set(teacher.id, {
+        forename: teacher.forename.toLowerCase(),
+        surname: teacher.surname.toLowerCase(),
+      })
     })
   } catch (err) {
     console.log(err)
     return []
   }
 
+  console.log('teachers map', teachersMap)
   // Now process the students
   let wondeStudentsTemp = []
   try {
@@ -92,14 +100,17 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
         },
       })
 
+      console.log('classes student response', response.data.data)
+
       // eslint-disable-next-line no-loop-func
       response.data.data.forEach((student) => {
         // Format the year code because its needed for filtering
         let clonedStudent = _.cloneDeep(student) // we need to avoid changing the original data
         clonedStudent.yearCode = getYearCode(clonedStudent, wondeSchoolID) // getting the right year code can be school specific
-        let classes = student.groups.data.filter((item) => {
-          return item.type === 'YEAR'
-        })
+        // let classes = student.groups.data.filter((item) => {
+        //   return item.type === 'YEAR'
+        // })
+        let classes = student.groups.data
         if (classes.length > 0) {
           // we only return students who are in groups
           clonedStudent.classes = {}
@@ -108,8 +119,18 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
             classroom.employees.data.forEach((teacher) => {
               // insert the email for every teacher
               teacher.email = teachersMap.get(teacher.id)
+              // some emails are wrong in St Monicas so we do this to fabricate the "correct" ones
+              //let teacherName = teachersMap2.get(teacher.id)
+              //let teacherEmail2 =
+              //  `${teacherName.surname}` +
+              //  teacherName.forename.charAt(0) +
+              //  '.stmonicas@schools.sefton.gov.uk'
+              //if (teacher.email !== teacherEmail2) {
+              //  console.log('changing email from', teacher.email, 'to', teacherEmail2)
+              //  teacher.email = teacherEmail2
+              //}
+              clonedStudent.classes.data.push(_.cloneDeep(classroom))
             })
-            clonedStudent.classes.data.push(_.cloneDeep(classroom))
           })
           wondeStudentsTemp.push(clonedStudent)
         } else {
@@ -132,7 +153,7 @@ async function readStudentsGroupsTeachers(wondeSchoolID) {
   return wondeStudentsTemp
   //return []
 }
-
+/* **************************************************************************************/
 // read the students-classes-teachers for secondary schools and large primary schools
 async function readStudentsClassesTeachers(wondeSchoolID) {
   console.log('readStudentsClassesTeachers', wondeSchoolID)
