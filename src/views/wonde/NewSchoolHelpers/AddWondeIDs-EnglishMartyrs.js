@@ -129,42 +129,19 @@ export async function addWondeIDs(selectedSchool) {
     )
 
     let studentKey = compressString(student.forename + student.surname)
-    switch (studentKey) {
-      case 'BILLYFLANNERY':
-        studentKey = 'WILLIAMFLANNERY'
-        break
-      case 'JAMESLESLIEEDGE':
-        studentKey = 'JAMESEDGE'
-        break
-      case 'TYLERJACKASHWORTH':
-        studentKey = 'TYLERASHWORTH'
-        break
-      case 'CAITLYN-ELISEMURPHY':
-        studentKey = 'CAITLYNMURPHY'
-        break
-      case 'CHARLIEMCPHERSON':
-        studentKey = 'CHARLESMCPHERSON'
-        break
-      case 'BOBBY-JACKCORRIN':
-        studentKey = 'BOBBYCORRIN'
-        break
-      case 'MILLIECANNELL':
-        studentKey = 'AMELIACANNELL'
-        break
-      case 'EMILY-ROSEMITCHELLDUNN':
-        studentKey = 'EMILY-ROSEDUNN'
-        break
-      case 'MADISONGREENWOOD':
-        studentKey = 'MADISONGREENWOOD-RITSON'
-        break
-      case 'KEEGANALANROBERTBROWN':
-        studentKey = 'KEEGANBROWN'
-        break
-      default:
-        break
-    }
     // If the student is already a duplicate, push it to the duplicate array
     if (duplicateWondeStudents.find((student) => student.key === studentKey)) {
+      //temp instruction for English Martyrs
+      if (student.forename === 'Daisy' || student.surname.includes('herley')) {
+        console.log('***********missing student found*******************', student)
+      }
+      if (student.forename === 'Lucas' || student.surname.includes('dward')) {
+        console.log('***********missing student found*******************', student)
+      }
+      if (student.forename === 'Lola' || student.surname.includes('dward')) {
+        console.log('***********missing student found*******************', student)
+      }
+
       duplicateWondeStudents.push({ ...wondeStudent, key: studentKey })
       console.log('Duplicate Wonde student found in duplicate list', student)
     } else {
@@ -211,7 +188,32 @@ export async function addWondeIDs(selectedSchool) {
       // Build the unique list of teachers (maybe add email as a better unique identifier)
       classroom.employees.data.forEach((teacher) => {
         let teacherKeyOld = compressString(teacher.forename + teacher.surname + teacher.email)
-        let teacherKey = teacher.email
+        let teacherKeyOld2 = teacher.email // St Monicas
+
+        let teacherKey = compressString(teacher.forename + teacher.surname)
+        // For st marks we are matching on forename,surname but the dynamo names have been changed
+        // so we adjust the wonde name here to get a match
+        // let teacherKeyToBeTested = teacherKey
+        // switch (teacherKeyToBeTested) {
+        //   case 'JOSEPHINEBOOTH':
+        //     teacherKey = 'JOBOOTH'
+        //     break
+        //   case 'ERINCARRER':
+        //     teacherKey = 'ERINMASTERSCARRER'
+        //     break
+        //   case 'RAVINDERMOHINDRU':
+        //     teacherKey = 'RAVIMOHINDRU'
+        //     break
+        //   case 'REBECCAMURRAY-BIRNBAUM':
+        //     teacherKey = 'REBECCAMURRAYBIRNBAUM'
+        //     break
+        //   case 'THOMASLUNDY':
+        //     teacherKey = 'TOMLUNDY'
+        //     break
+        //   default:
+        //     break
+        // }
+
         if (!uniqueWondeTeachersMap.get(teacherKey)) {
           uniqueWondeTeachersMap.set(teacherKey, {
             wondeID: teacher.id,
@@ -237,7 +239,25 @@ export async function addWondeIDs(selectedSchool) {
       classroom.classroomYearCode + classroom.classroomName + classroom.teacherEmail,
     )
     let classroomKeyOld = compressString(classroom.classroomYearCode + classroom.teacherEmail)
-    let classroomKey = compressString(classroom.classroomYearCode + classroom.classroomName) // like "Y44"
+    let classroomKeyOld3 = compressString(classroom.classroomYearCode + classroom.classroomName) // like "Y44"
+
+    // for St Marks where some Dynamo classes have slightly different names - so matching them here
+    // let classroomName = classroom.classroomName
+    // switch (classroomName) {
+    //   case '5 ATTENBOR':
+    //     classroom.classroomName = '5 ATTENBOROUGH'
+    //     break
+    //   case '4 ZEPHANIA':
+    //     classroom.classroomName = '4 ZEPHANIAH'
+    //     break
+    //   case '3 KANNEH-M':
+    //     classroom.classroomName = '3 KANNEH-MASON'
+    //     break
+    //   default:
+    //     break
+    // }
+
+    let classroomKey = compressString(classroom.classroomName) // like "6 Harris"
     let foundClassroom = uniqueWondeClassroomsMap.get(classroomKey)
     if (!foundClassroom) {
       uniqueWondeClassroomsMap.set(classroomKey, classroom)
@@ -296,64 +316,39 @@ export async function addWondeIDs(selectedSchool) {
         student.student.lastName +
         dayjs(student.student.birthDate).format('YYYY-MM-DD'),
     )
-
-    // a large no of St Monica names have firstName and LastName reversed in Elastic
-    // So we make 2 keys as below in teh attempt to find them
-    let studentKey = ''
-    let studentKey1 = compressString(student.student.firstName + student.student.lastName)
-    let studentKey2 = compressString(student.student.lastName + student.student.firstName)
+    let studentKey = compressString(student.student.firstName + student.student.lastName)
     // is the student in uniqueWondeStudentsMap?
-    foundWondeStudent = uniqueWondeStudentsMap.get(studentKey1)
+    foundWondeStudent = uniqueWondeStudentsMap.get(studentKey)
     if (!foundWondeStudent) {
-      foundWondeStudent = uniqueWondeStudentsMap.get(studentKey2)
-      if (!foundWondeStudent) {
-        unMatchedDynamoDBStudents.push({
-          ...student,
-          key: studentKey1,
-          reason: 'Student not found in Wonde with FL key',
-        })
-        unMatchedDynamoDBStudents.push({
-          ...student,
-          key: studentKey2,
-          reason: 'Student not found in Wonde wih LF key',
-        })
+      // check if in the duplicates list
+      let reason = ''
+      if (duplicateWondeStudents.find((student) => student.studentKey === studentKey)) {
+        reason = 'DynamoDB student has duplicates in Wonde'
       } else {
-        studentKey = studentKey2
+        reason = 'DynamoDB student not found in Wonde'
       }
+      unMatchedDynamoDBStudents.push({ ...student, key: studentKey, reason: reason })
     } else {
-      studentKey = studentKey1
-    }
-
-    // // check if in the duplicates list
-    // let reason = ''
-    // if (duplicateWondeStudents.find((student) => student.studentKey === studentKey1)) {
-    //   reason = 'DynamoDB student has duplicates in Wonde'
-    // } else {
-    //   reason = 'DynamoDB student not found in Wonde'
-    // }
-    // unMatchedDynamoDBStudents.push({ ...student, key: studentKey1, reason: reason })
-    if (foundWondeStudent) {
       // The student is uniquely matched to a Wonde student
-      // Is the student already in matchedDynamoStudentsMap?
-      let foundDynamoDBStudent =
-        matchedDynamoStudentsMap.get(studentKey1) || matchedDynamoStudentsMap.get(studentKey2)
+      // Is the student already in uniqueDynamoDBMap?
+      let foundDynamoDBStudent = matchedDynamoStudentsMap.get(studentKey)
       if (foundDynamoDBStudent) {
-        console.log('duplicate matched student found')
-        // // Its a duplicate so remove from unique map
-        // matchedDynamoStudentsMap.delete(studentKey)
-        // // add both to the unmatched array
-        // unMatchedDynamoDBStudents.push({
-        //   ...foundDynamoDBStudent,
-        //   key: studentKey,
-        //   reason: 'Duplicate in DynamoDB',
-        // })
-        // unMatchedDynamoDBStudents.push({
-        //   ...student,
-        //   key: studentKey,
-        //   reason: 'Duplicate in DynamoDB',
-        // })
+        // Its a duplicate so remove from unique map
+        matchedDynamoStudentsMap.delete(studentKey)
+        // add both to the unmatched array
+        unMatchedDynamoDBStudents.push({
+          ...foundDynamoDBStudent,
+          key: studentKey,
+          reason: 'Duplicate in DynamoDB',
+        })
+        unMatchedDynamoDBStudents.push({
+          ...student,
+          key: studentKey,
+          reason: 'Duplicate in DynamoDB',
+        })
       } else {
         // Add the WondeIDs to the student record, and correct the birthdate if needed
+
         // if (foundWondeStudent.birthDate !== dayjs(student.student.birthDate).format('YYYY-MM-DD')) {
         //   console.log(
         //     'Updating birthdate for student:',
@@ -401,8 +396,9 @@ export async function addWondeIDs(selectedSchool) {
       let classroomKeyOld2 = compressString(yearCode + classroom.className + teacherEmail)
       let classroomKeyOld = compressString(yearCode + teacherEmail)
       let classroomKeyOld3 = compressString(yearCode + classroom.className)
-      let classroomKey = compressString(yearCode + classroom.className.charAt(1))
-      let foundWondeClassroom = uniqueWondeClassroomsMap.get(classroomKey)
+      let classroomKeyOld4 = compressString(yearCode + classroom.className.charAt(1)) //St Monicas
+      let classroomKey = compressString(classroom.className) //St Monicas
+      let foundWondeClassroom = uniqueWondeClassroomsMap.get(classroomKey) //St Marks
 
       // for St Moonicas and possibly other schools, must allow for situation where
       // the classroom is split into 2 or more in Dynamo - see notes at top
@@ -455,10 +451,16 @@ export async function addWondeIDs(selectedSchool) {
       teacherEmail = teacher.email
     }
     let teacherKeyOld = compressString(teacher.firstName + teacher.lastName + teacherEmail)
-    let teacherKey = teacherEmail
+    let teacherKeyOld2 = teacherEmail // st Monicas
+    let teacherKey = compressString(teacher.firstName + teacher.lastName) // st Monicas
     let foundWondeTeacher = uniqueWondeTeachersMap.get(teacherKey)
     if (!foundWondeTeacher) {
-      console.log('Dynamo Teacher not found in Wonde', teacher.email)
+      console.log(
+        'Dynamo Teacher not found in Wonde',
+        teacherKey,
+        teacher.firstName + teacher.lastName,
+      ) //St Marks
+      //console.log('Dynamo Teacher not found in Wonde', teacher.email) //St Monicas
     } else {
       let wondeData = {
         MISID: foundWondeTeacher.MISID,

@@ -18,6 +18,7 @@ const getTeachersBySchool = /* GraphQL */ `
         userId
         userType
         wondeID
+        MISID
         firstName
         lastName
         email
@@ -41,6 +42,7 @@ const getSchoolStudentsByYear = /* GraphQL */ `
         userId
         student {
           wondeID
+          MISID
           birthDate
           firstName
           lastName
@@ -75,6 +77,7 @@ const getClassByYear = /* GraphQL */ `
         className
         classType
         wondeID
+        MISID
         teachers {
           items {
             email

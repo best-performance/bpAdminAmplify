@@ -41,6 +41,7 @@ import { GetAllSchoolsFromDynamoDB } from './NewSchoolHelpers/GetAllSchoolsFromD
 // that appears if Brendan is logged in
 // dont delete
 import { addWondeIDs } from './NewSchoolHelpers/AddWondeIDs' // for adding WondeIDs to WOnde schools that were uploaded manually
+import { checkWondeIDs } from './NewSchoolHelpers/checkWondeIDs' // to check for records with no WondeIDs
 import { fixDobs } from './NewSchoolHelpers/fixDobs'
 
 import dayjs from 'dayjs'
@@ -332,7 +333,8 @@ function NewSchool() {
 
     // console.log('uploaded classroomStudents', uploadedClassroomStudents)
     // console.log('uploaded classroomTeachers', uploadedClassroomTeachers)
-    addWondeIDs(selectedSchool)
+    //addWondeIDs(selectedSchool)
+    checkWondeIDs(selectedSchool)
     // test function to fix the dobs
     // fixDobs(selectedSchool)
   } // end of testFuntion()
